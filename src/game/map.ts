@@ -3,7 +3,6 @@ import {
   BASE_COUNT_MIN,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
-  START_TROOPS,
   WORLD_H,
   WORLD_W,
 } from "./config";
@@ -132,6 +131,7 @@ export function createMap(seed = 20260815): Territory[] {
     return {
       id,
       poly,
+      localPoly: poly.map((p) => ({ x: p.x - center.x, y: p.y - center.y })),
       center,
       radius: meanRadius(center, poly),
       owner: "neutral",
@@ -144,9 +144,9 @@ export function createMap(seed = 20260815): Territory[] {
   let [a, b] = farthestPair(centers);
   if (rng() < 0.5) [a, b] = [b, a];
   territories[a].owner = "player";
-  territories[a].troops = START_TROOPS;
+  territories[a].troops = 0;
   territories[b].owner = "ai";
-  territories[b].troops = START_TROOPS;
+  territories[b].troops = 0;
 
   return territories;
 }

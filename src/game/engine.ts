@@ -1,4 +1,4 @@
-import { ARMY_SPEED, SPAWN_INTERVAL, START_TROOPS, TROOP_CAP } from "./config";
+import { ARMY_SPEED, SPAWN_INTERVAL, TROOP_CAP } from "./config";
 import { dist } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
@@ -39,7 +39,7 @@ export class Game {
   soldiers: Soldier[] = [];
   armies: Army[] = [];
   selected: number | null = null;
-  sendRatio: SendRatio = 0.5;
+  sendRatio: SendRatio = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
   rng: () => number;
@@ -47,7 +47,6 @@ export class Game {
   constructor(seed = Date.now()) {
     this.rng = mulberry32(seed);
     this.territories = createMap(seed);
-    this.seedGarrisons();
   }
 
   restart(seed = Date.now()): void {
@@ -59,16 +58,6 @@ export class Game {
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
-    this.seedGarrisons();
-  }
-
-  private seedGarrisons(): void {
-    for (const t of this.territories) {
-      if (t.owner === "neutral") continue;
-      t.troops = 0;
-      for (let i = 0; i < START_TROOPS; i++) this.spawnSoldier(t, i, START_TROOPS);
-    }
-    this.syncTroops();
   }
 
   garrison(id: number): Soldier[] {
@@ -90,10 +79,7 @@ export class Game {
     const to = this.territories[toId];
     if (!from || !to || from.owner === "neutral") return false;
 
-    const pool = this.garrison(fromId).sort((a, b) => {
-      const rank = (s: Soldier) => (s.state === "gather" ? 0 : s.state === "idle" ? 1 : 2);
-      return rank(a) - rank(b);
-    });
+    const pool = this.garrison(fromId);
     const count = Math.floor(pool.length * ratio);
     if (count < 1) return false;
 
@@ -156,6 +142,7 @@ export class Game {
       fromY: edge.y,
       toX: rest.x,
       toY: rest.y,
+      poly: base.localPoly.map((p) => ({ x: p.x, y: p.y })),
     });
   }
 
@@ -172,6 +159,7 @@ export class Game {
     s.fromY = edge.y;
     s.toX = rest.x;
     s.toY = rest.y;
+    s.poly = base.localPoly.map((p) => ({ x: p.x, y: p.y }));
   }
 
   private stepSoldier(s: Soldier, dt: number): void {
@@ -181,9 +169,7 @@ export class Game {
       const k = easeOutBack(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
-      if (s.ejectT >= 1) {
-        s.state = this.selected === s.homeId && s.owner === "player" ? "gather" : "idle";
-      }
+      if (s.ejectT >= 1) s.state = "idle";
       return;
     }
 
@@ -197,10 +183,8 @@ export class Game {
       return;
     }
 
-    const gather = this.selected === s.homeId && s.owner === "player";
-    s.state = gather ? "gather" : "idle";
-    const ring = gather ? home.radius * 0.42 : home.radius + 28;
-    const target = slotPos(home, s.slot, Math.max(this.garrison(home.id).length, 1), ring);
+    s.state = "idle";
+    const target = slotPos(home, s.slot, Math.max(this.garrison(home.id).length, 1), home.radius + 28);
     const d = dist({ x: s.x, y: s.y }, target);
     if (d < 1.2) {
       s.x = target.x;

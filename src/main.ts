@@ -9,7 +9,6 @@ import { loadBundledVersion } from "./version";
 const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
 const ctx = canvas.getContext("2d")!;
 const scoreEl = document.querySelector("#score")!;
-const ratioBtn = document.querySelector<HTMLButtonElement>("#ratio-btn")!;
 const updateBtn = document.querySelector<HTMLButtonElement>("#update-btn")!;
 const toastEl = document.querySelector("#toast")!;
 const overlay = document.querySelector("#overlay")!;
@@ -44,7 +43,6 @@ function toast(text: string): void {
 function syncHud(): void {
   const totals = game.totals();
   scoreEl.textContent = `${Math.floor(totals.player)} · ${Math.floor(totals.ai)}`;
-  ratioBtn.textContent = game.sendRatio === 1 ? "ALL" : "50%";
   if (game.winner && !shownWinner) {
     shownWinner = true;
     resultEl.textContent = game.winner === "player" ? "You win" : "You lose";
@@ -55,11 +53,6 @@ function syncHud(): void {
 window.setTimeout(() => {
   hintEl.classList.add("gone");
 }, 4500);
-
-ratioBtn.addEventListener("click", () => {
-  game.sendRatio = game.sendRatio === 0.5 ? 1 : 0.5;
-  syncHud();
-});
 
 restartBtn.addEventListener("click", () => {
   game.restart();

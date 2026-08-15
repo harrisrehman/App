@@ -25,49 +25,41 @@ export function bindInput(
     return toWorld(getCam(), p.clientX - rect.left, p.clientY - rect.top);
   };
 
-  const down = (e: TouchEvent | MouseEvent) => {
-    if ("touches" in e) e.preventDefault();
+  let lastTouch = 0;
+
+  const tap = (e: TouchEvent | MouseEvent) => {
+    if ("touches" in e) {
+      e.preventDefault();
+      lastTouch = Date.now();
+    } else if (Date.now() - lastTouch < 600) {
+      return;
+    }
     if (game.winner) return;
     const p = pos(e);
     const id = hitTerritory(game, p.x, p.y);
-    if (id === null) return;
-    if (game.territories[id].owner === "player") {
-      game.selected = id;
-      game.finger = p;
-    }
-  };
 
-  const move = (e: TouchEvent | MouseEvent) => {
-    if ("touches" in e) e.preventDefault();
-    if (game.selected === null) return;
-    game.finger = pos(e);
-  };
-
-  const up = (e: TouchEvent | MouseEvent) => {
-    if ("touches" in e) e.preventDefault();
-    if (game.selected === null) return;
-    const p = pos(e);
-    const id = hitTerritory(game, p.x, p.y);
-    if (id !== null && id !== game.selected) {
-      game.send(game.selected, id);
+    if (game.selected !== null && id !== null && id !== game.selected) {
+      game.send(game.selected, id, 1);
+      game.selected = null;
+      game.finger = null;
+      return;
     }
+
+    if (id !== null && game.territories[id].owner === "player") {
+      game.selected = game.selected === id ? null : id;
+      game.finger = null;
+      return;
+    }
+
     game.selected = null;
     game.finger = null;
   };
 
-  canvas.addEventListener("touchstart", down, { passive: false });
-  canvas.addEventListener("touchmove", move, { passive: false });
-  canvas.addEventListener("touchend", up, { passive: false });
-  canvas.addEventListener("mousedown", down);
-  canvas.addEventListener("mousemove", move);
-  window.addEventListener("mouseup", up);
+  canvas.addEventListener("touchend", tap, { passive: false });
+  canvas.addEventListener("click", tap);
 
   return () => {
-    canvas.removeEventListener("touchstart", down);
-    canvas.removeEventListener("touchmove", move);
-    canvas.removeEventListener("touchend", up);
-    canvas.removeEventListener("mousedown", down);
-    canvas.removeEventListener("mousemove", move);
-    window.removeEventListener("mouseup", up);
+    canvas.removeEventListener("touchend", tap);
+    canvas.removeEventListener("click", tap);
   };
 }

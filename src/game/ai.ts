@@ -46,8 +46,7 @@ export class Commander {
     else this.repeats = 0;
     if (this.repeats >= 3 && game.rng() < 0.7) return;
     this.lastTarget = to.id;
-    const ratio = game.rng() < 0.22 ? 1 : game.rng() < 0.45 ? 0.5 : 0.65;
-    game.send(from.id, to.id, ratio);
+    game.send(from.id, to.id, 1);
   }
 
   private expand(

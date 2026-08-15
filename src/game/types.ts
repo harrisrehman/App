@@ -7,6 +7,7 @@ export type SoldierState = "eject" | "idle" | "gather" | "march";
 export type Territory = {
   id: number;
   poly: Point[];
+  localPoly: Point[];
   center: Point;
   radius: number;
   owner: Owner;
@@ -29,6 +30,7 @@ export type Soldier = {
   fromY: number;
   toX: number;
   toY: number;
+  poly: Point[];
 };
 
 export type Army = {
