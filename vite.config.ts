@@ -9,5 +9,11 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        format: "iife",
+        inlineDynamicImports: true,
+      },
+    },
   },
 });

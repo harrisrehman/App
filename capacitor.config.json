@@ -3,11 +3,7 @@
   "appName": "Annex",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https",
-    "allowNavigation": [
-      "harrisrehman.github.io",
-      "cdn.jsdelivr.net"
-    ]
+    "androidScheme": "https"
   },
   "plugins": {
     "CapacitorHttp": {

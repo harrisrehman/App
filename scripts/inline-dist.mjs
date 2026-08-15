@@ -4,10 +4,18 @@ const html = readFileSync("dist/index.html", "utf8");
 const inlined = html
   .replace(
     /<script type="module" crossorigin src="\.\/assets\/([^"]+)"><\/script>/,
-    (_m, file) => `<script type="module">${readFileSync(`dist/assets/${file}`, "utf8")}</script>`,
+    (_m, file) => `<script>${readFileSync(`dist/assets/${file}`, "utf8")}</script>`,
+  )
+  .replace(
+    /<script type="module" src="\.\/assets\/([^"]+)"><\/script>/,
+    (_m, file) => `<script>${readFileSync(`dist/assets/${file}`, "utf8")}</script>`,
   )
   .replace(
     /<link rel="stylesheet" crossorigin href="\.\/assets\/([^"]+)">/,
+    (_m, file) => `<style>${readFileSync(`dist/assets/${file}`, "utf8")}</style>`,
+  )
+  .replace(
+    /<link rel="stylesheet" href="\.\/assets\/([^"]+)">/,
     (_m, file) => `<style>${readFileSync(`dist/assets/${file}`, "utf8")}</style>`,
   );
 
