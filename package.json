@@ -1,0 +1,26 @@
+{
+  "name": "annex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "version:write": "node scripts/write-version.mjs",
+    "dev": "npm run version:write && vite --host",
+    "build": "npm run version:write && tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && node scripts/test-engine.mjs",
+    "cap:sync": "npm run build && npx cap sync android"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/splash-screen": "^8.0.2"
+  }
+}
