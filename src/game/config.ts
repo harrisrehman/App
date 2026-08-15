@@ -24,4 +24,8 @@ export const NEUTRAL_MAX = 18;
 export const AI_MIN_WAIT = 1.1;
 export const AI_MAX_WAIT = 3.4;
 
-export const REMOTE_BASE = "https://harrisrehman.github.io/App/";
+export const REMOTE_CANDIDATES = [
+  "https://harrisrehman.github.io/App/",
+  "https://raw.githack.com/harrisrehman/App/cursor/annex-android-a9d2/dist/",
+  "https://raw.githack.com/harrisrehman/App/main/dist/",
+] as const;

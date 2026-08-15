@@ -9,11 +9,13 @@ State.io-style mobile conquest game. One map. One AI. Touch only.
 3. Install on Android. Allow unknown sources.
 4. After new pushes, tap **Update** in game.
 
-Live web build (same Update target):
+Play in phone browser (no install):
+
+https://raw.githack.com/harrisrehman/App/cursor/annex-android-a9d2/dist/
+
+Optional Pages URL after you set **Settings → Pages → Source = GitHub Actions**:
 
 https://harrisrehman.github.io/App/
-
-Repo **Settings → Pages → Source** must be **GitHub Actions**.
 
 ## Controls
 

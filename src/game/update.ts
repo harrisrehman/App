@@ -1,4 +1,4 @@
-import { REMOTE_BASE } from "./config";
+import { REMOTE_CANDIDATES } from "./config";
 import { APP_VERSION, type AppVersion } from "../version";
 
 export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
@@ -8,14 +8,12 @@ export function localVersion(): AppVersion {
 }
 
 export function isRemoteHost(): boolean {
-  return window.location.href.startsWith(REMOTE_BASE);
+  return REMOTE_CANDIDATES.some((base) => window.location.href.startsWith(base));
 }
 
-export async function fetchRemoteVersion(): Promise<AppVersion | null> {
+async function readVersion(base: string): Promise<AppVersion | null> {
   try {
-    const res = await fetch(`${REMOTE_BASE}version.json?t=${Date.now()}`, {
-      cache: "no-store",
-    });
+    const res = await fetch(`${base}version.json?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     return (await res.json()) as AppVersion;
   } catch {
@@ -23,16 +21,24 @@ export async function fetchRemoteVersion(): Promise<AppVersion | null> {
   }
 }
 
+export async function fetchRemote(): Promise<{ base: string; version: AppVersion } | null> {
+  for (const base of REMOTE_CANDIDATES) {
+    const version = await readVersion(base);
+    if (version) return { base, version };
+  }
+  return null;
+}
+
 export async function applyUpdate(): Promise<UpdateState> {
-  const remote = await fetchRemoteVersion();
+  const remote = await fetchRemote();
   if (!remote) return "offline";
-  if (remote.build === APP_VERSION.build && isRemoteHost()) return "latest";
-  window.location.href = `${REMOTE_BASE}?v=${remote.build}`;
+  if (remote.version.build === APP_VERSION.build && isRemoteHost()) return "latest";
+  window.location.href = `${remote.base}?v=${remote.version.build}`;
   return "ready";
 }
 
 export async function peekUpdate(): Promise<boolean> {
-  const remote = await fetchRemoteVersion();
+  const remote = await fetchRemote();
   if (!remote) return false;
-  return remote.build !== APP_VERSION.build;
+  return remote.version.build !== APP_VERSION.build;
 }
