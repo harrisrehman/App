@@ -2,12 +2,17 @@
 
 State.io-style mobile conquest game. One map. One AI. Touch only.
 
-## Play on phone
+## Install on phone
 
-1. Wait for **Android APK** workflow on this branch.
-2. Download `annex-debug` artifact → `app-debug.apk`.
-3. Install on Android. Allow unknown sources.
-4. After new pushes, tap **Update** in game.
+Direct APK:
+
+https://github.com/harrisrehman/App/raw/cursor/annex-android-a9d2/downloads/annex.apk
+
+Or open the install page, then tap **Install app**:
+
+https://raw.githack.com/harrisrehman/App/cursor/annex-android-a9d2/downloads/install.html
+
+Allow unknown sources. After new pushes, tap **Update** in game.
 
 Play in phone browser (no install):
 
