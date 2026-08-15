@@ -67,7 +67,7 @@ updateBtn.addEventListener("click", async () => {
   updateBtn.disabled = true;
   updateBtn.textContent = "…";
   const state = await applyUpdate();
-  if (state === "offline") toast("Update blocked. Repo is private.");
+  if (state === "offline") toast("Update failed. Try again.");
   if (state === "latest") toast("Already latest.");
   if (state === "ready") toast("Loading update…");
   updateBtn.disabled = false;

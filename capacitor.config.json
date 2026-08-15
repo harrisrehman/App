@@ -6,9 +6,6 @@
     "androidScheme": "https",
     "allowNavigation": [
       "harrisrehman.github.io",
-      "raw.githack.com",
-      "rawcdn.githack.com",
-      "raw.githubusercontent.com",
       "cdn.jsdelivr.net"
     ]
   },

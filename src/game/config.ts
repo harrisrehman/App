@@ -25,7 +25,7 @@ export const AI_MIN_WAIT = 1.4;
 export const AI_MAX_WAIT = 3.8;
 
 export const REMOTE_CANDIDATES = [
+  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/",
+  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/",
   "https://harrisrehman.github.io/App/",
-  "https://raw.githack.com/harrisrehman/App/cursor/annex-android-a9d2/dist/",
-  "https://raw.githack.com/harrisrehman/App/main/dist/",
 ] as const;
