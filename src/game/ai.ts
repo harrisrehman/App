@@ -56,8 +56,7 @@ export class Commander {
   ): { from: Territory; to: Territory } | null {
     const options: { from: Territory; to: Territory; score: number }[] = [];
     for (const from of mine) {
-      for (const id of from.neighbors) {
-        const to = game.territories[id];
+      for (const to of game.territories) {
         if (to.owner !== "neutral") continue;
         const need = to.troops + 1;
         const send = Math.floor(from.troops * 0.5);

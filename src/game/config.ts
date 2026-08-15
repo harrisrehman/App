@@ -12,17 +12,17 @@ export const COLORS = {
   line: "#ffffff",
 } as const;
 
-export const TROOP_CAP = 80;
-export const ARMY_SPEED = 240;
-export const INCOME_PER_AREA = 0.00022;
-export const MIN_INCOME = 0.55;
-export const MAX_INCOME = 1.35;
-export const START_TROOPS = 36;
-export const NEUTRAL_MIN = 8;
-export const NEUTRAL_MAX = 18;
+export const TROOP_CAP = 20;
+export const ARMY_SPEED = 220;
+export const SPAWN_INTERVAL = 5;
+export const START_TROOPS = 4;
+export const NEUTRAL_TROOPS = 3;
+export const BASE_RADIUS = 80;
+export const BASE_COUNT_MIN = 5;
+export const BASE_COUNT_MAX = 6;
 
-export const AI_MIN_WAIT = 1.1;
-export const AI_MAX_WAIT = 3.4;
+export const AI_MIN_WAIT = 1.4;
+export const AI_MAX_WAIT = 3.8;
 
 export const REMOTE_CANDIDATES = [
   "https://harrisrehman.github.io/App/",

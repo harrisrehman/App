@@ -1,13 +1,17 @@
-import { pointInPoly } from "./geo";
+import { dist, pointInPoly } from "./geo";
 import type { Camera } from "./camera";
 import { toWorld } from "./camera";
 import type { Game } from "./engine";
 
 export function hitTerritory(game: Game, x: number, y: number): number | null {
-  for (let i = game.territories.length - 1; i >= 0; i--) {
-    if (pointInPoly(x, y, game.territories[i].poly)) return i;
+  let best: { id: number; d: number } | null = null;
+  for (const t of game.territories) {
+    const inside = pointInPoly(x, y, t.poly);
+    const d = dist({ x, y }, t.center);
+    if (!inside && d > t.radius + 36) continue;
+    if (!best || d < best.d) best = { id: t.id, d };
   }
-  return null;
+  return best?.id ?? null;
 }
 
 export function bindInput(

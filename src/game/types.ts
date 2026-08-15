@@ -2,15 +2,33 @@ export type Owner = "player" | "ai" | "neutral";
 
 export type Point = { x: number; y: number };
 
+export type SoldierState = "eject" | "idle" | "gather" | "march";
+
 export type Territory = {
   id: number;
   poly: Point[];
   center: Point;
-  area: number;
-  income: number;
+  radius: number;
   owner: Owner;
   troops: number;
+  spawnAcc: number;
   neighbors: number[];
+};
+
+export type Soldier = {
+  id: number;
+  owner: Exclude<Owner, "neutral">;
+  homeId: number;
+  x: number;
+  y: number;
+  state: SoldierState;
+  toId: number | null;
+  slot: number;
+  ejectT: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
 };
 
 export type Army = {

@@ -1,7 +1,7 @@
 import { COLORS } from "./config";
 import type { Camera } from "./camera";
 import type { Game } from "./engine";
-import type { Owner, Territory } from "./types";
+import type { Owner, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
   if (owner === "player") return COLORS.player;
@@ -20,7 +20,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   ctx.scale(scale, scale);
 
   for (const t of game.territories) {
-    drawLand(ctx, t, game.selected === t.id);
+    drawBase(ctx, t, game.selected === t.id);
   }
 
   if (game.selected !== null && game.finger) {
@@ -36,17 +36,11 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
     ctx.globalAlpha = 1;
   }
 
-  for (const army of game.armies) {
-    const n = Math.min(8, Math.max(3, Math.round(army.count / 6)));
-    ctx.fillStyle = fill(army.owner);
-    for (let i = 0; i < n; i++) {
-      const spread = (i - (n - 1) / 2) * 9;
-      const px = army.x - army.vy * 0.02 * spread;
-      const py = army.y + army.vx * 0.02 * spread;
-      ctx.beginPath();
-      ctx.arc(px, py, 7, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  for (const s of game.soldiers) {
+    if (s.state !== "march") drawSoldier(ctx, s);
+  }
+  for (const s of game.soldiers) {
+    if (s.state === "march") drawSoldier(ctx, s);
   }
 
   for (const t of game.territories) {
@@ -56,30 +50,39 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   ctx.restore();
 }
 
-function drawLand(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
+function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
   ctx.beginPath();
   ctx.moveTo(t.poly[0].x, t.poly[0].y);
   for (let i = 1; i < t.poly.length; i++) ctx.lineTo(t.poly[i].x, t.poly[i].y);
   ctx.closePath();
   ctx.fillStyle = color;
-  ctx.globalAlpha = selected ? 0.5 : 0.28;
+  ctx.globalAlpha = t.owner === "neutral" ? 0.22 : selected ? 0.55 : 0.38;
   ctx.fill();
   ctx.globalAlpha = 1;
   ctx.strokeStyle = color;
-  ctx.lineWidth = selected ? 8 : 4;
+  ctx.lineWidth = selected ? 8 : t.owner === "neutral" ? 3 : 5;
   ctx.stroke();
+}
+
+function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
+  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
+  const r = 8 * pop;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+  ctx.fillStyle = fill(s.owner);
+  ctx.fill();
 }
 
 function drawBadge(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
-  const r = selected ? 34 : 30;
+  const r = selected ? 28 : 24;
   ctx.beginPath();
   ctx.arc(t.center.x, t.center.y, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
   ctx.fillStyle = COLORS.bg;
-  ctx.font = "700 28px ui-sans-serif, system-ui, sans-serif";
+  ctx.font = "700 24px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 1);
