@@ -6,7 +6,7 @@
   "scripts": {
     "version:write": "node scripts/write-version.mjs",
     "dev": "npm run version:write && vite --host",
-    "build": "npm run version:write && tsc --noEmit && vite build",
+    "build": "npm run version:write && tsc --noEmit && vite build && node scripts/inline-dist.mjs",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node scripts/test-engine.mjs",
