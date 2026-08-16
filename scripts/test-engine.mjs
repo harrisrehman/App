@@ -577,8 +577,15 @@ function barrelTip(x, y, dx, dy, len = 12) {
   const d = Math.hypot(dx, dy) || 1;
   return { x: x + (dx / d) * len, y: y + (dy / d) * len };
 }
-const tip = barrelTip(0, 0, 10, 0);
-assert(tip.x === 12 && tip.y === 0, "shot starts at barrel tip");
+const tip = barrelTip(0, 0, 10, 0, 18);
+assert(tip.x === 18 && tip.y === 0, "shot starts at barrel tip");
+
+function tapOwnBase(selected, id) {
+  if (selected.some((from) => from !== id)) return "send";
+  return "select";
+}
+assert(tapOwnBase([0], 0) === "select", "tap own selected base keeps it");
+assert(tapOwnBase([0], 3) === "send", "tap other base sends");
 assert(2 === 2, "gunners fire every 2 seconds");
 
 console.log("engine tests passed");

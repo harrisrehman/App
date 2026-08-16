@@ -58,7 +58,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
         return;
       }
     }
-    if (game.winner || pinching) return;
+    if (game.winner || pinching || game.hudLocked()) return;
     const p = pos(e);
     start = p;
     dragged = false;
@@ -91,13 +91,16 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
   };
 
   const tap = (id: number | null): void => {
-    if (id !== null && (game.picked.size > 0 || [...game.selected].some((from) => from !== id))) {
-      game.sendSelected(id);
-      game.finger = null;
+    game.finger = null;
+    if (id === null) {
+      game.clearSelection();
       return;
     }
-    game.clearSelection();
-    game.finger = null;
+    if (game.picked.size > 0 || [...game.selected].some((from) => from !== id)) {
+      game.sendSelected(id);
+      return;
+    }
+    game.selectBase(id);
   };
 
   const up = (e: TouchEvent | MouseEvent): void => {
@@ -111,7 +114,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
         }
         return;
       }
-    } else if (Date.now() - lastTouch < 600) {
+    } else if (Date.now() - lastTouch < 600 || game.hudLocked()) {
       game.endStroke();
       start = null;
       dragged = false;

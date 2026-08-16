@@ -134,7 +134,6 @@ body {
 
 .filter-count {
   min-width: 40px;
-  pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
 

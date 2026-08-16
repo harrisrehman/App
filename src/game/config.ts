@@ -97,8 +97,8 @@ export const DEFENSE_HIT = 18;
 export const GUNNER_ORBIT = 0.26;
 export const GUNNER_CLOSE = 40;
 export const GUNNER_STEER = 12;
-export const GUNNER_BARREL = 12;
-export const GUNNER_BARREL_W = 3.4;
+export const GUNNER_BARREL = 18;
+export const GUNNER_BARREL_W = 5.4;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 

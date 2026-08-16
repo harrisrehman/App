@@ -120,34 +120,26 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   }
 }
 
-function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
+function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, _game: Game): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const size = s.kind === "gunner" ? 12 : 9;
   const scale = (size * pop) / 40;
-  drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
   if (s.kind === "gunner") {
-    let ax = s.faceX;
-    let ay = s.faceY;
-    if (s.aimId != null) {
-      const foe = game.soldiers.find((o) => o.id === s.aimId);
-      if (foe) {
-        ax = foe.x - s.x;
-        ay = foe.y - s.y;
-      }
-    }
-    const d = Math.hypot(ax, ay) || 1;
-    const len = GUNNER_BARREL * pop;
-    const wide = GUNNER_BARREL_W * pop;
     ctx.save();
     ctx.translate(s.x, s.y);
-    ctx.rotate(Math.atan2(ay, ax));
+    ctx.rotate(Math.atan2(s.faceY, s.faceX));
+    drawPoly(ctx, s.poly, 0, 0, scale, fill(s.owner), 1);
+    const wide = GUNNER_BARREL_W * pop;
+    const start = 5 * pop;
     ctx.fillStyle = fill(s.owner);
-    ctx.fillRect(4 * pop, -wide / 2, len - 3 * pop, wide);
+    ctx.fillRect(start, -wide / 2, GUNNER_BARREL * pop - start, wide);
     ctx.restore();
+  } else {
+    drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
   }
   if (!selected || s.owner !== "player" || s.state === "march") return;
   ctx.beginPath();
-  ctx.arc(s.x, s.y, s.kind === "gunner" ? 10 : 8, 0, Math.PI * 2);
+  ctx.arc(s.x, s.y, s.kind === "gunner" ? 11 : 8, 0, Math.PI * 2);
   ctx.strokeStyle = COLORS.line;
   ctx.lineWidth = 1.4;
   ctx.stroke();

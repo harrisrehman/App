@@ -314,16 +314,19 @@ function onHudClick(e: Event): void {
     window.__annexGame?.applyRules();
     return;
   }
-  if (t.dataset.filter) {
+  const filterKey = t.dataset.filter || t.dataset.count;
+  if (filterKey) {
     e.preventDefault();
     e.stopImmediatePropagation();
     const game = window.__annexGame;
     if (!game || game.winner) return;
-    const filter = t.dataset.filter as SendFilter;
+    const filter = filterKey as SendFilter;
     if (filter !== "all" && filter !== "gunner" && filter !== "troop") return;
-    game.setSendFilter(filter);
-    game.selectByFilter();
+    game.applySendFilter(filter);
     syncFilterHud(game);
+    if (filter === "gunner") showToast("Tap a base to send gunners.");
+    else if (filter === "troop") showToast("Tap a base to send soldiers.");
+    else showToast("Tap a base to send all.");
     return;
   }
   const bots = Number(t.dataset.bots || 0);
@@ -363,6 +366,7 @@ function ensureFilterCounts(): void {
     count.className = "filter-count";
     count.dataset.count = key;
     count.tabIndex = -1;
+    count.dataset.filter = key;
     row.appendChild(count);
   }
 }
@@ -387,6 +391,16 @@ function bindHudClicks(): void {
       window.__annexOnHudClick?.(e);
     },
     true,
+  );
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const btn = (e.target as HTMLElement | null)?.closest("button");
+      if (!btn?.dataset.filter && !btn?.dataset.count) return;
+      e.preventDefault();
+      window.__annexOnHudClick?.(e);
+    },
+    { capture: true, passive: false },
   );
 }
 
