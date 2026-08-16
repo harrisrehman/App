@@ -1,4 +1,4 @@
-import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, SPAWN_INTERVAL } from "./config";
+import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, BASE_HEALTH, SPAWN_INTERVAL } from "./config";
 import { dist } from "./geo";
 import { randRange } from "./rng";
 import type { Game } from "./engine";
@@ -110,7 +110,7 @@ export class Commander {
       if (need <= 0) continue;
       const from = this.closest(this.mine(game, Math.max(keep + 1, need)), dest);
       if (!from) continue;
-      const risk = playerIn - aiIn + (5 - dest.troops) + this.greyFront(game, dest);
+      const risk = playerIn - aiIn + (BASE_HEALTH - dest.troops) + this.greyFront(game, dest);
       if (!best || risk > best.risk) best = { dest, from, risk };
     }
     if (!best) return false;

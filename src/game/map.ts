@@ -3,6 +3,7 @@ import {
   BASE_COUNT_MIN,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
+  START_TROOPS,
   WORLD_H,
   WORLD_W,
 } from "./config";
@@ -184,9 +185,9 @@ export function createMap(seed = 20260815): Territory[] {
 
   const [a, b] = pickStarts(centers, rng);
   territories[a].owner = "player";
-  territories[a].troops = 0;
+  territories[a].troops = START_TROOPS;
   territories[b].owner = "ai";
-  territories[b].troops = 0;
+  territories[b].troops = START_TROOPS;
 
   return territories;
 }

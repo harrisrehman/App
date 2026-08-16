@@ -1,6 +1,6 @@
 import { COLORS } from "./config";
 import type { Camera } from "./camera";
-import type { Game } from "./engine";
+import { perimeterRadius, type Game } from "./engine";
 import type { Owner, Point, Pop, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
@@ -71,6 +71,15 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
   drawPoly(ctx, t.localPoly, t.center.x, t.center.y, 1, color, 1);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3.5, 4.5]);
+  ctx.beginPath();
+  ctx.arc(t.center.x, t.center.y, perimeterRadius(t), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
   if (selected) {
     pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
     ctx.strokeStyle = COLORS.line;

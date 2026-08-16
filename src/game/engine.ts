@@ -1,8 +1,22 @@
-import { ARMY_SPEED, FIGHT_RADIUS, POP_CAP, POP_LIFE, SPAWN_INTERVAL, TROOP_CAP } from "./config";
+import {
+  ARMY_SPEED,
+  BASE_HEALTH,
+  FIGHT_RADIUS,
+  PERIMETER_PAD,
+  POP_CAP,
+  POP_LIFE,
+  SPAWN_INTERVAL,
+  START_TROOPS,
+  TROOP_CAP,
+} from "./config";
 import { dist } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
 import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
+
+export function perimeterRadius(t: Territory): number {
+  return t.radius + PERIMETER_PAD;
+}
 
 export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void {
   if (dest.owner === army.owner) {
@@ -10,9 +24,9 @@ export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void
     return;
   }
   dest.troops -= army.count;
-  if (dest.troops < 0) {
+  if (dest.troops <= 0) {
     dest.owner = army.owner;
-    dest.troops = Math.min(cap, Math.abs(dest.troops));
+    dest.troops = Math.min(cap, BASE_HEALTH);
   }
 }
 
@@ -78,7 +92,7 @@ export class Game {
   private seedOwned(): void {
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
-      this.spawnSoldier(t);
+      for (let i = 0; i < START_TROOPS; i++) this.spawnSoldier(t);
     }
   }
 
@@ -165,6 +179,7 @@ export class Game {
       }
     }
 
+    this.assignDefense();
     for (const s of this.soldiers) this.stepSoldier(s, dt);
 
     const dead = new Set<number>();
@@ -273,6 +288,25 @@ export class Game {
       return;
     }
 
+    if (s.state === "defend") {
+      const home = this.territories[s.homeId];
+      const foes = this.invaders(home);
+      let target = foes[0];
+      let best = 9999;
+      for (const f of foes) {
+        const d = dist({ x: s.x, y: s.y }, f);
+        if (d < best) {
+          best = d;
+          target = f;
+        }
+      }
+      if (!target || best < 1) return;
+      const step = ARMY_SPEED * dt;
+      s.x += ((target.x - s.x) / best) * step;
+      s.y += ((target.y - s.y) / best) * step;
+      return;
+    }
+
     if (s.state === "march" && s.toId !== null) {
       const dest = this.territories[s.toId];
       const d = dist({ x: s.x, y: s.y }, dest.center);
@@ -295,21 +329,46 @@ export class Game {
     if (dest.owner === "neutral") {
       dest.troops -= 1;
       if (dest.troops > 0) return false;
-      dest.owner = s.owner;
-      dest.troops = 0;
-      dest.spawnAcc = 0;
+      this.takeBase(dest, s.owner);
       return false;
     }
 
-    const defender = this.garrison(dest.id).find((x) => !dead.has(x.id));
-    if (defender) {
-      dead.add(defender.id);
-      return false;
-    }
-    dest.owner = s.owner;
+    if (this.garrison(dest.id).some((x) => !dead.has(x.id))) return true;
+    this.takeBase(dest, s.owner);
+    return false;
+  }
+
+  private takeBase(dest: Territory, owner: Exclude<Owner, "neutral">): void {
+    dest.owner = owner;
     dest.spawnAcc = 0;
-    this.startEject(s, dest);
-    return true;
+    dest.troops = BASE_HEALTH;
+    for (let i = 0; i < BASE_HEALTH; i++) this.spawnSoldier(dest);
+  }
+
+  private inPerimeter(t: Territory, p: Point): boolean {
+    return dist(p, t.center) <= perimeterRadius(t);
+  }
+
+  private invaders(t: Territory): Soldier[] {
+    if (t.owner === "neutral") return [];
+    const found: Soldier[] = [];
+    for (const s of this.soldiers) {
+      if (s.owner === t.owner) continue;
+      if (this.inPerimeter(t, s)) found.push(s);
+    }
+    return found;
+  }
+
+  private assignDefense(): void {
+    for (const t of this.territories) {
+      if (t.owner === "neutral") continue;
+      const underAttack = this.invaders(t).length > 0;
+      for (const s of this.soldiers) {
+        if (s.homeId !== t.id || s.state === "march") continue;
+        if (underAttack) s.state = "defend";
+        else if (s.state === "defend") this.startEject(s, t);
+      }
+    }
   }
 
   private syncTroops(): void {

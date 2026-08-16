@@ -1,12 +1,12 @@
-function applyArrival(dest, army, cap = 80) {
+function applyArrival(dest, army, cap = 80, health = 10) {
   if (dest.owner === army.owner) {
     dest.troops = Math.min(cap, dest.troops + army.count);
     return;
   }
   dest.troops -= army.count;
-  if (dest.troops < 0) {
+  if (dest.troops <= 0) {
     dest.owner = army.owner;
-    dest.troops = Math.min(cap, Math.abs(dest.troops));
+    dest.troops = Math.min(cap, health);
   }
 }
 
@@ -22,8 +22,8 @@ const hold = { owner: "ai", troops: 12 };
 applyArrival(hold, { owner: "player", count: 5 });
 assert(hold.troops === 7 && hold.owner === "ai", "hold failed");
 
-const flip = { owner: "neutral", troops: 8 };
-applyArrival(flip, { owner: "player", count: 11 });
-assert(flip.owner === "player" && flip.troops === 3, "capture failed");
+const flip = { owner: "neutral", troops: 10 };
+applyArrival(flip, { owner: "player", count: 10 });
+assert(flip.owner === "player" && flip.troops === 10, "capture health failed");
 
 console.log("engine tests passed");
