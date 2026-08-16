@@ -2,7 +2,7 @@ import { COLORS, RING_SPIN, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
-import type { Owner, Point, Pop, Soldier, Territory } from "./types";
+import type { Owner, Point, Pop, Shot, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
   if (owner === "player") return COLORS.player;
@@ -66,6 +66,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
     if (s.state === "march") drawSoldier(ctx, s, soldierPicked(game, s));
   }
 
+  for (const shot of game.shots) drawShot(ctx, shot);
   for (const p of game.pops) drawPop(ctx, p);
   drawStroke(ctx, game);
 
@@ -118,14 +119,44 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  const scale = (9 * pop) / 40;
+  const size = s.kind === "gunner" ? 12 : 9;
+  const scale = (size * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
+  if (s.kind === "gunner") {
+    const tip = s.poly[0] ?? { x: 1, y: 0 };
+    const d = Math.hypot(tip.x, tip.y) || 1;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x + (tip.x / d) * 11 * pop, s.y + (tip.y / d) * 11 * pop);
+    ctx.strokeStyle = fill(s.owner);
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 6.4 * pop, 0, Math.PI * 2);
+    ctx.strokeStyle = COLORS.line;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   if (!selected || s.owner !== "player" || s.state === "march") return;
   ctx.beginPath();
-  ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+  ctx.arc(s.x, s.y, s.kind === "gunner" ? 10 : 8, 0, Math.PI * 2);
   ctx.strokeStyle = COLORS.line;
   ctx.lineWidth = 1.4;
   ctx.stroke();
+}
+
+function drawShot(ctx: CanvasRenderingContext2D, shot: Shot): void {
+  ctx.fillStyle = fill(shot.owner);
+  ctx.beginPath();
+  ctx.arc(shot.x, shot.y, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(shot.x, shot.y, 1.2, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {

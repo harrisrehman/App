@@ -15,6 +15,7 @@ export function isFaction(owner: Owner): owner is Faction {
 export type Point = { x: number; y: number };
 
 export type SoldierState = "eject" | "idle" | "gather" | "defend" | "return" | "march";
+export type SoldierKind = "troop" | "gunner";
 
 export type Territory = {
   id: number;
@@ -48,6 +49,17 @@ export type Soldier = {
   restY: number;
   hp: number;
   poly: Point[];
+  kind: SoldierKind;
+  shootAcc: number;
+};
+
+export type Shot = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  owner: Faction;
+  life: number;
 };
 
 export type Wall = {

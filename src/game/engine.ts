@@ -6,6 +6,10 @@ import {
   SOLDIER_GAP,
   START_TROOPS,
   SPAWN_INTERVAL,
+  DEFENSE_COST,
+  DEFENSE_FIRE,
+  DEFENSE_HIT,
+  DEFENSE_SHOT_SPEED,
   WALL_BASE_PAD,
   WALL_LEASH,
   WALL_SENSE,
@@ -34,6 +38,7 @@ import {
   type Owner,
   type Point,
   type Pop,
+  type Shot,
   type Soldier,
   type Territory,
   type Wall,
@@ -122,6 +127,7 @@ function ejectPath(
 export class Game {
   territories: Territory[];
   soldiers: Soldier[] = [];
+  shots: Shot[] = [];
   armies: Army[] = [];
   pops: Pop[] = [];
   selected = new Set<number>();
@@ -149,6 +155,7 @@ export class Game {
     this.rng = mulberry32(seed);
     this.territories = createMap(seed, this.bots);
     this.soldiers = [];
+    this.shots = [];
     this.armies = [];
     this.pops = [];
     this.selected.clear();
@@ -178,7 +185,34 @@ export class Game {
   }
 
   freeGarrison(id: number): Soldier[] {
-    return this.garrison(id).filter((s) => s.wallId == null);
+    return this.garrison(id).filter((s) => s.wallId == null && s.kind !== "gunner");
+  }
+
+  canBuyDefense(): boolean {
+    for (const id of this.selected) {
+      const t = this.territories[id];
+      if (!t || t.owner !== "player") continue;
+      if (this.freeGarrison(id).length >= DEFENSE_COST) return true;
+    }
+    return false;
+  }
+
+  buyDefense(): number {
+    if (this.winner) return 0;
+    let made = 0;
+    for (const id of [...this.selected]) {
+      const t = this.territories[id];
+      if (!t || t.owner !== "player") continue;
+      const pool = this.freeGarrison(id).filter((s) => s.state !== "march");
+      if (pool.length < DEFENSE_COST) continue;
+      const take = pool.slice(0, DEFENSE_COST);
+      const ids = new Set(take.map((s) => s.id));
+      this.soldiers = this.soldiers.filter((s) => !ids.has(s.id));
+      this.spawnGunner(t);
+      made += 1;
+    }
+    this.syncTroops();
+    return made;
   }
 
   clearSelection(): void {
@@ -199,7 +233,7 @@ export class Game {
     for (const id of this.picked) {
       if (seen.has(id)) continue;
       const s = this.soldiers.find((x) => x.id === id);
-      if (!s || s.state === "march" || s.owner !== "player") continue;
+      if (!s || s.state === "march" || s.owner !== "player" || s.kind === "gunner") continue;
       seen.add(id);
       n += 1;
     }
@@ -363,6 +397,7 @@ export class Game {
     for (const s of this.soldiers) this.stepSoldier(s, dt);
 
     const dead = new Set<number>();
+    this.stepShots(dt, dead);
     this.clash(dead);
     for (const s of this.soldiers) {
       if (s.state !== "march" || s.toId === null || dead.has(s.id)) continue;
@@ -457,6 +492,35 @@ export class Game {
       restY: path.to.y,
       hp: rules.soldierHealth,
       poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
+      kind: "troop",
+      shootAcc: 0,
+    });
+  }
+
+  private spawnGunner(base: Territory): void {
+    if (base.owner === "neutral") return;
+    const path = ejectPath(base, this.restTaken(base.id), this.rng);
+    this.soldiers.push({
+      id: nextSoldierId++,
+      owner: base.owner as Faction,
+      homeId: base.id,
+      wallId: null,
+      x: path.from.x,
+      y: path.from.y,
+      state: "eject",
+      toId: null,
+      slot: 0,
+      ejectT: 0,
+      fromX: path.from.x,
+      fromY: path.from.y,
+      toX: path.to.x,
+      toY: path.to.y,
+      restX: path.to.x,
+      restY: path.to.y,
+      hp: rules.soldierHealth,
+      poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
+      kind: "gunner",
+      shootAcc: 0,
     });
   }
 
@@ -477,6 +541,8 @@ export class Game {
     s.restY = path.to.y;
     s.hp = rules.soldierHealth;
     s.poly = spinPoly(base.localPoly, this.rng() * Math.PI * 2);
+    if (!s.kind) s.kind = "troop";
+    s.shootAcc = s.shootAcc ?? 0;
   }
 
   applyRules(): void {
@@ -491,7 +557,112 @@ export class Game {
     s.state = "return";
   }
 
+  private nearestFoe(s: Soldier, maxFromHome: number): Soldier | null {
+    const home = this.territories[s.homeId];
+    if (!home) return null;
+    let best: Soldier | null = null;
+    let bestD = 9999;
+    for (const o of this.soldiers) {
+      if (o.owner === s.owner) continue;
+      if (dist(o, home.center) > maxFromHome) continue;
+      const d = dist(s, o);
+      if (d < bestD) {
+        bestD = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+
+  private clampInRing(s: Soldier, home: Territory): void {
+    const R = perimeterRadius(home);
+    const d = dist(s, home.center);
+    const inner = Math.max(home.radius * 0.72, 18);
+    if (d < 0.001) {
+      s.x = home.center.x + inner;
+      s.y = home.center.y;
+      return;
+    }
+    let rad = d;
+    if (d > R) rad = R;
+    else if (d < inner) rad = inner;
+    else return;
+    s.x = home.center.x + ((s.x - home.center.x) / d) * rad;
+    s.y = home.center.y + ((s.y - home.center.y) / d) * rad;
+  }
+
+  private fireShot(from: Soldier, to: Soldier): void {
+    const d = dist(from, to) || 1;
+    this.shots.push({
+      x: from.x,
+      y: from.y,
+      vx: ((to.x - from.x) / d) * DEFENSE_SHOT_SPEED,
+      vy: ((to.y - from.y) / d) * DEFENSE_SHOT_SPEED,
+      owner: from.owner,
+      life: 1.15,
+    });
+  }
+
+  private stepGunner(s: Soldier, dt: number): void {
+    const home = this.territories[s.homeId];
+    if (!home || home.owner !== s.owner) return;
+    const see = perimeterRadius(home) * 2;
+    const foe = this.nearestFoe(s, see);
+    const step = ARMY_SPEED * dt;
+    if (foe) {
+      const dx = s.x - foe.x;
+      const dy = s.y - foe.y;
+      const d = Math.hypot(dx, dy) || 1;
+      s.x += (dx / d) * step;
+      s.y += (dy / d) * step;
+      s.state = "defend";
+    } else {
+      const d = dist(s, { x: s.restX, y: s.restY });
+      if (d <= step) {
+        s.x = s.restX;
+        s.y = s.restY;
+        s.state = "idle";
+      } else {
+        s.x += ((s.restX - s.x) / d) * step;
+        s.y += ((s.restY - s.y) / d) * step;
+        s.state = "return";
+      }
+    }
+    this.clampInRing(s, home);
+    s.shootAcc += dt;
+    if (foe && s.shootAcc >= DEFENSE_FIRE && this.inPerimeter(home, s)) {
+      s.shootAcc = 0;
+      this.fireShot(s, foe);
+    }
+  }
+
+  private stepShots(dt: number, dead: Set<number>): void {
+    const keep: Shot[] = [];
+    for (const shot of this.shots) {
+      shot.x += shot.vx * dt;
+      shot.y += shot.vy * dt;
+      shot.life -= dt;
+      if (shot.life <= 0) continue;
+      let hit = false;
+      for (const s of this.soldiers) {
+        if (dead.has(s.id) || s.owner === shot.owner) continue;
+        if (dist(shot, s) > DEFENSE_HIT) continue;
+        s.hp -= 1;
+        this.addPop(s.x, s.y);
+        if (s.hp <= 0) dead.add(s.id);
+        hit = true;
+        break;
+      }
+      if (!hit) keep.push(shot);
+    }
+    this.shots = keep;
+  }
+
   private stepSoldier(s: Soldier, dt: number): void {
+    if (s.kind === "gunner" && s.state !== "eject") {
+      this.stepGunner(s, dt);
+      return;
+    }
     if (s.state === "eject") {
       s.ejectT = Math.min(1, s.ejectT + dt / 1.05);
       const k = easeOutBack(s.ejectT);
@@ -757,7 +928,7 @@ export class Game {
     const seen = new Set<number>();
     const pool: Soldier[] = [];
     const add = (s: Soldier | undefined): void => {
-      if (!s || s.state === "march" || s.owner !== "player") return;
+      if (!s || s.state === "march" || s.owner !== "player" || s.kind === "gunner") return;
       if (seen.has(s.id)) return;
       seen.add(s.id);
       pool.push(s);
@@ -775,7 +946,7 @@ export class Game {
     if (this.winner) return false;
     const s = this.soldiers.find((x) => x.id === id);
     const to = this.territories[toId];
-    if (!s || !to || s.state === "march") return false;
+    if (!s || !to || s.state === "march" || s.kind === "gunner") return false;
     if (s.owner !== "player") return false;
     s.wallId = null;
     s.state = "march";
@@ -789,7 +960,7 @@ export class Game {
       if (t.owner === "neutral") continue;
       const underAttack = this.invaders(t).length > 0;
       for (const s of this.soldiers) {
-        if (s.homeId !== t.id || s.state === "march" || s.wallId != null) continue;
+        if (s.homeId !== t.id || s.state === "march" || s.wallId != null || s.kind === "gunner") continue;
         if (underAttack) s.state = "defend";
         else if (s.state === "defend") this.sendHome(s);
       }

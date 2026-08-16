@@ -90,6 +90,10 @@ export const SOLDIER_GAP = 18;
 export const WALL_SENSE = 72;
 export const WALL_LEASH = 100;
 export const WALL_BASE_PAD = 16;
+export const DEFENSE_COST = 4;
+export const DEFENSE_FIRE = 1;
+export const DEFENSE_SHOT_SPEED = 320;
+export const DEFENSE_HIT = 12;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 

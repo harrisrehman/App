@@ -69,6 +69,37 @@ body {
   padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
 }
 
+#shop {
+  gap: 10px;
+  background: linear-gradient(180deg, transparent, rgba(14, 14, 16, 0.88) 36%);
+  padding: 22px 14px calc(16px + env(safe-area-inset-bottom));
+}
+
+#shop button {
+  min-width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border-radius: 16px;
+  padding: 10px 16px;
+}
+
+#shop button:disabled {
+  opacity: 0.38;
+}
+
+.shop-name {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.shop-cost {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .brand {
   display: flex;
   flex-direction: column;

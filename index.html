@@ -25,7 +25,7 @@
     <canvas id="game"></canvas>
     <div id="menu">
       <h1>ANNEX</h1>
-      <p id="menu-ver">v0.5.28</p>
+      <p id="menu-ver">v0.5.29</p>
       <div id="menu-home">
         <button id="start-btn" type="button">Start</button>
         <button id="menu-update-btn" type="button">Update</button>
@@ -60,7 +60,7 @@
       <div class="top">
         <div class="brand">
           <span id="title">ANNEX</span>
-          <span id="version">v0.5.28</span>
+          <span id="version">v0.5.29</span>
           <span id="score">0 · 0</span>
         </div>
         <div class="actions">
@@ -69,7 +69,13 @@
         </div>
       </div>
       <div id="toast"></div>
-      <div id="hint">Circle or drag to select. Tap a base to send.</div>
+      <div id="hint">Select a base. Tap Defense to convert 4 soldiers.</div>
+      <nav id="shop" class="bottom">
+        <button id="defense-btn" type="button" disabled>
+          <span class="shop-name">Defense</span>
+          <span class="shop-cost">4</span>
+        </button>
+      </nav>
     </div>
     <div id="error" class="hidden">
       <div class="error-card">

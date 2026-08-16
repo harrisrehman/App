@@ -74,7 +74,28 @@ function ensureHud(): void {
   }
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
-  if (!hud.querySelector("#hint")) hud.appendChild(makeEl("div", "hint"));
+  if (!hud.querySelector("#hint")) {
+    const hint = makeEl("div", "hint", "Select a base. Tap Defense to convert 4 soldiers.");
+    hud.appendChild(hint);
+  }
+  let shop = hud.querySelector("#shop");
+  if (!shop) {
+    shop = document.createElement("nav");
+    shop.id = "shop";
+    shop.className = "bottom";
+    hud.appendChild(shop);
+  }
+  if (!shop.querySelector("#defense-btn")) {
+    const btn = makeEl("button", "defense-btn");
+    const name = document.createElement("span");
+    name.className = "shop-name";
+    name.textContent = "Defense";
+    const cost = document.createElement("span");
+    cost.className = "shop-cost";
+    cost.textContent = "4";
+    btn.append(name, cost);
+    shop.appendChild(btn);
+  }
   if (!document.querySelector("#error")) {
     const box = makeEl("div", "error");
     box.classList.add("hidden");
@@ -329,6 +350,7 @@ function startGame(bots = 1): void {
   const scoreEl = document.querySelector("#score");
   const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
   const wallEl = document.querySelector<HTMLButtonElement>("#wall-btn");
+  const defenseEl = document.querySelector<HTMLButtonElement>("#defense-btn");
   const toastEl = document.querySelector("#toast");
   const overlayEl = document.querySelector("#overlay");
   const resultEl = document.querySelector("#result");
@@ -336,7 +358,7 @@ function startGame(bots = 1): void {
   const versionEl = document.querySelector("#version");
   const hint = document.querySelector("#hint");
 
-  if (!boardEl || !drawEl || !scoreEl || !updateEl || !wallEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+  if (!boardEl || !drawEl || !scoreEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     showMenu();
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
@@ -353,6 +375,7 @@ function startGame(bots = 1): void {
   const score = scoreEl;
   const update = updateEl;
   const wall = wallEl;
+  const defense = defenseEl;
   const endScreen = overlayEl;
   const result = resultEl;
   const again = restartEl;
@@ -385,6 +408,7 @@ function startGame(bots = 1): void {
       result.textContent = game.winner === "player" ? "You win" : "You lose";
       endScreen.classList.remove("hidden");
     }
+    defense.disabled = !game.canBuyDefense();
   }
 
   const hintTimer = window.setTimeout(() => {
@@ -426,8 +450,20 @@ function startGame(bots = 1): void {
     showToast("Draw a wall line.");
   };
 
+  const onDefense = (): void => {
+    if (game.winner) return;
+    const made = game.buyDefense();
+    if (made > 0) {
+      showToast(made === 1 ? "Defense soldier ready." : `${made} defense soldiers ready.`);
+    } else {
+      showToast("Select a base with 4 soldiers.");
+    }
+    syncHud();
+  };
+
   again.addEventListener("click", onRestart);
   wall.addEventListener("click", onWall);
+  defense.addEventListener("click", onDefense);
 
   const unbind = bindInput(board, game, () => cam);
   window.addEventListener("resize", resize);
@@ -469,6 +505,7 @@ function startGame(bots = 1): void {
     window.removeEventListener("resize", resize);
     again.removeEventListener("click", onRestart);
     wall.removeEventListener("click", onWall);
+    defense.removeEventListener("click", onDefense);
   };
 
   requestAnimationFrame(loop);

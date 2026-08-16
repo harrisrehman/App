@@ -446,5 +446,38 @@ for (let i = 0; i < cloud.length; i++) {
 const xs = cloud.map((p) => p.x);
 assert(Math.max(...xs) - Math.min(...xs) > 20, "scatter still a line");
 
+function convertDefense(free, cost = 4) {
+  if (free < cost) return { made: 0, free, gunners: 0 };
+  return { made: 1, free: free - cost, gunners: 1 };
+}
+
+const cheap = convertDefense(3);
+assert(cheap.made === 0 && cheap.free === 3, "3 troops should not convert");
+const buy = convertDefense(10);
+assert(buy.made === 1 && buy.free === 6 && buy.gunners === 1, "4 troops become 1 gunner");
+const again = convertDefense(buy.free);
+assert(again.made === 1 && again.free === 2, "second convert needs 4 more");
+
+function gunnerSee(perim) {
+  return perim * 2;
+}
+assert(gunnerSee(50) === 100, "gunner see is two perimeters");
+
+function clampInRing(s, home, R) {
+  const d = Math.hypot(s.x - home.x, s.y - home.y);
+  const inner = Math.max(home.r * 0.72, 18);
+  if (d < 0.001) return { x: home.x + inner, y: home.y };
+  let rad = d;
+  if (d > R) rad = R;
+  else if (d < inner) rad = inner;
+  else return { x: s.x, y: s.y };
+  return {
+    x: home.x + ((s.x - home.x) / d) * rad,
+    y: home.y + ((s.y - home.y) / d) * rad,
+  };
+}
+const ring = clampInRing({ x: 200, y: 0 }, { x: 0, y: 0, r: 40 }, 80);
+assert(Math.abs(Math.hypot(ring.x, ring.y) - 80) < 0.01, "gunner stays in ring");
+
 console.log("engine tests passed");
 
