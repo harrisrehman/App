@@ -7,7 +7,6 @@ import {
   POP_LIFE,
   SPAWN_INTERVAL,
   START_TROOPS,
-  TROOP_CAP,
 } from "./config";
 import { dist } from "./geo";
 import { createMap } from "./map";
@@ -18,15 +17,15 @@ export function perimeterRadius(t: Territory): number {
   return t.radius + PERIMETER_PAD;
 }
 
-export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void {
+export function applyArrival(dest: Territory, army: Army): void {
   if (dest.owner === army.owner) {
-    dest.troops = Math.min(cap, dest.troops + army.count);
+    dest.troops += army.count;
     return;
   }
   dest.troops -= army.count;
   if (dest.troops <= 0) {
     dest.owner = army.owner;
-    dest.troops = Math.min(cap, BASE_HEALTH);
+    dest.troops = BASE_HEALTH;
   }
 }
 
@@ -171,7 +170,6 @@ export class Game {
 
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
-      if (this.garrison(t.id).length >= TROOP_CAP) continue;
       t.spawnAcc += dt;
       if (t.spawnAcc >= SPAWN_INTERVAL) {
         t.spawnAcc -= SPAWN_INTERVAL;

@@ -12,7 +12,6 @@ export const COLORS = {
   line: "#ffffff",
 } as const;
 
-export const TROOP_CAP = 20;
 export const ARMY_SPEED = 83;
 export const SPAWN_INTERVAL = 2;
 export const BASE_HEALTH = 10;

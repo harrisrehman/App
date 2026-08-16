@@ -1,12 +1,12 @@
-function applyArrival(dest, army, cap = 80, health = 10) {
+function applyArrival(dest, army, health = 10) {
   if (dest.owner === army.owner) {
-    dest.troops = Math.min(cap, dest.troops + army.count);
+    dest.troops += army.count;
     return;
   }
   dest.troops -= army.count;
   if (dest.troops <= 0) {
     dest.owner = army.owner;
-    dest.troops = Math.min(cap, health);
+    dest.troops = health;
   }
 }
 
@@ -17,6 +17,10 @@ function assert(cond, msg) {
 const reinforce = { owner: "player", troops: 10 };
 applyArrival(reinforce, { owner: "player", count: 5 });
 assert(reinforce.troops === 15 && reinforce.owner === "player", "reinforce failed");
+
+const stack = { owner: "ai", troops: 20 };
+applyArrival(stack, { owner: "ai", count: 7 });
+assert(stack.troops === 27 && stack.owner === "ai", "no troop cap failed");
 
 const hold = { owner: "ai", troops: 12 };
 applyArrival(hold, { owner: "player", count: 5 });
