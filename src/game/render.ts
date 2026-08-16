@@ -111,11 +111,13 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = color;
   ctx.fillRect(barX, barY, barW * ratio, barH);
-  ctx.fillStyle = COLORS.bg;
-  ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);
+  if (t.owner === "player" || t.owner === "neutral") {
+    ctx.fillStyle = COLORS.bg;
+    ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);
+  }
 }
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {

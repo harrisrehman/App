@@ -56,11 +56,7 @@ function ensureHud(): void {
   if (!top.querySelector("#version")) {
     (top.querySelector(".brand") ?? top).appendChild(makeEl("span", "version", "v"));
   }
-  if (!top.querySelector("#score")) {
-    const brand = top.querySelector(".brand");
-    if (brand) brand.appendChild(makeEl("span", "score", "0 · 0"));
-    else top.appendChild(makeEl("span", "score", "0 · 0"));
-  }
+  document.querySelector("#score")?.remove();
   let actions = top.querySelector(".actions");
   if (!actions) {
     actions = document.createElement("div");
@@ -103,6 +99,7 @@ function ensureHud(): void {
     }
     hud.appendChild(filters);
   }
+  ensureFilterCounts();
   if (!shop.querySelector("#defense-btn")) {
     const btn = makeEl("button", "defense-btn");
     const name = document.createElement("span");
@@ -334,10 +331,36 @@ function onHudClick(e: Event): void {
   }
 }
 
+function ensureFilterCounts(): void {
+  const filters = document.querySelector("#filters");
+  if (!filters) return;
+  for (const key of ["gunner", "troop"] as const) {
+    const btn = filters.querySelector<HTMLButtonElement>(`[data-filter="${key}"]`);
+    if (!btn) continue;
+    let row = btn.closest(".filter-row");
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "filter-row";
+      btn.replaceWith(row);
+      row.appendChild(btn);
+    }
+    if (row.querySelector(`[data-count="${key}"]`)) continue;
+    const count = makeEl("button", undefined, "0");
+    count.className = "filter-count";
+    count.dataset.count = key;
+    count.tabIndex = -1;
+    row.appendChild(count);
+  }
+}
+
 function syncFilterHud(game: Game): void {
   for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]")) {
     btn.classList.toggle("on", btn.dataset.filter === game.sendFilter);
   }
+  const gunners = document.querySelector<HTMLElement>("[data-count='gunner']");
+  const troops = document.querySelector<HTMLElement>("[data-count='troop']");
+  if (gunners) gunners.textContent = String(game.kindCount("player", "gunner"));
+  if (troops) troops.textContent = String(game.kindCount("player", "troop"));
 }
 
 function bindHudClicks(): void {
@@ -383,7 +406,6 @@ function startGame(bots = 1): void {
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
-  const scoreEl = document.querySelector("#score");
   const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
   const wallEl = document.querySelector<HTMLButtonElement>("#wall-btn");
   const defenseEl = document.querySelector<HTMLButtonElement>("#defense-btn");
@@ -394,7 +416,7 @@ function startGame(bots = 1): void {
   const versionEl = document.querySelector("#version");
   const hint = document.querySelector("#hint");
 
-  if (!boardEl || !drawEl || !scoreEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+  if (!boardEl || !drawEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     showMenu();
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
@@ -408,7 +430,6 @@ function startGame(bots = 1): void {
 
   const board = boardEl;
   const draw = drawEl;
-  const score = scoreEl;
   const update = updateEl;
   const wall = wallEl;
   const defense = defenseEl;
@@ -445,8 +466,6 @@ function startGame(bots = 1): void {
   }
 
   function syncHud(): void {
-    const totals = game.totals();
-    score.textContent = [totals.player, ...totals.bots].map((n) => Math.floor(n)).join(" · ");
     if (game.winner && !shownWinner) {
       shownWinner = true;
       result.textContent = game.winner === "player" ? "You win" : "You lose";

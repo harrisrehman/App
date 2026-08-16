@@ -568,5 +568,10 @@ assert(clampScale(fit * 0.5, fit) === fit, "cannot zoom out past fit");
 assert(clampScale(fit * 4, fit) === fit * 3, "zoom caps at 3x");
 assert(clampScale(fit * 2, fit) === fit * 2, "mid zoom stays");
 
+function troopCount(units) {
+  return units.filter((s) => s.kind !== "gunner").length;
+}
+assert(troopCount([{ kind: "troop" }, { kind: "gunner" }, { kind: "troop" }]) === 2, "base count skips gunners");
+
 console.log("engine tests passed");
 

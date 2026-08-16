@@ -25,7 +25,7 @@
     <canvas id="game"></canvas>
     <div id="menu">
       <h1>ANNEX</h1>
-      <p id="menu-ver">v0.5.31</p>
+      <p id="menu-ver">v0.5.32</p>
       <div id="menu-home">
         <button id="start-btn" type="button">Start</button>
         <button id="menu-update-btn" type="button">Update</button>
@@ -60,8 +60,7 @@
       <div class="top">
         <div class="brand">
           <span id="title">ANNEX</span>
-          <span id="version">v0.5.31</span>
-          <span id="score">0 · 0</span>
+          <span id="version">v0.5.32</span>
         </div>
         <div class="actions">
           <button id="wall-btn" type="button">Wall</button>
@@ -72,8 +71,14 @@
       <div id="hint">Use All, Gunners, or Soldiers. Pinch to zoom.</div>
       <nav id="filters" class="side">
         <button type="button" data-filter="all" class="on">All</button>
-        <button type="button" data-filter="gunner">Gunners</button>
-        <button type="button" data-filter="troop">Soldiers</button>
+        <div class="filter-row">
+          <button type="button" data-filter="gunner">Gunners</button>
+          <button type="button" class="filter-count" data-count="gunner" tabindex="-1">0</button>
+        </div>
+        <div class="filter-row">
+          <button type="button" data-filter="troop">Soldiers</button>
+          <button type="button" class="filter-count" data-count="troop" tabindex="-1">0</button>
+        </div>
       </nav>
       <nav id="shop" class="bottom">
         <button id="defense-btn" type="button" disabled>

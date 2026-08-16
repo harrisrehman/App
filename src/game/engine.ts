@@ -1138,8 +1138,16 @@ export class Game {
   private syncTroops(): void {
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
-      t.troops = this.garrison(t.id).length;
+      t.troops = this.garrison(t.id).filter((s) => s.kind !== "gunner").length;
     }
+  }
+
+  kindCount(owner: Owner, kind: Soldier["kind"]): number {
+    let n = 0;
+    for (const s of this.soldiers) {
+      if (s.owner === owner && s.kind === kind) n += 1;
+    }
+    return n;
   }
 
   private checkWinner(): void {

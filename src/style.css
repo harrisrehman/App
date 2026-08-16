@@ -99,6 +99,12 @@ body {
   background: linear-gradient(90deg, rgba(14, 14, 16, 0.9) 0%, rgba(14, 14, 16, 0.55) 70%, transparent);
 }
 
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 #filters button {
   min-width: 84px;
   border-radius: 14px;
@@ -110,6 +116,12 @@ body {
 #filters button.on {
   border-color: var(--player);
   color: var(--player);
+}
+
+.filter-count {
+  min-width: 40px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
 }
 
 #shop button:disabled {
