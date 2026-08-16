@@ -3,13 +3,14 @@ import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { applyUpdate, localVersion, peekUpdate } from "./game/update";
-import { loadBundledVersion } from "./version";
+import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
+import { dropStalePersist, loadBundledVersion } from "./version";
 
 declare global {
   interface Window {
     __annexStop?: () => void;
     __annexJustUpdated?: string;
+    __annexRestored?: boolean;
   }
 }
 
@@ -147,6 +148,8 @@ function startGame(): void {
 
 function boot(): void {
   try {
+    dropStalePersist();
+    if (restorePersisted()) return;
     startGame();
   } catch {
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");

@@ -6,11 +6,13 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.4.3",
-  build: 1786860262793,
+  version: "0.4.4",
+  build: 1786860532573,
 };
 
 const APPLIED_VERSION_KEY = "annex-applied-version";
+const APPLIED_HTML_KEY = "annex-applied-html";
+const APPLIED_BUILD_KEY = "annex-applied-build";
 
 export function cmpVer(a: string, b: string): number {
   const pa = a.split(".").map((n) => Number(n) || 0);
@@ -37,12 +39,50 @@ export function adopt(ver: AppVersion): AppVersion {
   return APP_VERSION;
 }
 
-export function rememberApplied(ver: AppVersion): void {
+export function rememberApplied(ver: AppVersion, html?: string): void {
+  try {
+    const raw = localStorage.getItem(APPLIED_VERSION_KEY);
+    if (raw) {
+      const prev = JSON.parse(raw) as AppVersion;
+      if (isNewer(prev, ver)) return;
+    }
+  } catch {
+    /* ignore */
+  }
   adopt(ver);
   try {
     localStorage.setItem(APPLIED_VERSION_KEY, JSON.stringify(ver));
+    localStorage.setItem(APPLIED_BUILD_KEY, String(ver.build));
+    if (html && html.includes("ANNEX")) {
+      localStorage.setItem(APPLIED_HTML_KEY, html);
+    }
   } catch {
     /* ignore */
+  }
+}
+
+export function readPersistedUpdate(): { version: AppVersion; html: string } | null {
+  try {
+    const raw = localStorage.getItem(APPLIED_VERSION_KEY);
+    const html = localStorage.getItem(APPLIED_HTML_KEY);
+    if (!raw || !html || !html.includes("ANNEX")) return null;
+    const version = JSON.parse(raw) as AppVersion;
+    if (!version.version) return null;
+    return { version, html };
+  } catch {
+    return null;
+  }
+}
+
+export function dropStalePersist(): void {
+  const saved = readPersistedUpdate();
+  if (!saved) return;
+  if (isNewer(APP_VERSION, saved.version)) {
+    try {
+      localStorage.removeItem(APPLIED_HTML_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 }
 

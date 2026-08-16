@@ -3,6 +3,7 @@ import { UPDATE_SOURCES } from "./config";
 import {
   APP_VERSION,
   isNewer,
+  readPersistedUpdate,
   rememberApplied,
   type AppVersion,
 } from "../version";
@@ -10,13 +11,6 @@ import {
 export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
 
 const APPLIED_KEY = "annex-applied-build";
-const HTML_KEY = "annex-html";
-
-try {
-  localStorage.removeItem(HTML_KEY);
-} catch {
-  /* ignore */
-}
 
 export function localVersion(): AppVersion {
   return APP_VERSION;
@@ -101,7 +95,7 @@ async function downloadGame(url: string): Promise<string | null> {
   return html;
 }
 
-function runScripts(html: string): boolean {
+export function runScripts(html: string): boolean {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
@@ -117,12 +111,24 @@ function runScripts(html: string): boolean {
   }
 }
 
-function alreadyHave(remote: AppVersion): boolean {
-  const current: AppVersion = {
+function current(): AppVersion {
+  return {
     ...APP_VERSION,
     build: Math.max(appliedBuild(), APP_VERSION.build),
   };
-  return !isNewer(remote, current);
+}
+
+function alreadyHave(remote: AppVersion): boolean {
+  return !isNewer(remote, current());
+}
+
+export function restorePersisted(): boolean {
+  if (window.__annexRestored) return false;
+  const saved = readPersistedUpdate();
+  if (!saved || !isNewer(saved.version, APP_VERSION)) return false;
+  window.__annexRestored = true;
+  rememberApplied(saved.version);
+  return runScripts(saved.html);
 }
 
 export async function applyUpdate(): Promise<UpdateState> {
@@ -131,9 +137,10 @@ export async function applyUpdate(): Promise<UpdateState> {
   if (alreadyHave(remote.version)) return "latest";
   const html = await downloadGame(remote.gameUrl);
   if (!html) return "offline";
-  rememberApplied(remote.version);
+  rememberApplied(remote.version, html);
   localStorage.setItem(APPLIED_KEY, String(remote.version.build));
   window.__annexJustUpdated = remote.version.version;
+  window.__annexRestored = true;
   if (!runScripts(html)) return "offline";
   return "ready";
 }
@@ -145,8 +152,5 @@ export async function autoUpdate(): Promise<boolean> {
 export async function peekUpdate(): Promise<boolean> {
   const remote = await fetchRemote();
   if (!remote) return false;
-  return isNewer(remote.version, {
-    ...APP_VERSION,
-    build: Math.max(appliedBuild(), APP_VERSION.build),
-  });
+  return isNewer(remote.version, current());
 }
