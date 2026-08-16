@@ -4,6 +4,7 @@ import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
+import { nudgeRule, rules, type Rules } from "./game/config";
 import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
@@ -14,6 +15,7 @@ declare global {
     __annexRestored?: boolean;
     __annexHudBound?: boolean;
     __annexOnHudClick?: (e: Event) => void;
+    __annexGame?: Game;
   }
 }
 
@@ -70,6 +72,18 @@ function ensureHud(): void {
   if (!actions.querySelector("#update-btn")) {
     actions.appendChild(makeEl("button", "update-btn", "Update")).setAttribute("type", "button");
   }
+  if (!actions.querySelector("#dev-btn")) {
+    let stack = actions.querySelector(".action-stack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "action-stack";
+      const update = actions.querySelector("#update-btn");
+      if (update) stack.appendChild(update);
+      actions.appendChild(stack);
+    }
+    stack.appendChild(makeEl("button", "dev-btn", "Dev"));
+  }
+  if (!hud.querySelector("#dev-panel")) hud.appendChild(makeDevPanel("dev-panel"));
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) hud.appendChild(makeEl("div", "hint"));
   if (!document.querySelector("#overlay")) {
@@ -110,9 +124,55 @@ function ensureHud(): void {
       picks.appendChild(b);
     }
     bots.append(picks, makeEl("button", "menu-back", "Back"));
+    if (!home.querySelector("#menu-dev-btn")) home.appendChild(makeEl("button", "menu-dev-btn", "Dev"));
     menu.append(home, bots);
     document.body.appendChild(menu);
   }
+  const menu = document.querySelector("#menu");
+  if (menu && !menu.querySelector("#menu-dev-btn")) {
+    (menu.querySelector("#menu-home") ?? menu).appendChild(makeEl("button", "menu-dev-btn", "Dev"));
+  }
+  if (menu && !menu.querySelector("#menu-dev")) menu.appendChild(makeDevPanel("menu-dev"));
+  syncDevPanel();
+}
+
+function makeDevPanel(id: string): HTMLDivElement {
+  const panel = makeEl("div", id);
+  panel.classList.add("hidden");
+  const rows: [string, keyof Rules, number][] = [
+    ["Base health", "baseHealth", 1],
+    ["Soldier health", "soldierHealth", 1],
+    ["Spawn sec", "spawnSec", 0.5],
+  ];
+  for (const [label, key, step] of rows) {
+    const row = document.createElement("div");
+    row.className = "dev-row";
+    const minus = makeEl("button", undefined, "-");
+    minus.dataset.rule = key;
+    minus.dataset.delta = String(-step);
+    const plus = makeEl("button", undefined, "+");
+    plus.dataset.rule = key;
+    plus.dataset.delta = String(step);
+    const val = document.createElement("span");
+    val.dataset.ruleValue = key;
+    val.textContent = String(rules[key]);
+    row.append(makeEl("span", undefined, label), minus, val, plus);
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function syncDevPanel(): void {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-rule-value]")) {
+    const key = el.dataset.ruleValue as keyof Rules | undefined;
+    if (key && key in rules) el.textContent = String(rules[key]);
+  }
+}
+
+function toggleDev(): void {
+  document.querySelector("#dev-panel")?.classList.toggle("hidden");
+  document.querySelector("#menu-dev")?.classList.toggle("hidden");
+  syncDevPanel();
 }
 
 function showToast(text: string): void {
@@ -174,6 +234,20 @@ function onHudClick(e: Event): void {
     e.preventDefault();
     e.stopImmediatePropagation();
     showMenu();
+    return;
+  }
+  if (t.id === "dev-btn" || t.id === "menu-dev-btn") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    toggleDev();
+    return;
+  }
+  if (t.dataset.rule) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    nudgeRule(t.dataset.rule as keyof Rules, Number(t.dataset.delta || 0));
+    syncDevPanel();
+    window.__annexGame?.applyRules();
     return;
   }
   const bots = Number(t.dataset.bots || 0);
@@ -257,6 +331,7 @@ function startGame(bots = 1): void {
   const version = versionEl;
 
   const game = new Game(Date.now(), bots);
+  window.__annexGame = game;
   const ais = BOTS.slice(0, game.bots).map((id) => new Commander(id));
   let cam: Camera = fitCamera(1, 1);
   let shownWinner = false;
@@ -362,6 +437,7 @@ function startGame(bots = 1): void {
 
   window.__annexStop = () => {
     alive = false;
+    if (window.__annexGame === game) window.__annexGame = undefined;
     window.clearTimeout(hintTimer);
     unbind();
     window.removeEventListener("resize", resize);

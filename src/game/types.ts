@@ -45,6 +45,7 @@ export type Soldier = {
   toY: number;
   restX: number;
   restY: number;
+  hp: number;
   poly: Point[];
 };
 

@@ -1,4 +1,4 @@
-import { BASE_HEALTH, COLORS, RING_SPIN } from "./config";
+import { COLORS, RING_SPIN, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -97,7 +97,7 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   const barH = 4;
   const barX = t.center.x - barW / 2;
   const barY = t.center.y - 14;
-  const ratio = Math.max(0, Math.min(1, t.health / BASE_HEALTH));
+  const ratio = Math.max(0, Math.min(1, t.health / rules.baseHealth));
   ctx.fillStyle = "#0e0e10";
   ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
   ctx.fillStyle = "#2a2a30";

@@ -19,6 +19,58 @@ export const COLORS = {
 export const ARMY_SPEED = 83;
 export const SPAWN_INTERVAL = 2;
 export const BASE_HEALTH = 10;
+export const SOLDIER_HEALTH = 1;
+
+export type Rules = {
+  baseHealth: number;
+  soldierHealth: number;
+  spawnSec: number;
+};
+
+const RULES_KEY = "annex-dev-rules";
+
+export const rules: Rules = {
+  baseHealth: BASE_HEALTH,
+  soldierHealth: SOLDIER_HEALTH,
+  spawnSec: SPAWN_INTERVAL,
+};
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+export function loadRules(): Rules {
+  try {
+    const raw = localStorage.getItem(RULES_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as Partial<Rules>;
+      if (typeof data.baseHealth === "number") rules.baseHealth = clamp(data.baseHealth, 1, 200);
+      if (typeof data.soldierHealth === "number") rules.soldierHealth = clamp(data.soldierHealth, 1, 50);
+      if (typeof data.spawnSec === "number") rules.spawnSec = clamp(data.spawnSec, 0.2, 10);
+    }
+  } catch {
+    /* keep defaults */
+  }
+  return rules;
+}
+
+export function saveRules(): void {
+  try {
+    localStorage.setItem(RULES_KEY, JSON.stringify(rules));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function nudgeRule(key: keyof Rules, delta: number): number {
+  if (key === "spawnSec") rules.spawnSec = clamp(Math.round((rules.spawnSec + delta) * 10) / 10, 0.2, 10);
+  if (key === "baseHealth") rules.baseHealth = clamp(rules.baseHealth + delta, 1, 200);
+  if (key === "soldierHealth") rules.soldierHealth = clamp(rules.soldierHealth + delta, 1, 50);
+  saveRules();
+  return rules[key];
+}
+
+loadRules();
 export const START_TROOPS = 10;
 export const NEUTRAL_TROOPS = 0;
 export const PERIMETER_PAD = 22;

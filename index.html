@@ -25,10 +25,31 @@
     <canvas id="game"></canvas>
     <div id="menu">
       <h1>ANNEX</h1>
-      <p id="menu-ver">v0.5.17</p>
+      <p id="menu-ver">v0.5.18</p>
       <div id="menu-home">
         <button id="start-btn" type="button">Start</button>
         <button id="menu-update-btn" type="button">Update</button>
+        <button id="menu-dev-btn" type="button">Dev</button>
+      </div>
+      <div id="menu-dev" class="hidden">
+        <div class="dev-row">
+          <span>Base health</span>
+          <button type="button" data-rule="baseHealth" data-delta="-1">-</button>
+          <span data-rule-value="baseHealth">10</span>
+          <button type="button" data-rule="baseHealth" data-delta="1">+</button>
+        </div>
+        <div class="dev-row">
+          <span>Soldier health</span>
+          <button type="button" data-rule="soldierHealth" data-delta="-1">-</button>
+          <span data-rule-value="soldierHealth">1</span>
+          <button type="button" data-rule="soldierHealth" data-delta="1">+</button>
+        </div>
+        <div class="dev-row">
+          <span>Spawn sec</span>
+          <button type="button" data-rule="spawnSec" data-delta="-0.5">-</button>
+          <span data-rule-value="spawnSec">2</span>
+          <button type="button" data-rule="spawnSec" data-delta="0.5">+</button>
+        </div>
       </div>
       <div id="menu-bots" class="hidden">
         <p>How many bots?</p>
@@ -45,12 +66,35 @@
       <div class="top">
         <div class="brand">
           <span id="title">ANNEX</span>
-          <span id="version">v0.5.17</span>
+          <span id="version">v0.5.18</span>
           <span id="score">0 · 0</span>
         </div>
         <div class="actions">
           <button id="wall-btn" type="button">Wall</button>
-          <button id="update-btn" type="button">Update</button>
+          <div class="action-stack">
+            <button id="update-btn" type="button">Update</button>
+            <button id="dev-btn" type="button">Dev</button>
+          </div>
+        </div>
+      </div>
+      <div id="dev-panel" class="hidden">
+        <div class="dev-row">
+          <span>Base health</span>
+          <button type="button" data-rule="baseHealth" data-delta="-1">-</button>
+          <span data-rule-value="baseHealth">10</span>
+          <button type="button" data-rule="baseHealth" data-delta="1">+</button>
+        </div>
+        <div class="dev-row">
+          <span>Soldier health</span>
+          <button type="button" data-rule="soldierHealth" data-delta="-1">-</button>
+          <span data-rule-value="soldierHealth">1</span>
+          <button type="button" data-rule="soldierHealth" data-delta="1">+</button>
+        </div>
+        <div class="dev-row">
+          <span>Spawn sec</span>
+          <button type="button" data-rule="spawnSec" data-delta="-0.5">-</button>
+          <span data-rule-value="spawnSec">2</span>
+          <button type="button" data-rule="spawnSec" data-delta="0.5">+</button>
         </div>
       </div>
       <div id="toast"></div>

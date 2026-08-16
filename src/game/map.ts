@@ -2,7 +2,6 @@ import {
   BASE_COUNT_MAX,
   BASE_COUNT_MIN,
   BASE_GAP,
-  BASE_HEALTH,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
   RING_GAP,
@@ -11,6 +10,7 @@ import {
   WORLD_H,
   WORLD_W,
   ringRadius,
+  rules,
 } from "./config";
 import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
@@ -229,7 +229,7 @@ export function createMap(seed = 20260815, bots = 1): Territory[] {
       radius: meanRadius(center, poly),
       owner: "neutral",
       troops: NEUTRAL_TROOPS,
-      health: BASE_HEALTH,
+      health: rules.baseHealth,
       spawnAcc: 0,
       neighbors: [],
     };
@@ -243,13 +243,13 @@ export function createMap(seed = 20260815, bots = 1): Territory[] {
   const playerId = starts[0];
   territories[playerId].owner = "player";
   territories[playerId].troops = START_TROOPS;
-  territories[playerId].health = BASE_HEALTH;
+  territories[playerId].health = rules.baseHealth;
   for (let i = 1; i < starts.length; i++) {
     const bot: BotId = BOTS[i - 1] ?? "ai1";
     const id = starts[i];
     territories[id].owner = bot;
     territories[id].troops = START_TROOPS;
-    territories[id].health = BASE_HEALTH;
+    territories[id].health = rules.baseHealth;
   }
 
   return territories;

@@ -1,13 +1,12 @@
 import {
   ARMY_SPEED,
-  BASE_HEALTH,
   FIGHT_RADIUS,
   POP_CAP,
   POP_LIFE,
   SOLDIER_GAP,
-  SPAWN_INTERVAL,
   START_TROOPS,
   ringRadius,
+  rules,
 } from "./config";
 import { closePath, dist, isClosedLasso, pathHits, pathLength, pointInPoly, wallSpots } from "./geo";
 import { createMap } from "./map";
@@ -31,7 +30,7 @@ export function applyArrival(dest: Territory, army: Army): void {
   dest.health -= army.count;
   if (dest.health <= 0) {
     dest.owner = army.owner;
-    dest.health = BASE_HEALTH;
+    dest.health = rules.baseHealth;
     dest.troops = 0;
   }
 }
@@ -264,8 +263,8 @@ export class Game {
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
       t.spawnAcc += dt;
-      if (t.spawnAcc >= SPAWN_INTERVAL) {
-        t.spawnAcc -= SPAWN_INTERVAL;
+      if (t.spawnAcc >= rules.spawnSec) {
+        t.spawnAcc -= rules.spawnSec;
         this.spawnSoldier(t);
       }
     }
@@ -300,10 +299,12 @@ export class Game {
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         if (dx * dx + dy * dy > r2) continue;
-        dead.add(a.id);
-        dead.add(b.id);
+        a.hp -= 1;
+        b.hp -= 1;
         this.addPop((a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
-        break;
+        if (a.hp <= 0) dead.add(a.id);
+        if (b.hp <= 0) dead.add(b.id);
+        if (a.hp <= 0) break;
       }
     }
   }
@@ -359,6 +360,7 @@ export class Game {
       toY: path.to.y,
       restX: path.to.x,
       restY: path.to.y,
+      hp: rules.soldierHealth,
       poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
     });
   }
@@ -377,7 +379,15 @@ export class Game {
     s.toY = path.to.y;
     s.restX = path.to.x;
     s.restY = path.to.y;
+    s.hp = rules.soldierHealth;
     s.poly = spinPoly(base.localPoly, this.rng() * Math.PI * 2);
+  }
+
+  applyRules(): void {
+    for (const t of this.territories) {
+      if (t.health > rules.baseHealth) t.health = rules.baseHealth;
+    }
+    for (const s of this.soldiers) s.hp = rules.soldierHealth;
   }
 
   private sendHome(s: Soldier): void {
@@ -469,7 +479,7 @@ export class Game {
   private takeBase(dest: Territory, owner: Faction, dead: Set<number>): void {
     dest.owner = owner;
     dest.spawnAcc = 0;
-    dest.health = BASE_HEALTH;
+    dest.health = rules.baseHealth;
     dest.troops = 0;
     for (const s of this.soldiers) {
       if (s.homeId === dest.id && s.state !== "march") dead.add(s.id);

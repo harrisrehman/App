@@ -112,6 +112,13 @@ button {
 .actions {
   display: flex;
   flex-shrink: 0;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -175,8 +182,54 @@ button {
 #overlay.hidden,
 #menu-home.hidden,
 #menu-bots.hidden,
-#menu.hidden {
+#menu.hidden,
+#dev-panel.hidden,
+#menu-dev.hidden {
   display: none;
+}
+
+#dev-panel,
+#menu-dev {
+  pointer-events: auto;
+  z-index: 6;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+}
+
+#dev-panel {
+  position: absolute;
+  right: 12px;
+  top: calc(64px + env(safe-area-inset-top));
+}
+
+.dev-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-row > span:first-child {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dev-row [data-rule-value] {
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.dev-row button {
+  min-width: 36px;
+  padding: 6px 10px;
 }
 
 #menu {
