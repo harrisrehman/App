@@ -217,18 +217,12 @@ function showBotPick(): void {
 }
 
 function startMatch(bots: number): void {
-  document.body.classList.remove("menu");
-  document.body.classList.add("playing");
-  document.querySelector("#menu")?.classList.add("hidden");
   startGame(bots);
 }
 
 function startGame(bots = 1): void {
   window.__annexStop?.();
   ensureHud();
-  document.body.classList.add("playing");
-  document.body.classList.remove("menu");
-  document.querySelector("#menu")?.classList.add("hidden");
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
@@ -243,9 +237,14 @@ function startGame(bots = 1): void {
   const hint = document.querySelector("#hint");
 
   if (!boardEl || !drawEl || !scoreEl || !updateEl || !wallEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+    showMenu();
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
   }
+
+  document.body.classList.add("playing");
+  document.body.classList.remove("menu");
+  document.querySelector("#menu")?.classList.add("hidden");
 
   const board = boardEl;
   const draw = drawEl;
@@ -378,13 +377,12 @@ function boot(): void {
     ensureHud();
     bindHudClicks();
     dropStalePersist();
-    document.body.classList.add("menu");
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;
-    if (restorePersisted()) return;
-    showMenu();
+    restorePersisted();
+    if (!document.body.classList.contains("playing")) showMenu();
   } catch {
-    document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
+    showMenu();
   }
 }
 
