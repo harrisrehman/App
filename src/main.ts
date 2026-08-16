@@ -72,18 +72,7 @@ function ensureHud(): void {
   if (!actions.querySelector("#update-btn")) {
     actions.appendChild(makeEl("button", "update-btn", "Update")).setAttribute("type", "button");
   }
-  if (!actions.querySelector("#dev-btn")) {
-    let stack = actions.querySelector(".action-stack");
-    if (!stack) {
-      stack = document.createElement("div");
-      stack.className = "action-stack";
-      const update = actions.querySelector("#update-btn");
-      if (update) stack.appendChild(update);
-      actions.appendChild(stack);
-    }
-    stack.appendChild(makeEl("button", "dev-btn", "Dev"));
-  }
-  if (!hud.querySelector("#dev-panel")) hud.appendChild(makeDevPanel("dev-panel"));
+  stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) hud.appendChild(makeEl("div", "hint"));
   if (!document.querySelector("#overlay")) {
@@ -168,8 +157,18 @@ function syncDevPanel(): void {
   }
 }
 
+function stripPlayDev(): void {
+  document.querySelector("#dev-btn")?.remove();
+  document.querySelector("#dev-panel")?.remove();
+  const stack = document.querySelector(".action-stack");
+  if (!stack) return;
+  const parent = stack.parentElement;
+  const update = stack.querySelector("#update-btn");
+  if (parent && update) parent.appendChild(update);
+  stack.remove();
+}
+
 function toggleDev(): void {
-  document.querySelector("#dev-panel")?.classList.toggle("hidden");
   document.querySelector("#menu-dev")?.classList.toggle("hidden");
   syncDevPanel();
 }
@@ -235,7 +234,7 @@ function onHudClick(e: Event): void {
     showMenu();
     return;
   }
-  if (t.id === "dev-btn" || t.id === "menu-dev-btn") {
+  if (t.id === "menu-dev-btn") {
     e.preventDefault();
     e.stopImmediatePropagation();
     toggleDev();
@@ -287,6 +286,7 @@ function showMenuHome(): void {
 function showBotPick(): void {
   document.querySelector("#menu-home")?.classList.add("hidden");
   document.querySelector("#menu-bots")?.classList.remove("hidden");
+  document.querySelector("#menu-dev")?.classList.add("hidden");
 }
 
 function startMatch(bots: number): void {
@@ -318,6 +318,8 @@ function startGame(bots = 1): void {
   document.body.classList.add("playing");
   document.body.classList.remove("menu");
   document.querySelector("#menu")?.classList.add("hidden");
+  document.querySelector("#menu-dev")?.classList.add("hidden");
+  stripPlayDev();
 
   const board = boardEl;
   const draw = drawEl;

@@ -116,12 +116,6 @@ button {
   gap: 8px;
 }
 
-.action-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 #update-btn.badge,
 #wall-btn.on {
   border-color: var(--player);
@@ -183,12 +177,10 @@ button {
 #menu-home.hidden,
 #menu-bots.hidden,
 #menu.hidden,
-#dev-panel.hidden,
 #menu-dev.hidden {
   display: none;
 }
 
-#dev-panel,
 #menu-dev {
   pointer-events: auto;
   z-index: 6;
@@ -200,12 +192,6 @@ button {
   flex-direction: column;
   gap: 10px;
   min-width: 220px;
-}
-
-#dev-panel {
-  position: absolute;
-  right: 12px;
-  top: calc(64px + env(safe-area-inset-top));
 }
 
 .dev-row {
