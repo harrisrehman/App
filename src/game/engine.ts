@@ -273,7 +273,7 @@ export class Game {
     for (const s of this.soldiers) {
       if (s.state !== "march" || s.toId === null || dead.has(s.id)) continue;
       const dest = this.territories[s.toId];
-      if (dist({ x: s.x, y: s.y }, dest.center) > dest.radius * 0.35) continue;
+      if (dist({ x: s.x, y: s.y }, dest.center) > dest.radius * 0.85) continue;
       const keep = this.arrive(s, dest, dead);
       if (!keep) dead.add(s.id);
     }
@@ -429,9 +429,11 @@ export class Game {
 
     if (s.state === "march" && s.toId !== null) {
       const dest = this.territories[s.toId];
+      const toCenter = dist({ x: s.x, y: s.y }, dest.center);
+      const spread = toCenter > dest.radius ? 12 : 0;
       const aim = {
-        x: dest.center.x + Math.sin(s.id * 12.9898) * 16,
-        y: dest.center.y + Math.cos(s.id * 78.233) * 16,
+        x: dest.center.x + Math.sin(s.id * 12.9898) * spread,
+        y: dest.center.y + Math.cos(s.id * 78.233) * spread,
       };
       const d = dist({ x: s.x, y: s.y }, aim);
       if (d < 1) return;
