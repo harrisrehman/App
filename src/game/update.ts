@@ -1,5 +1,11 @@
-import { REMOTE_CANDIDATES } from "./config";
-import { APP_VERSION, type AppVersion } from "../version";
+import { CapacitorHttp } from "@capacitor/core";
+import { UPDATE_SOURCES } from "./config";
+import {
+  APP_VERSION,
+  isNewer,
+  rememberApplied,
+  type AppVersion,
+} from "../version";
 
 export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
 
@@ -20,49 +26,79 @@ export function appliedBuild(): number {
   return Number(localStorage.getItem(APPLIED_KEY) || "0");
 }
 
-async function fetchWithTimeout(url: string, ms = 4000): Promise<Response> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { cache: "no-store", signal: ctrl.signal });
-  } finally {
-    clearTimeout(timer);
+function decodeBody(data: unknown): string | null {
+  if (typeof data === "string") {
+    const trimmed = data.trim();
+    if (trimmed.startsWith("{") && trimmed.includes('"content"')) {
+      try {
+        const json = JSON.parse(trimmed) as { encoding?: string; content?: string };
+        if (json.encoding === "base64" && json.content) {
+          return atob(json.content.replace(/\s/g, ""));
+        }
+      } catch {
+        /* use raw string */
+      }
+    }
+    return data;
   }
+  if (data && typeof data === "object") {
+    const json = data as { encoding?: string; content?: string; version?: string };
+    if (json.encoding === "base64" && json.content) {
+      return atob(json.content.replace(/\s/g, ""));
+    }
+    if (json.version) return JSON.stringify(json);
+  }
+  return null;
 }
 
-async function readVersion(base: string): Promise<AppVersion | null> {
+async function getText(url: string, ms = 8000): Promise<string | null> {
   try {
-    const res = await fetchWithTimeout(`${base}version.json?t=${Date.now()}`);
-    if (!res.ok) return null;
-    return (await res.json()) as AppVersion;
+    const res = await CapacitorHttp.get({
+      url,
+      readTimeout: ms,
+      connectTimeout: Math.min(ms, 5000),
+      responseType: "text",
+      headers: {
+        Accept: "application/vnd.github.raw, application/json, text/plain, */*",
+        "Cache-Control": "no-cache",
+      },
+    });
+    if (res.status < 200 || res.status >= 300) return null;
+    return decodeBody(res.data);
   } catch {
     return null;
   }
 }
 
-export async function fetchRemote(): Promise<{ base: string; version: AppVersion } | null> {
-  const found: { base: string; version: AppVersion }[] = [];
+async function readVersion(url: string): Promise<AppVersion | null> {
+  const text = await getText(url, 8000);
+  if (!text) return null;
+  try {
+    const data = JSON.parse(text) as AppVersion;
+    if (!data.version) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchRemote(): Promise<{ version: AppVersion; gameUrl: string } | null> {
+  const found: { version: AppVersion; gameUrl: string }[] = [];
   await Promise.all(
-    REMOTE_CANDIDATES.map(async (base) => {
-      const version = await readVersion(base);
-      if (version) found.push({ base, version });
+    UPDATE_SOURCES.map(async (src) => {
+      const version = await readVersion(src.versionUrl);
+      if (version) found.push({ version, gameUrl: src.gameUrl });
     }),
   );
   if (found.length === 0) return null;
-  found.sort((a, b) => b.version.build - a.version.build);
+  found.sort((a, b) => (isNewer(a.version, b.version) ? -1 : 1));
   return found[0];
 }
 
-async function downloadGame(base: string): Promise<string | null> {
-  try {
-    const res = await fetchWithTimeout(`${base}annex.html?t=${Date.now()}`, 8000);
-    if (!res.ok) return null;
-    const html = await res.text();
-    if (!html.includes("ANNEX")) return null;
-    return html;
-  } catch {
-    return null;
-  }
+async function downloadGame(url: string): Promise<string | null> {
+  const html = await getText(url, 12000);
+  if (!html || !html.includes("ANNEX")) return null;
+  return html;
 }
 
 function runScripts(html: string): boolean {
@@ -81,16 +117,24 @@ function runScripts(html: string): boolean {
   }
 }
 
+function alreadyHave(remote: AppVersion): boolean {
+  const current: AppVersion = {
+    ...APP_VERSION,
+    build: Math.max(appliedBuild(), APP_VERSION.build),
+  };
+  return !isNewer(remote, current);
+}
+
 export async function applyUpdate(): Promise<UpdateState> {
   const remote = await fetchRemote();
   if (!remote) return "offline";
-  if (remote.version.build <= Math.max(appliedBuild(), APP_VERSION.build)) {
-    return "latest";
-  }
-  const html = await downloadGame(remote.base);
+  if (alreadyHave(remote.version)) return "latest";
+  const html = await downloadGame(remote.gameUrl);
   if (!html) return "offline";
-  if (!runScripts(html)) return "offline";
+  rememberApplied(remote.version);
   localStorage.setItem(APPLIED_KEY, String(remote.version.build));
+  window.__annexJustUpdated = remote.version.version;
+  if (!runScripts(html)) return "offline";
   return "ready";
 }
 
@@ -101,5 +145,8 @@ export async function autoUpdate(): Promise<boolean> {
 export async function peekUpdate(): Promise<boolean> {
   const remote = await fetchRemote();
   if (!remote) return false;
-  return remote.version.build > Math.max(appliedBuild(), APP_VERSION.build);
+  return isNewer(remote.version, {
+    ...APP_VERSION,
+    build: Math.max(appliedBuild(), APP_VERSION.build),
+  });
 }

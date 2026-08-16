@@ -6,20 +6,65 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.3.4",
-  build: 0,
+  version: "0.3.5",
+  build: 1786857185919,
 };
 
-export async function loadBundledVersion(): Promise<AppVersion> {
+const APPLIED_VERSION_KEY = "annex-applied-version";
+
+export function cmpVer(a: string, b: string): number {
+  const pa = a.split(".").map((n) => Number(n) || 0);
+  const pb = b.split(".").map((n) => Number(n) || 0);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
+export function isNewer(a: AppVersion, b: AppVersion): boolean {
+  const v = cmpVer(a.version, b.version);
+  if (v !== 0) return v > 0;
+  return a.build > b.build;
+}
+
+export function adopt(ver: AppVersion): AppVersion {
+  if (isNewer(ver, APP_VERSION)) {
+    APP_VERSION.name = ver.name;
+    APP_VERSION.version = ver.version;
+    APP_VERSION.build = ver.build;
+  }
+  return APP_VERSION;
+}
+
+export function rememberApplied(ver: AppVersion): void {
+  adopt(ver);
   try {
-    const res = await fetch(`./version.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return APP_VERSION;
-    const data = (await res.json()) as AppVersion;
-    APP_VERSION.version = data.version;
-    APP_VERSION.build = data.build;
-    APP_VERSION.name = data.name;
-    return APP_VERSION;
+    localStorage.setItem(APPLIED_VERSION_KEY, JSON.stringify(ver));
   } catch {
-    return APP_VERSION;
+    /* ignore */
   }
 }
+
+export function loadApplied(): AppVersion {
+  try {
+    const raw = localStorage.getItem(APPLIED_VERSION_KEY);
+    if (raw) adopt(JSON.parse(raw) as AppVersion);
+  } catch {
+    /* ignore */
+  }
+  return APP_VERSION;
+}
+
+export async function loadBundledVersion(): Promise<AppVersion> {
+  loadApplied();
+  try {
+    const res = await fetch(`./version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (res.ok) adopt((await res.json()) as AppVersion);
+  } catch {
+    /* keep current */
+  }
+  return APP_VERSION;
+}
+
+loadApplied();

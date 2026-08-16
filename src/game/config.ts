@@ -24,8 +24,23 @@ export const BASE_COUNT_MAX = 6;
 export const AI_MIN_WAIT = 1.4;
 export const AI_MAX_WAIT = 3.8;
 
-export const REMOTE_CANDIDATES = [
-  "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/",
-  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/",
-  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/",
+export const UPDATE_SOURCES = [
+  {
+    versionUrl:
+      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/version.json",
+    gameUrl:
+      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/annex.html",
+  },
+  {
+    versionUrl:
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=cursor/annex-android-a9d2",
+    gameUrl:
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/annex.html?ref=cursor/annex-android-a9d2",
+  },
+  {
+    versionUrl:
+      "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/version.json",
+    gameUrl:
+      "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/annex.html",
+  },
 ] as const;

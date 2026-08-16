@@ -9,6 +9,7 @@ import { loadBundledVersion } from "./version";
 declare global {
   interface Window {
     __annexStop?: () => void;
+    __annexJustUpdated?: string;
   }
 }
 
@@ -95,6 +96,7 @@ function startGame(): void {
     if (!alive) return;
     if (state === "offline") toast("Update failed. Try again.");
     if (state === "latest") toast("Already latest.");
+    if (state === "ready") toast(`Updated to v${localVersion().version}`);
     update.disabled = false;
     update.textContent = "Update";
   };
@@ -107,6 +109,10 @@ function startGame(): void {
   resize();
 
   version.textContent = `v${localVersion().version}`;
+  if (window.__annexJustUpdated) {
+    toast(`Updated to v${window.__annexJustUpdated}`);
+    window.__annexJustUpdated = undefined;
+  }
   void loadBundledVersion().then((ver) => {
     if (!alive) return;
     version.textContent = `v${ver.version}`;
