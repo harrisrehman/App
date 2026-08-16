@@ -41,6 +41,12 @@ const empty = { owner: "ai", troops: 0, health: 10 };
 takeBase(empty, "player");
 assert(empty.owner === "player" && empty.troops === 0 && empty.health === 10, "no free spawn failed");
 
+const siege = { owner: "ai", troops: 8, health: 10 };
+applyArrival(siege, { owner: "player", count: 4 });
+assert(siege.owner === "ai" && siege.health === 6, "owned chip failed");
+applyArrival(siege, { owner: "player", count: 6 });
+assert(siege.owner === "player" && siege.health === 10 && siege.troops === 0, "owned capture failed");
+
 function walkHome(s, speed = 10) {
   const dx = s.restX - s.x;
   const dy = s.restY - s.y;

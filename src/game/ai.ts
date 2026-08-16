@@ -86,12 +86,9 @@ export class Commander {
   private flipCost(game: Game, from: Territory, dest: Territory): number {
     const aiIn = game.incoming(dest.id, "ai");
     const playerIn = game.incoming(dest.id, "player");
-    if (dest.owner === "neutral") {
-      return Math.max(1, dest.health + playerIn - aiIn);
-    }
     const travel = dist(from.center, dest.center) / ARMY_SPEED;
     const growth = dest.owner === "player" ? travel / SPAWN_INTERVAL : 0;
-    return Math.max(1, Math.ceil(dest.troops + playerIn + growth - aiIn + 1));
+    return Math.max(1, Math.ceil(dest.health + dest.troops + playerIn + growth - aiIn));
   }
 
   private canFlip(game: Game, from: Territory, dest: Territory): boolean {

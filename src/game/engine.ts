@@ -353,23 +353,20 @@ export class Game {
       return true;
     }
 
-    if (dest.owner === "neutral") {
-      dest.health -= 1;
-      if (dest.health > 0) return false;
-      this.takeBase(dest, s.owner);
-      return false;
-    }
-
-    if (this.garrison(dest.id).some((x) => !dead.has(x.id))) return true;
-    this.takeBase(dest, s.owner);
+    dest.health -= 1;
+    if (dest.health > 0) return false;
+    this.takeBase(dest, s.owner, dead);
     return false;
   }
 
-  private takeBase(dest: Territory, owner: Exclude<Owner, "neutral">): void {
+  private takeBase(dest: Territory, owner: Exclude<Owner, "neutral">, dead: Set<number>): void {
     dest.owner = owner;
     dest.spawnAcc = 0;
     dest.health = BASE_HEALTH;
     dest.troops = 0;
+    for (const s of this.soldiers) {
+      if (s.homeId === dest.id && s.state !== "march") dead.add(s.id);
+    }
   }
 
   private inPerimeter(t: Territory, p: Point): boolean {
