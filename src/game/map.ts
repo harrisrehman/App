@@ -16,7 +16,7 @@ import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
 import type { Point, Territory } from "./types";
 
-const PAD = 86;
+const PAD = 96;
 const MIN_GAP = BASE_GAP;
 const GAP_FLOOR = 2 * ringRadius(BASE_RADIUS * 0.95) + RING_GAP;
 

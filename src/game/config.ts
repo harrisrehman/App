@@ -22,7 +22,7 @@ export const BASE_RADIUS = 40;
 export const RING_GAP = 10;
 
 export function ringRadius(baseRadius: number): number {
-  return baseRadius + PERIMETER_PAD;
+  return (baseRadius + PERIMETER_PAD) * 1.25;
 }
 
 export const BASE_GAP = 2 * ringRadius(BASE_RADIUS * 1.15) + RING_GAP;

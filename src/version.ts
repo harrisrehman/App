@@ -6,8 +6,8 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.5.3",
-  build: 1786864893513,
+  version: "0.5.4",
+  build: 1786865249076,
 };
 
 export const BUNDLED_VERSION: AppVersion = {
