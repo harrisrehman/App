@@ -4,7 +4,7 @@ import { toWorld } from "./camera";
 import type { Game } from "./engine";
 
 const HOLD_MS = 400;
-const HOLD_MOVE = 22;
+const DRAG = 16;
 
 export function hitTerritory(game: Game, x: number, y: number): number | null {
   let best: { id: number; d: number } | null = null;
@@ -29,15 +29,14 @@ export function bindInput(
 
   let lastTouch = 0;
   let holdTimer = 0;
-  let holdId: number | null = null;
   let held = false;
+  let dragged = false;
+  let swept = false;
   let start: { x: number; y: number } | null = null;
 
   const clearHold = (): void => {
     window.clearTimeout(holdTimer);
     holdTimer = 0;
-    holdId = null;
-    start = null;
   };
 
   const sendHold = (id: number): void => {
@@ -49,31 +48,46 @@ export function bindInput(
     held = true;
   };
 
+  const sweep = (id: number | null): void => {
+    if (id === null) return;
+    if (game.territories[id].owner !== "player") return;
+    if (game.selected.has(id)) return;
+    game.selected.add(id);
+    swept = true;
+  };
+
   const down = (e: TouchEvent | MouseEvent): void => {
     if ("touches" in e) e.preventDefault();
     if (game.winner) return;
     const p = pos(e);
     start = p;
     held = false;
-    holdId = hitTerritory(game, p.x, p.y);
-    window.clearTimeout(holdTimer);
-    if (holdId === null || game.selected.size === 0) return;
-    const id = holdId;
-    holdTimer = window.setTimeout(() => sendHold(id), HOLD_MS);
+    dragged = false;
+    swept = false;
+    const id = hitTerritory(game, p.x, p.y);
+    if (id === null) game.selected.clear();
+    game.beginStroke(p);
+    sweep(id);
+    clearHold();
+    if (id !== null && game.selected.size > 0) {
+      holdTimer = window.setTimeout(() => sendHold(id), HOLD_MS);
+    }
   };
 
   const move = (e: TouchEvent | MouseEvent): void => {
     if (!start) return;
     const p = pos(e);
-    if (dist(p, start) <= HOLD_MOVE) return;
-    window.clearTimeout(holdTimer);
-    holdTimer = 0;
-    holdId = null;
+    game.extendStroke(p);
+    if (dist(p, start) > DRAG) {
+      dragged = true;
+      clearHold();
+    }
+    sweep(hitTerritory(game, p.x, p.y));
   };
 
   const tap = (id: number | null): void => {
     if (id !== null && game.territories[id].owner === "player") {
-      if (game.selected.has(id)) game.selected.delete(id);
+      if (game.selected.has(id) && !swept) game.selected.delete(id);
       else game.selected.add(id);
       game.finger = null;
       return;
@@ -94,26 +108,45 @@ export function bindInput(
       e.preventDefault();
       lastTouch = Date.now();
     } else if (Date.now() - lastTouch < 600) {
+      game.endStroke();
       clearHold();
+      start = null;
       held = false;
       return;
     }
     const didHold = held;
     const p = start ? pos(e) : null;
+    game.endStroke();
     clearHold();
+    start = null;
     if (didHold || game.winner) {
       held = false;
       return;
     }
     if (!p) return;
+    if (dragged) {
+      const id = hitTerritory(game, p.x, p.y);
+      if (id !== null && game.selected.size > 0 && game.territories[id].owner !== "player") {
+        game.sendSelected(id);
+      }
+      game.finger = null;
+      return;
+    }
     tap(hitTerritory(game, p.x, p.y));
+  };
+
+  const cancel = (): void => {
+    game.endStroke();
+    clearHold();
+    start = null;
+    held = false;
   };
 
   const opts = { passive: false } as const;
   canvas.addEventListener("touchstart", down, opts);
   canvas.addEventListener("touchmove", move, opts);
   canvas.addEventListener("touchend", up, opts);
-  canvas.addEventListener("touchcancel", clearHold);
+  canvas.addEventListener("touchcancel", cancel);
   canvas.addEventListener("mousedown", down);
   canvas.addEventListener("mousemove", move);
   canvas.addEventListener("mouseup", up);
@@ -122,7 +155,7 @@ export function bindInput(
     canvas.removeEventListener("touchstart", down);
     canvas.removeEventListener("touchmove", move);
     canvas.removeEventListener("touchend", up);
-    canvas.removeEventListener("touchcancel", clearHold);
+    canvas.removeEventListener("touchcancel", cancel);
     canvas.removeEventListener("mousedown", down);
     canvas.removeEventListener("mousemove", move);
     canvas.removeEventListener("mouseup", up);

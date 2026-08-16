@@ -63,6 +63,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   }
 
   for (const p of game.pops) drawPop(ctx, p);
+  drawStroke(ctx, game);
 
   ctx.restore();
 }
@@ -87,6 +88,22 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const scale = (9 * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
+}
+
+function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {
+  if (game.stroke.length < 2) return;
+  ctx.globalAlpha = 0.82 * (1 - game.strokeFade);
+  ctx.strokeStyle = COLORS.player;
+  ctx.lineWidth = 3.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(game.stroke[0].x, game.stroke[0].y);
+  for (let i = 1; i < game.stroke.length; i++) {
+    ctx.lineTo(game.stroke[i].x, game.stroke[i].y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 function drawPop(ctx: CanvasRenderingContext2D, p: Pop): void {

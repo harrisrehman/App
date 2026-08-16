@@ -2,7 +2,7 @@ import { ARMY_SPEED, FIGHT_RADIUS, POP_CAP, POP_LIFE, SPAWN_INTERVAL, TROOP_CAP 
 import { dist } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
-import type { Army, Owner, Pop, SendRatio, Soldier, Territory, Winner } from "./types";
+import type { Army, Owner, Point, Pop, SendRatio, Soldier, Territory, Winner } from "./types";
 
 export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void {
   if (dest.owner === army.owner) {
@@ -46,6 +46,9 @@ export class Game {
   armies: Army[] = [];
   pops: Pop[] = [];
   selected = new Set<number>();
+  stroke: Point[] = [];
+  strokeFade = 0;
+  stroking = false;
   sendRatio: SendRatio = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
@@ -64,6 +67,9 @@ export class Game {
     this.armies = [];
     this.pops = [];
     this.selected.clear();
+    this.stroke = [];
+    this.strokeFade = 0;
+    this.stroking = false;
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
@@ -109,6 +115,33 @@ export class Game {
     return true;
   }
 
+  beginStroke(p: Point): void {
+    this.stroke = [{ x: p.x, y: p.y }];
+    this.strokeFade = 0;
+    this.stroking = true;
+  }
+
+  extendStroke(p: Point): void {
+    if (!this.stroking) return;
+    const last = this.stroke[this.stroke.length - 1];
+    if (last && dist(last, p) < 10) return;
+    this.stroke.push({ x: p.x, y: p.y });
+    if (this.stroke.length > 64) this.stroke.shift();
+  }
+
+  endStroke(): void {
+    this.stroking = false;
+  }
+
+  private stepStroke(dt: number): void {
+    if (this.stroking || this.stroke.length === 0) return;
+    this.strokeFade += dt / 0.5;
+    if (this.strokeFade >= 1) {
+      this.stroke = [];
+      this.strokeFade = 0;
+    }
+  }
+
   sendSelected(toId: number): boolean {
     let sent = false;
     for (const fromId of [...this.selected]) {
@@ -119,6 +152,7 @@ export class Game {
   }
 
   update(dt: number): void {
+    this.stepStroke(dt);
     if (this.winner) {
       this.stepPops(dt);
       return;
