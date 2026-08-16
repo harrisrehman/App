@@ -10,42 +10,70 @@ import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
 import type { Point, Territory } from "./types";
 
-const PAD = 72;
-const MIN_GAP = 148;
+const PAD = 56;
+const MIN_GAP = 126;
 
 type ShapeKind = "pent" | "hex" | "hept" | "tri" | "kite" | "blob";
 
 const SHAPES: ShapeKind[] = ["pent", "hex", "hept", "tri", "kite", "blob"];
 
-function placeCenters(rng: () => number, n: number): Point[] {
-  let gap = MIN_GAP;
-  for (let relax = 0; relax < 6; relax++) {
-    const pts: Point[] = [];
-    for (let i = 0; i < 400 && pts.length < n; i++) {
-      const p = {
-        x: PAD + rng() * (WORLD_W - PAD * 2),
-        y: PAD + rng() * (WORLD_H - PAD * 2),
-      };
-      if (pts.every((q) => dist(p, q) >= gap)) pts.push(p);
-    }
-    if (pts.length === n) return pts;
-    gap -= 18;
-  }
-  return fallbackRow(n);
+function inBounds(): { x0: number; y0: number; w: number; h: number } {
+  return { x0: PAD, y0: PAD, w: WORLD_W - PAD * 2, h: WORLD_H - PAD * 2 };
 }
 
-function fallbackRow(n: number): Point[] {
-  const cols = n > 8 ? 3 : 2;
-  const pts: Point[] = [];
-  for (let i = 0; i < n; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    pts.push({
-      x: WORLD_W * (0.16 + col * (0.68 / Math.max(cols - 1, 1))),
-      y: 160 + row * 220,
-    });
+function randPoint(rng: () => number, x0: number, y0: number, w: number, h: number): Point {
+  return { x: x0 + rng() * w, y: y0 + rng() * h };
+}
+
+function minDist(p: Point, pts: Point[]): number {
+  let best = 9999;
+  for (const q of pts) {
+    const d = dist(p, q);
+    if (d < best) best = d;
   }
-  return pts;
+  return best;
+}
+
+function placeCenters(rng: () => number, n: number): Point[] {
+  const { x0, y0, w, h } = inBounds();
+  const pts: Point[] = [];
+  const quads = [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+  ];
+  for (let i = quads.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [quads[i], quads[j]] = [quads[j], quads[i]];
+  }
+  for (const [qx, qy] of quads) {
+    if (pts.length >= n) break;
+    pts.push(randPoint(rng, x0 + qx * w * 0.5, y0 + qy * h * 0.5, w * 0.5, h * 0.5));
+  }
+
+  let gap = MIN_GAP;
+  for (let relax = 0; relax < 8 && pts.length < n; relax++) {
+    for (let i = 0; i < 80 && pts.length < n; i++) {
+      let best: Point | null = null;
+      let bestD = -1;
+      for (let s = 0; s < 18; s++) {
+        const p = randPoint(rng, x0, y0, w, h);
+        const d = minDist(p, pts);
+        if (d >= gap && d > bestD) {
+          best = p;
+          bestD = d;
+        }
+      }
+      if (best) pts.push(best);
+    }
+    gap -= 12;
+  }
+
+  while (pts.length < n) {
+    pts.push(randPoint(rng, x0, y0, w, h));
+  }
+  return pts.slice(0, n);
 }
 
 function ring(cx: number, cy: number, radii: number[], twist: number): Point[] {
@@ -101,19 +129,31 @@ function nearestIds(index: number, centers: Point[], k: number): number[] {
     .map((x) => x.id);
 }
 
-function farthestPair(centers: Point[]): [number, number] {
-  let best: [number, number] = [0, 1];
-  let bestD = -1;
-  for (let i = 0; i < centers.length; i++) {
-    for (let j = i + 1; j < centers.length; j++) {
-      const d = dist(centers[i], centers[j]);
+function pickStarts(centers: Point[], rng: () => number): [number, number] {
+  const n = centers.length;
+  const a = Math.floor(rng() * n);
+  const far: { id: number; d: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    if (i === a) continue;
+    const d = dist(centers[a], centers[i]);
+    if (d >= 240) far.push({ id: i, d });
+  }
+  if (far.length === 0) {
+    let b = (a + 1) % n;
+    let bestD = -1;
+    for (let i = 0; i < n; i++) {
+      if (i === a) continue;
+      const d = dist(centers[a], centers[i]);
       if (d > bestD) {
         bestD = d;
-        best = [i, j];
+        b = i;
       }
     }
+    return rng() < 0.5 ? [a, b] : [b, a];
   }
-  return best;
+  far.sort((x, y) => y.d - x.d);
+  const pick = far[Math.floor(rng() ** 0.45 * far.length)];
+  return rng() < 0.5 ? [a, pick.id] : [pick.id, a];
 }
 
 export function createMap(seed = 20260815): Territory[] {
@@ -142,8 +182,7 @@ export function createMap(seed = 20260815): Territory[] {
     };
   });
 
-  let [a, b] = farthestPair(centers);
-  if (rng() < 0.5) [a, b] = [b, a];
+  const [a, b] = pickStarts(centers, rng);
   territories[a].owner = "player";
   territories[a].troops = 0;
   territories[b].owner = "ai";

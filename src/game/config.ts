@@ -18,8 +18,8 @@ export const SPAWN_INTERVAL = 2;
 export const START_TROOPS = 0;
 export const NEUTRAL_TROOPS = 5;
 export const BASE_RADIUS = 40;
-export const BASE_COUNT_MIN = 10;
-export const BASE_COUNT_MAX = 13;
+export const BASE_COUNT_MIN = 14;
+export const BASE_COUNT_MAX = 18;
 
 export const AI_MIN_WAIT = 1.15;
 export const AI_MAX_WAIT = 2.1;
