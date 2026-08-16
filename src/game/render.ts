@@ -60,10 +60,10 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   }
 
   for (const s of game.soldiers) {
-    if (s.state !== "march") drawSoldier(ctx, s, soldierPicked(game, s));
+    if (s.state !== "march") drawSoldier(ctx, s, soldierPicked(game, s), game);
   }
   for (const s of game.soldiers) {
-    if (s.state === "march") drawSoldier(ctx, s, soldierPicked(game, s));
+    if (s.state === "march") drawSoldier(ctx, s, soldierPicked(game, s), game);
   }
 
   for (const shot of game.shots) drawShot(ctx, shot);
@@ -117,17 +117,26 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);
 }
 
-function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
+function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const size = s.kind === "gunner" ? 12 : 9;
   const scale = (size * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
   if (s.kind === "gunner") {
     const tip = s.poly[0] ?? { x: 1, y: 0 };
-    const d = Math.hypot(tip.x, tip.y) || 1;
+    let ax = tip.x;
+    let ay = tip.y;
+    if (s.aimId != null) {
+      const foe = game.soldiers.find((o) => o.id === s.aimId);
+      if (foe) {
+        ax = foe.x - s.x;
+        ay = foe.y - s.y;
+      }
+    }
+    const d = Math.hypot(ax, ay) || 1;
     ctx.beginPath();
     ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x + (tip.x / d) * 11 * pop, s.y + (tip.y / d) * 11 * pop);
+    ctx.lineTo(s.x + (ax / d) * 11 * pop, s.y + (ay / d) * 11 * pop);
     ctx.strokeStyle = fill(s.owner);
     ctx.lineWidth = 2.6;
     ctx.lineCap = "round";

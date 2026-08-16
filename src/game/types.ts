@@ -51,6 +51,7 @@ export type Soldier = {
   poly: Point[];
   kind: SoldierKind;
   shootAcc: number;
+  aimId: number | null;
 };
 
 export type Shot = {
@@ -60,6 +61,7 @@ export type Shot = {
   vy: number;
   owner: Faction;
   life: number;
+  toId: number | null;
 };
 
 export type Wall = {

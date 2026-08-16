@@ -75,7 +75,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Select a base. Tap Defense to convert 4 soldiers.");
+    const hint = makeEl("div", "hint", "Select a base. Tap Gunner to convert 4 soldiers.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -89,7 +89,7 @@ function ensureHud(): void {
     const btn = makeEl("button", "defense-btn");
     const name = document.createElement("span");
     name.className = "shop-name";
-    name.textContent = "Defense";
+    name.textContent = "Gunner";
     const cost = document.createElement("span");
     cost.className = "shop-cost";
     cost.textContent = "4";
@@ -454,7 +454,7 @@ function startGame(bots = 1): void {
     if (game.winner) return;
     const made = game.buyDefense();
     if (made > 0) {
-      showToast(made === 1 ? "Defense soldier ready." : `${made} defense soldiers ready.`);
+      showToast(made === 1 ? "Gunner ready." : `${made} gunners ready.`);
     } else {
       showToast("Select a base with 4 soldiers.");
     }

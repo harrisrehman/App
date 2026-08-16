@@ -479,5 +479,65 @@ function clampInRing(s, home, R) {
 const ring = clampInRing({ x: 200, y: 0 }, { x: 0, y: 0, r: 40 }, 80);
 assert(Math.abs(Math.hypot(ring.x, ring.y) - 80) < 0.01, "gunner stays in ring");
 
+function assignGunnerAims(guns, foes) {
+  const taken = new Set();
+  const aims = [];
+  for (const g of guns) {
+    let best = null;
+    let bestD = 9999;
+    for (const f of foes) {
+      if (taken.has(f.id)) continue;
+      const d = Math.hypot(g.x - f.x, g.y - f.y);
+      if (d < bestD) {
+        bestD = d;
+        best = f;
+      }
+    }
+    if (!best) {
+      bestD = 9999;
+      for (const f of foes) {
+        const d = Math.hypot(g.x - f.x, g.y - f.y);
+        if (d < bestD) {
+          bestD = d;
+          best = f;
+        }
+      }
+    }
+    if (best) taken.add(best.id);
+    aims.push(best ? best.id : null);
+  }
+  return aims;
+}
+
+const aims = assignGunnerAims(
+  [
+    { id: 1, x: 0, y: 0 },
+    { id: 2, x: 0, y: 0 },
+    { id: 3, x: 0, y: 0 },
+  ],
+  [
+    { id: 10, x: 5, y: 0 },
+    { id: 11, x: 15, y: 0 },
+    { id: 12, x: 25, y: 0 },
+  ],
+);
+assert(new Set(aims).size === 3, "gunners split unique targets");
+assert(aims[0] === 10 && aims[1] === 11 && aims[2] === 12, "nearest unique first");
+
+function shouldRetreat(d, close = 40) {
+  return d <= close;
+}
+assert(!shouldRetreat(80), "hold the ring at range");
+assert(shouldRetreat(40), "retreat only when close");
+
+function orbitSpot(i, n, clock, R, orbit = 0.26) {
+  const ang = clock * orbit + (i / n) * Math.PI * 2;
+  return { x: Math.cos(ang) * R, y: Math.sin(ang) * R };
+}
+const a = orbitSpot(0, 2, 0, 80);
+const b = orbitSpot(1, 2, 0, 80);
+assert(Math.abs(Math.hypot(a.x, a.y) - 80) < 0.01, "orbit sits on ring");
+assert(Math.abs(a.x - b.x) > 100, "two gunners sit opposite");
+
 console.log("engine tests passed");
 

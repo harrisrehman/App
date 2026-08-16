@@ -10,6 +10,9 @@ import {
   DEFENSE_FIRE,
   DEFENSE_HIT,
   DEFENSE_SHOT_SPEED,
+  GUNNER_CLOSE,
+  GUNNER_ORBIT,
+  GUNNER_STEER,
   WALL_BASE_PAD,
   WALL_LEASH,
   WALL_SENSE,
@@ -141,6 +144,7 @@ export class Game {
   bots = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
+  clock = 0;
   rng: () => number;
 
   constructor(seed = Date.now(), bots = 1) {
@@ -168,6 +172,7 @@ export class Game {
     this.wallMode = false;
     this.winner = null;
     this.finger = null;
+    this.clock = 0;
     nextSoldierId = 1;
     nextWallId = 1;
     this.seedOwned();
@@ -392,7 +397,9 @@ export class Game {
       }
     }
 
+    this.clock += dt;
     this.assignDefense();
+    this.assignGunnerAims();
     this.guideWalls();
     for (const s of this.soldiers) this.stepSoldier(s, dt);
 
@@ -494,6 +501,7 @@ export class Game {
       poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
       kind: "troop",
       shootAcc: 0,
+      aimId: null,
     });
   }
 
@@ -521,6 +529,7 @@ export class Game {
       poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
       kind: "gunner",
       shootAcc: 0,
+      aimId: null,
     });
   }
 
@@ -543,6 +552,7 @@ export class Game {
     s.poly = spinPoly(base.localPoly, this.rng() * Math.PI * 2);
     if (!s.kind) s.kind = "troop";
     s.shootAcc = s.shootAcc ?? 0;
+    s.aimId = null;
   }
 
   applyRules(): void {
@@ -557,21 +567,76 @@ export class Game {
     s.state = "return";
   }
 
-  private nearestFoe(s: Soldier, maxFromHome: number): Soldier | null {
-    const home = this.territories[s.homeId];
-    if (!home) return null;
-    let best: Soldier | null = null;
-    let bestD = 9999;
+  private gunnersAt(homeId: number): Soldier[] {
+    return this.soldiers
+      .filter((s) => s.kind === "gunner" && s.homeId === homeId && s.state !== "eject" && s.state !== "march")
+      .sort((a, b) => a.id - b.id);
+  }
+
+  private foesInSight(home: Territory, owner: Faction): Soldier[] {
+    const see = perimeterRadius(home) * 2;
+    const found: Soldier[] = [];
     for (const o of this.soldiers) {
-      if (o.owner === s.owner) continue;
-      if (dist(o, home.center) > maxFromHome) continue;
-      const d = dist(s, o);
-      if (d < bestD) {
-        bestD = d;
-        best = o;
+      if (o.owner === owner) continue;
+      if (dist(o, home.center) > see) continue;
+      found.push(o);
+    }
+    return found;
+  }
+
+  private assignGunnerAims(): void {
+    const homes = new Set<number>();
+    for (const s of this.soldiers) {
+      if (s.kind !== "gunner") continue;
+      s.aimId = null;
+      if (s.state === "eject" || s.state === "march") continue;
+      homes.add(s.homeId);
+    }
+    for (const homeId of homes) {
+      const home = this.territories[homeId];
+      const guns = this.gunnersAt(homeId);
+      if (!home || guns.length === 0) continue;
+      const foes = this.foesInSight(home, guns[0].owner);
+      const taken = new Set<number>();
+      for (const g of guns) {
+        let best: Soldier | null = null;
+        let bestD = 9999;
+        for (const f of foes) {
+          if (taken.has(f.id)) continue;
+          const d = dist(g, f);
+          if (d < bestD) {
+            bestD = d;
+            best = f;
+          }
+        }
+        if (!best) {
+          bestD = 9999;
+          for (const f of foes) {
+            const d = dist(g, f);
+            if (d < bestD) {
+              bestD = d;
+              best = f;
+            }
+          }
+        }
+        if (best) {
+          taken.add(best.id);
+          g.aimId = best.id;
+        }
       }
     }
-    return best;
+  }
+
+  private orbitSpot(s: Soldier, home: Territory): Point {
+    const crew = this.gunnersAt(s.homeId);
+    const i = Math.max(0, crew.findIndex((g) => g.id === s.id));
+    const n = Math.max(1, crew.length);
+    const R = perimeterRadius(home);
+    const ang = this.clock * GUNNER_ORBIT + (i / n) * Math.PI * 2;
+    return {
+      x: home.center.x + Math.cos(ang) * R,
+      y: home.center.y + Math.sin(ang) * R,
+    };
   }
 
   private clampInRing(s: Soldier, home: Territory): void {
@@ -591,44 +656,71 @@ export class Game {
     s.y = home.center.y + ((s.y - home.center.y) / d) * rad;
   }
 
+  private soldierVel(s: Soldier): Point {
+    if (s.state === "march" && s.toId !== null) {
+      const dest = this.territories[s.toId];
+      if (dest) {
+        const d = dist(s, dest.center) || 1;
+        return {
+          x: ((dest.center.x - s.x) / d) * ARMY_SPEED,
+          y: ((dest.center.y - s.y) / d) * ARMY_SPEED,
+        };
+      }
+    }
+    if (s.state === "return") {
+      const d = dist(s, { x: s.restX, y: s.restY }) || 1;
+      return {
+        x: ((s.restX - s.x) / d) * ARMY_SPEED,
+        y: ((s.restY - s.y) / d) * ARMY_SPEED,
+      };
+    }
+    return { x: 0, y: 0 };
+  }
+
   private fireShot(from: Soldier, to: Soldier): void {
-    const d = dist(from, to) || 1;
+    const v = this.soldierVel(to);
+    const range = dist(from, to);
+    const eta = range / DEFENSE_SHOT_SPEED;
+    const ax = to.x + v.x * eta;
+    const ay = to.y + v.y * eta;
+    const d = Math.hypot(ax - from.x, ay - from.y) || 1;
     this.shots.push({
       x: from.x,
       y: from.y,
-      vx: ((to.x - from.x) / d) * DEFENSE_SHOT_SPEED,
-      vy: ((to.y - from.y) / d) * DEFENSE_SHOT_SPEED,
+      vx: ((ax - from.x) / d) * DEFENSE_SHOT_SPEED,
+      vy: ((ay - from.y) / d) * DEFENSE_SHOT_SPEED,
       owner: from.owner,
-      life: 1.15,
+      life: 1.4,
+      toId: to.id,
     });
   }
 
   private stepGunner(s: Soldier, dt: number): void {
     const home = this.territories[s.homeId];
     if (!home || home.owner !== s.owner) return;
-    const see = perimeterRadius(home) * 2;
-    const foe = this.nearestFoe(s, see);
+    const foe = s.aimId != null ? this.soldiers.find((o) => o.id === s.aimId) ?? null : null;
+    const close = foe != null && dist(s, foe) <= GUNNER_CLOSE;
     const step = ARMY_SPEED * dt;
-    if (foe) {
+    if (close && foe) {
       const dx = s.x - foe.x;
       const dy = s.y - foe.y;
       const d = Math.hypot(dx, dy) || 1;
       s.x += (dx / d) * step;
       s.y += (dy / d) * step;
       s.state = "defend";
+      this.clampInRing(s, home);
     } else {
-      const d = dist(s, { x: s.restX, y: s.restY });
+      const spot = this.orbitSpot(s, home);
+      const d = dist(s, spot);
       if (d <= step) {
-        s.x = s.restX;
-        s.y = s.restY;
-        s.state = "idle";
+        s.x = spot.x;
+        s.y = spot.y;
       } else {
-        s.x += ((s.restX - s.x) / d) * step;
-        s.y += ((s.restY - s.y) / d) * step;
-        s.state = "return";
+        s.x += ((spot.x - s.x) / d) * step;
+        s.y += ((spot.y - s.y) / d) * step;
       }
+      s.state = foe ? "defend" : "idle";
     }
-    this.clampInRing(s, home);
     s.shootAcc += dt;
     if (foe && s.shootAcc >= DEFENSE_FIRE && this.inPerimeter(home, s)) {
       s.shootAcc = 0;
@@ -636,20 +728,45 @@ export class Game {
     }
   }
 
+  private steerShot(shot: Shot, dt: number): void {
+    if (shot.toId == null) return;
+    const target = this.soldiers.find((s) => s.id === shot.toId && s.owner !== shot.owner);
+    if (!target) return;
+    const d = dist(shot, target) || 1;
+    const tvx = ((target.x - shot.x) / d) * DEFENSE_SHOT_SPEED;
+    const tvy = ((target.y - shot.y) / d) * DEFENSE_SHOT_SPEED;
+    const k = Math.min(1, GUNNER_STEER * dt);
+    shot.vx += (tvx - shot.vx) * k;
+    shot.vy += (tvy - shot.vy) * k;
+    const sp = Math.hypot(shot.vx, shot.vy) || 1;
+    shot.vx = (shot.vx / sp) * DEFENSE_SHOT_SPEED;
+    shot.vy = (shot.vy / sp) * DEFENSE_SHOT_SPEED;
+  }
+
+  private hitSoldier(s: Soldier, dead: Set<number>): void {
+    s.hp -= 1;
+    this.addPop(s.x, s.y);
+    if (s.hp <= 0) dead.add(s.id);
+  }
+
   private stepShots(dt: number, dead: Set<number>): void {
     const keep: Shot[] = [];
     for (const shot of this.shots) {
+      this.steerShot(shot, dt);
       shot.x += shot.vx * dt;
       shot.y += shot.vy * dt;
       shot.life -= dt;
       if (shot.life <= 0) continue;
+      const aimed = shot.toId != null ? this.soldiers.find((s) => s.id === shot.toId) : undefined;
+      if (aimed && !dead.has(aimed.id) && aimed.owner !== shot.owner && dist(shot, aimed) <= DEFENSE_HIT) {
+        this.hitSoldier(aimed, dead);
+        continue;
+      }
       let hit = false;
       for (const s of this.soldiers) {
         if (dead.has(s.id) || s.owner === shot.owner) continue;
         if (dist(shot, s) > DEFENSE_HIT) continue;
-        s.hp -= 1;
-        this.addPop(s.x, s.y);
-        if (s.hp <= 0) dead.add(s.id);
+        this.hitSoldier(s, dead);
         hit = true;
         break;
       }
