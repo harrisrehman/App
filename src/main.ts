@@ -384,13 +384,12 @@ function startGame(bots = 1): void {
       showToast("Wall canceled.");
       return;
     }
-    const mine = [...game.selected].some((id) => game.territories[id]?.owner === "player");
+    const mine = game.hasWallPick();
     if (!mine) {
-      showToast("Select a base first.");
+      showToast("Select soldiers first.");
       return;
     }
-    const troops = [...game.selected].reduce((n, id) => n + game.garrison(id).length, 0);
-    if (troops < 1) {
+    if (game.wallPickCount() < 1) {
       showToast("No soldiers to wall.");
       return;
     }

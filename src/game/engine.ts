@@ -6,13 +6,36 @@ import {
   SOLDIER_GAP,
   START_TROOPS,
   SPAWN_INTERVAL,
+  WALL_CHASE,
+  WALL_SENSE,
   ringRadius,
   rules,
 } from "./config";
-import { closePath, dist, isClosedLasso, pathHits, pathLength, pointInPoly, wallSpots } from "./geo";
+import {
+  behindSign,
+  closePath,
+  dist,
+  isClosedLasso,
+  offsetPath,
+  pathHits,
+  pathLength,
+  pointInPoly,
+  wallSpots,
+} from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
-import { isBot, type Army, type Faction, type Owner, type Point, type Pop, type Soldier, type Territory, type Winner } from "./types";
+import {
+  isBot,
+  type Army,
+  type Faction,
+  type Owner,
+  type Point,
+  type Pop,
+  type Soldier,
+  type Territory,
+  type Wall,
+  type Winner,
+} from "./types";
 
 export function perimeterRadius(t: Territory): number {
   return ringRadius(t.radius);
@@ -37,6 +60,7 @@ export function applyArrival(dest: Territory, army: Army): void {
 }
 
 let nextSoldierId = 1;
+let nextWallId = 1;
 
 function easeOutBack(t: number): number {
   const c1 = 1.70158;
@@ -98,6 +122,8 @@ export class Game {
   armies: Army[] = [];
   pops: Pop[] = [];
   selected = new Set<number>();
+  picked = new Set<number>();
+  walls: Wall[] = [];
   stroke: Point[] = [];
   strokeFade = 0;
   stroking = false;
@@ -122,6 +148,8 @@ export class Game {
     this.armies = [];
     this.pops = [];
     this.selected.clear();
+    this.picked.clear();
+    this.walls = [];
     this.stroke = [];
     this.strokeFade = 0;
     this.stroking = false;
@@ -129,6 +157,7 @@ export class Game {
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
+    nextWallId = 1;
     this.seedOwned();
   }
 
@@ -141,6 +170,39 @@ export class Game {
 
   garrison(id: number): Soldier[] {
     return this.soldiers.filter((s) => s.homeId === id && s.state !== "march");
+  }
+
+  freeGarrison(id: number): Soldier[] {
+    return this.garrison(id).filter((s) => s.wallId == null);
+  }
+
+  clearSelection(): void {
+    this.selected.clear();
+    this.picked.clear();
+  }
+
+  wallPickCount(): number {
+    const seen = new Set<number>();
+    let n = 0;
+    for (const id of this.selected) {
+      for (const s of this.freeGarrison(id)) {
+        if (seen.has(s.id)) continue;
+        seen.add(s.id);
+        n += 1;
+      }
+    }
+    for (const id of this.picked) {
+      if (seen.has(id)) continue;
+      const s = this.soldiers.find((x) => x.id === id);
+      if (!s || s.state === "march" || s.owner !== "player") continue;
+      seen.add(id);
+      n += 1;
+    }
+    return n;
+  }
+
+  hasWallPick(): boolean {
+    return this.wallPickCount() > 0;
   }
 
   incoming(id: number, owner: Owner): number {
@@ -166,7 +228,7 @@ export class Game {
     const to = this.territories[toId];
     if (!from || !to || from.owner === "neutral") return false;
 
-    const pool = this.garrison(fromId);
+    const pool = this.freeGarrison(fromId);
     if (pool.length < 1) return false;
 
     for (const s of pool) {
@@ -192,7 +254,7 @@ export class Game {
   }
 
   selectFromStroke(path: Point[]): void {
-    this.selected.clear();
+    this.clearSelection();
     if (path.length < 1) return;
     const loop = closePath(path);
     const closed = isClosedLasso(path);
@@ -200,7 +262,9 @@ export class Game {
       pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, loop));
     for (const s of this.soldiers) {
       if (s.owner !== "player") continue;
-      if (hit({ x: s.x, y: s.y }, 16)) this.selected.add(s.homeId);
+      if (!hit({ x: s.x, y: s.y }, 16)) continue;
+      if (s.wallId != null) this.picked.add(s.id);
+      else this.selected.add(s.homeId);
     }
     for (const t of this.territories) {
       if (t.owner !== "player") continue;
@@ -223,25 +287,29 @@ export class Game {
 
   formWall(path: Point[]): boolean {
     if (this.winner) return false;
-    const ids = [...this.selected].filter((id) => this.territories[id]?.owner === "player");
-    if (ids.length === 0) return false;
     if (pathLength(path) < 28) return false;
-    const pool = ids.flatMap((id) => this.garrison(id));
+    const pool = this.wallPool();
     if (pool.length < 1) return false;
     const from = {
       x: pool.reduce((n, s) => n + s.x, 0) / pool.length,
       y: pool.reduce((n, s) => n + s.y, 0) / pool.length,
     };
-    const spots = wallSpots(path, pool.length, from, SOLDIER_GAP);
-    for (let i = 0; i < pool.length; i++) {
-      const s = pool[i];
-      const p = spots[i] ?? spots[spots.length - 1];
-      s.restX = p.x;
-      s.restY = p.y;
+    const wall: Wall = {
+      id: nextWallId++,
+      owner: "player",
+      path: path.map((p) => ({ x: p.x, y: p.y })),
+      from,
+    };
+    this.walls.push(wall);
+    for (const s of pool) s.wallId = wall.id;
+    this.packWall(wall);
+    for (const s of pool) {
       s.toId = null;
       s.state = "return";
     }
+    this.pruneWalls();
     this.wallMode = false;
+    this.clearSelection();
     return true;
   }
 
@@ -250,7 +318,11 @@ export class Game {
     for (const fromId of [...this.selected]) {
       if (this.send(fromId, toId)) sent = true;
     }
-    this.selected.clear();
+    for (const sid of [...this.picked]) {
+      if (this.sendSoldier(sid, toId)) sent = true;
+    }
+    this.pruneWalls();
+    this.clearSelection();
     return sent;
   }
 
@@ -282,7 +354,10 @@ export class Game {
       const keep = this.arrive(s, dest, dead);
       if (!keep) dead.add(s.id);
     }
-    if (dead.size) this.soldiers = this.soldiers.filter((s) => !dead.has(s.id));
+    if (dead.size) {
+      this.soldiers = this.soldiers.filter((s) => !dead.has(s.id));
+      this.pruneWalls();
+    }
     this.stepPops(dt);
     this.syncTroops();
     this.checkWinner();
@@ -335,7 +410,7 @@ export class Game {
   private restTaken(homeId: number, skipId?: number): Point[] {
     const out: Point[] = [];
     for (const s of this.soldiers) {
-      if (s.homeId !== homeId || s.state === "march") continue;
+      if (s.homeId !== homeId || s.state === "march" || s.wallId != null) continue;
       if (skipId !== undefined && s.id === skipId) continue;
       out.push({ x: s.restX, y: s.restY });
     }
@@ -349,6 +424,7 @@ export class Game {
       id: nextSoldierId++,
       owner: base.owner,
       homeId: base.id,
+      wallId: null,
       x: path.from.x,
       y: path.from.y,
       state: "eject",
@@ -369,6 +445,7 @@ export class Game {
   private startEject(s: Soldier, base: Territory): void {
     const path = ejectPath(base, this.restTaken(base.id, s.id), this.rng);
     s.homeId = base.id;
+    s.wallId = null;
     s.toId = null;
     s.state = "eject";
     s.ejectT = 0;
@@ -425,8 +502,7 @@ export class Game {
     }
 
     if (s.state === "defend") {
-      const home = this.territories[s.homeId];
-      const foes = this.invaders(home);
+      const foes = this.defendFoes(s);
       let target = foes[0];
       let best = 9999;
       for (const f of foes) {
@@ -501,14 +577,152 @@ export class Game {
     return found;
   }
 
+  private wallCrew(wall: Wall): Soldier[] {
+    return this.soldiers.filter((s) => s.wallId === wall.id && s.state !== "march");
+  }
+
+  private wallRanks(wall: Wall, count: number): number {
+    const perLine = Math.max(1, Math.floor(pathLength(wall.path) / SOLDIER_GAP) + 1);
+    return Math.max(1, Math.ceil(count / perLine));
+  }
+
+  private nearWall(wall: Wall, p: Point, pad: number, ranks: number): boolean {
+    if (pathHits(wall.path, p, pad)) return true;
+    const sign = behindSign(wall.path, wall.from);
+    for (let r = 1; r < ranks; r++) {
+      if (pathHits(offsetPath(wall.path, sign * r * SOLDIER_GAP), p, pad)) return true;
+    }
+    return false;
+  }
+
+  private wallThreats(wall: Wall): Soldier[] {
+    const crew = this.wallCrew(wall);
+    if (crew.length === 0) return [];
+    const ranks = this.wallRanks(wall, crew.length);
+    const chasing = crew.some((s) => s.state === "defend");
+    const pad = chasing ? WALL_CHASE : WALL_SENSE;
+    const found: Soldier[] = [];
+    for (const s of this.soldiers) {
+      if (s.owner === wall.owner) continue;
+      if (this.nearWall(wall, s, pad, ranks)) {
+        found.push(s);
+        continue;
+      }
+      if (!chasing) continue;
+      for (const w of crew) {
+        if (dist(s, w) <= FIGHT_RADIUS * 2) {
+          found.push(s);
+          break;
+        }
+      }
+    }
+    return found;
+  }
+
+  private defendFoes(s: Soldier): Soldier[] {
+    if (s.wallId != null) {
+      const wall = this.walls.find((w) => w.id === s.wallId);
+      return wall ? this.wallThreats(wall) : [];
+    }
+    const home = this.territories[s.homeId];
+    return home ? this.invaders(home) : [];
+  }
+
+  private packWall(wall: Wall): void {
+    const crew = this.wallCrew(wall);
+    if (crew.length === 0) return;
+    const spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP);
+    const used = new Set<number>();
+    for (const s of crew) {
+      let best = -1;
+      let bestD = 9999;
+      for (let i = 0; i < spots.length; i++) {
+        if (used.has(i)) continue;
+        const d = dist({ x: s.x, y: s.y }, spots[i]);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      if (best < 0) continue;
+      used.add(best);
+      s.restX = spots[best].x;
+      s.restY = spots[best].y;
+    }
+  }
+
+  private pruneWalls(): void {
+    const keep: Wall[] = [];
+    for (const wall of this.walls) {
+      const crew = this.wallCrew(wall);
+      if (crew.length === 0) continue;
+      if (this.wallThreats(wall).length === 0) {
+        this.packWall(wall);
+        for (const s of crew) {
+          if (s.state !== "defend" && s.state !== "march") this.sendHome(s);
+        }
+      }
+      keep.push(wall);
+    }
+    this.walls = keep;
+  }
+
+  private wallPool(): Soldier[] {
+    const seen = new Set<number>();
+    const pool: Soldier[] = [];
+    const add = (s: Soldier | undefined): void => {
+      if (!s || s.state === "march" || s.owner !== "player") return;
+      if (seen.has(s.id)) return;
+      seen.add(s.id);
+      pool.push(s);
+    };
+    for (const id of this.selected) {
+      for (const s of this.freeGarrison(id)) add(s);
+    }
+    for (const id of this.picked) {
+      add(this.soldiers.find((s) => s.id === id));
+    }
+    return pool;
+  }
+
+  private sendSoldier(id: number, toId: number): boolean {
+    if (this.winner) return false;
+    const s = this.soldiers.find((x) => x.id === id);
+    const to = this.territories[toId];
+    if (!s || !to || s.state === "march") return false;
+    if (s.owner !== "player") return false;
+    s.wallId = null;
+    s.state = "march";
+    s.toId = toId;
+    return true;
+  }
+
   private assignDefense(): void {
+    this.assignWallDefense();
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
       const underAttack = this.invaders(t).length > 0;
       for (const s of this.soldiers) {
-        if (s.homeId !== t.id || s.state === "march") continue;
+        if (s.homeId !== t.id || s.state === "march" || s.wallId != null) continue;
         if (underAttack) s.state = "defend";
         else if (s.state === "defend") this.sendHome(s);
+      }
+    }
+  }
+
+  private assignWallDefense(): void {
+    for (const wall of this.walls) {
+      const crew = this.wallCrew(wall);
+      if (crew.length === 0) continue;
+      const threats = this.wallThreats(wall);
+      if (threats.length > 0) {
+        for (const s of crew) s.state = "defend";
+        continue;
+      }
+      const fighting = crew.some((s) => s.state === "defend");
+      if (fighting) this.packWall(wall);
+      for (const s of crew) {
+        if (s.state === "defend") this.sendHome(s);
       }
     }
   }

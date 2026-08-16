@@ -60,16 +60,21 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   }
 
   for (const s of game.soldiers) {
-    if (s.state !== "march") drawSoldier(ctx, s, game.selected.has(s.homeId));
+    if (s.state !== "march") drawSoldier(ctx, s, soldierPicked(game, s));
   }
   for (const s of game.soldiers) {
-    if (s.state === "march") drawSoldier(ctx, s, game.selected.has(s.homeId));
+    if (s.state === "march") drawSoldier(ctx, s, soldierPicked(game, s));
   }
 
   for (const p of game.pops) drawPop(ctx, p);
   drawStroke(ctx, game);
 
   ctx.restore();
+}
+
+function soldierPicked(game: Game, s: Soldier): boolean {
+  if (s.wallId != null) return game.picked.has(s.id);
+  return game.selected.has(s.homeId);
 }
 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {

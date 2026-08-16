@@ -33,6 +33,7 @@ export type Soldier = {
   id: number;
   owner: Faction;
   homeId: number;
+  wallId: number | null;
   x: number;
   y: number;
   state: SoldierState;
@@ -47,6 +48,13 @@ export type Soldier = {
   restY: number;
   hp: number;
   poly: Point[];
+};
+
+export type Wall = {
+  id: number;
+  owner: Faction;
+  path: Point[];
+  from: Point;
 };
 
 export type Army = {

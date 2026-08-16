@@ -87,6 +87,8 @@ export const AI_MIN_WAIT = 1.15;
 export const AI_MAX_WAIT = 2.1;
 export const FIGHT_RADIUS = 16;
 export const SOLDIER_GAP = 18;
+export const WALL_SENSE = 72;
+export const WALL_CHASE = 240;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 

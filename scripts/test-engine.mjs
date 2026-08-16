@@ -163,6 +163,20 @@ const wall = wallSpots([{ x: 0, y: 0 }, { x: 100, y: 0 }], 10, { x: 50, y: 20 },
 assert(wall.length === 10, "wall ranks count failed");
 assert(wall.slice(0, 6).every((p) => Math.abs(p.y) < 0.01), "first rank not on line");
 assert(wall.slice(6).every((p) => Math.abs(p.y - 18) < 0.01), "second rank not behind");
+const refill = wallSpots([{ x: 0, y: 0 }, { x: 100, y: 0 }], 6, { x: 50, y: 20 }, 18);
+assert(refill.length === 6 && refill.every((p) => Math.abs(p.y) < 0.01), "refill first line first");
+const thin = wallSpots([{ x: 0, y: 0 }, { x: 100, y: 0 }], 3, { x: 50, y: 20 }, 18);
+assert(thin.length === 3, "thin wall count failed");
+assert(Math.abs(thin[0].x) < 0.01 && Math.abs(thin[2].x - 100) < 0.01, "thin wall should spread");
+function sendPool(soldiers, fromId) {
+  return soldiers.filter((s) => s.homeId === fromId && s.state !== "march" && s.wallId == null);
+}
+const squad = [
+  { homeId: 1, state: "idle", wallId: null },
+  { homeId: 1, state: "idle", wallId: 3 },
+  { homeId: 1, state: "march", wallId: null },
+];
+assert(sendPool(squad, 1).length === 1, "send should skip wall soldiers");
 for (let i = 0; i < wall.length; i++) {
   for (let j = i + 1; j < wall.length; j++) {
     assert(Math.hypot(wall[i].x - wall[j].x, wall[i].y - wall[j].y) >= 17.9, "wall soldiers overlap");

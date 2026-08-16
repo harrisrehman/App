@@ -49,18 +49,18 @@ export function bindInput(
     if (game.wallMode || !dragged) return;
     if (!picking) {
       picking = true;
-      game.selected.clear();
+      game.clearSelection();
     }
     game.selectFromStroke(game.stroke);
   };
 
   const tap = (id: number | null): void => {
-    if (id !== null && game.selected.size > 0) {
-      if ([...game.selected].some((from) => from !== id)) game.sendSelected(id);
+    if (id !== null && (game.picked.size > 0 || [...game.selected].some((from) => from !== id))) {
+      game.sendSelected(id);
       game.finger = null;
       return;
     }
-    game.selected.clear();
+    game.clearSelection();
     game.finger = null;
   };
 
