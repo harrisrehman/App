@@ -17,7 +17,7 @@ export const COLORS = {
 } as const;
 
 export const ARMY_SPEED = 83;
-export const SPAWN_INTERVAL = 2;
+export const SPAWN_INTERVAL = 5;
 export const BASE_HEALTH = 10;
 export const SOLDIER_HEALTH = 1;
 
