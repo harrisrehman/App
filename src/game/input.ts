@@ -7,7 +7,7 @@ export function hitTerritory(game: Game, x: number, y: number): number | null {
   let best: { id: number; d: number } | null = null;
   for (const t of game.territories) {
     const d = dist({ x, y }, t.center);
-    if (d > 56) continue;
+    if (d > t.radius + 12) continue;
     if (!best || d < best.d) best = { id: t.id, d };
   }
   return best?.id ?? null;

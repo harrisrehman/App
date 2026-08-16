@@ -9,11 +9,26 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    cssCodeSplit: false,
+    modulePreload: false,
+    assetsInlineLimit: 100000000,
     rollupOptions: {
       output: {
         format: "iife",
         inlineDynamicImports: true,
+        entryFileNames: "assets/game.js",
       },
     },
   },
+  plugins: [
+    {
+      name: "classic-script",
+      transformIndexHtml(html) {
+        return html
+          .replaceAll(`type="module" crossorigin `, "")
+          .replaceAll(`type="module" `, "")
+          .replaceAll(" crossorigin", "");
+      },
+    },
+  ],
 });

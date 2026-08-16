@@ -67,12 +67,11 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
-  const scale = 34 / Math.max(t.radius, 1);
-  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, scale, color, 1);
+  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, 1, color, 1);
   if (selected) {
-    pathPoly(ctx, t.localPoly, t.center.x, t.center.y, scale);
+    pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
     ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 3;
     ctx.stroke();
   }
   ctx.fillStyle = COLORS.bg;
@@ -84,7 +83,7 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  const scale = (11 * pop) / 80;
+  const scale = (18 * pop) / 80;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
 }
 

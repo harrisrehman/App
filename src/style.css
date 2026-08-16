@@ -70,7 +70,12 @@ body {
   font-size: 14px;
 }
 
-#version,
+#version {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 #score {
   color: var(--muted);
   font-size: 12px;

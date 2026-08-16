@@ -46,6 +46,7 @@ export class Game {
   constructor(seed = Date.now()) {
     this.rng = mulberry32(seed);
     this.territories = createMap(seed);
+    this.seedOwned();
   }
 
   restart(seed = Date.now()): void {
@@ -57,6 +58,14 @@ export class Game {
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
+    this.seedOwned();
+  }
+
+  private seedOwned(): void {
+    for (const t of this.territories) {
+      if (t.owner === "neutral") continue;
+      this.spawnSoldier(t);
+    }
   }
 
   garrison(id: number): Soldier[] {

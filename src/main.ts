@@ -6,103 +6,149 @@ import { render } from "./game/render";
 import { applyUpdate, localVersion, peekUpdate } from "./game/update";
 import { loadBundledVersion } from "./version";
 
-async function startGame(): Promise<void> {
-  const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
-  const ctx = canvas.getContext("2d")!;
-  const scoreEl = document.querySelector("#score")!;
-  const updateBtn = document.querySelector<HTMLButtonElement>("#update-btn")!;
-  const toastEl = document.querySelector("#toast")!;
-  const overlay = document.querySelector("#overlay")!;
-  const resultEl = document.querySelector("#result")!;
-  const restartBtn = document.querySelector<HTMLButtonElement>("#restart-btn")!;
-  const versionEl = document.querySelector("#version")!;
-  const hintEl = document.querySelector("#hint")!;
+declare global {
+  interface Window {
+    __annexStop?: () => void;
+  }
+}
+
+function startGame(): void {
+  window.__annexStop?.();
+
+  const boardEl = document.querySelector<HTMLCanvasElement>("#game");
+  const drawEl = boardEl?.getContext("2d");
+  const scoreEl = document.querySelector("#score");
+  const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
+  const toastEl = document.querySelector("#toast");
+  const overlayEl = document.querySelector("#overlay");
+  const resultEl = document.querySelector("#result");
+  const restartEl = document.querySelector<HTMLButtonElement>("#restart-btn");
+  const versionEl = document.querySelector("#version");
+  const hint = document.querySelector("#hint");
+
+  if (!boardEl || !drawEl || !scoreEl || !updateEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+    document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
+    return;
+  }
+
+  const board = boardEl;
+  const draw = drawEl;
+  const score = scoreEl;
+  const update = updateEl;
+  const toastBox = toastEl;
+  const endScreen = overlayEl;
+  const result = resultEl;
+  const again = restartEl;
+  const version = versionEl;
 
   const game = new Game();
   const ai = new Commander();
   let cam: Camera = fitCamera(1, 1);
   let shownWinner = false;
+  let alive = true;
 
   function resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = window.innerWidth;
     const h = window.innerHeight;
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    board.width = Math.floor(w * dpr);
+    board.height = Math.floor(h * dpr);
+    board.style.width = `${w}px`;
+    board.style.height = `${h}px`;
+    draw.setTransform(dpr, 0, 0, dpr, 0, 0);
     cam = fitCamera(w, h);
   }
 
   function toast(text: string): void {
-    toastEl.textContent = text;
-    toastEl.classList.add("show");
-    window.setTimeout(() => toastEl.classList.remove("show"), 2200);
+    toastBox.textContent = text;
+    toastBox.classList.add("show");
+    window.setTimeout(() => toastBox.classList.remove("show"), 2200);
   }
 
   function syncHud(): void {
     const totals = game.totals();
-    scoreEl.textContent = `${Math.floor(totals.player)} · ${Math.floor(totals.ai)}`;
+    score.textContent = `${Math.floor(totals.player)} · ${Math.floor(totals.ai)}`;
     if (game.winner && !shownWinner) {
       shownWinner = true;
-      resultEl.textContent = game.winner === "player" ? "You win" : "You lose";
-      overlay.classList.remove("hidden");
+      result.textContent = game.winner === "player" ? "You win" : "You lose";
+      endScreen.classList.remove("hidden");
     }
   }
 
-  window.setTimeout(() => {
-    hintEl.classList.add("gone");
+  const hintTimer = window.setTimeout(() => {
+    hint?.classList.add("gone");
   }, 4500);
 
-  restartBtn.addEventListener("click", () => {
+  const onRestart = (): void => {
     game.restart();
     ai.wait = 1.8;
     ai.lastTarget = -1;
     ai.repeats = 0;
     shownWinner = false;
-    overlay.classList.add("hidden");
-  });
+    endScreen.classList.add("hidden");
+  };
 
-  updateBtn.addEventListener("click", async () => {
-    updateBtn.disabled = true;
-    updateBtn.textContent = "…";
+  const onUpdate = async (): Promise<void> => {
+    update.disabled = true;
+    update.textContent = "…";
     const state = await applyUpdate();
+    if (!alive) return;
     if (state === "offline") toast("Update failed. Try again.");
     if (state === "latest") toast("Already latest.");
-    updateBtn.disabled = false;
-    updateBtn.textContent = "Update";
-  });
+    update.disabled = false;
+    update.textContent = "Update";
+  };
 
-  bindInput(canvas, game, () => cam);
+  again.addEventListener("click", onRestart);
+  update.addEventListener("click", onUpdate);
+
+  const unbind = bindInput(board, game, () => cam);
   window.addEventListener("resize", resize);
   resize();
 
+  version.textContent = `v${localVersion().version}`;
   void loadBundledVersion().then((ver) => {
-    versionEl.textContent = `v${ver.version}`;
+    if (!alive) return;
+    version.textContent = `v${ver.version}`;
     return peekUpdate();
   }).then((newer) => {
-    if (newer) updateBtn.classList.add("badge");
+    if (alive && newer) update.classList.add("badge");
   });
-
-  versionEl.textContent = `v${localVersion().version}`;
 
   let last = performance.now();
   function loop(now: number): void {
+    if (!alive) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     game.update(dt);
     ai.tick(game, dt);
-    render(ctx, game, cam);
+    render(draw, game, cam);
     syncHud();
     requestAnimationFrame(loop);
   }
 
+  window.__annexStop = () => {
+    alive = false;
+    window.clearTimeout(hintTimer);
+    unbind();
+    window.removeEventListener("resize", resize);
+    again.removeEventListener("click", onRestart);
+    update.removeEventListener("click", onUpdate);
+  };
+
   requestAnimationFrame(loop);
 }
 
-try {
-  void startGame();
-} catch {
-  document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
+function boot(): void {
+  try {
+    startGame();
+  } catch {
+    document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot, { once: true });
+} else {
+  boot();
 }

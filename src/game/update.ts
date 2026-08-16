@@ -6,6 +6,12 @@ export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
 const APPLIED_KEY = "annex-applied-build";
 const HTML_KEY = "annex-html";
 
+try {
+  localStorage.removeItem(HTML_KEY);
+} catch {
+  /* ignore */
+}
+
 export function localVersion(): AppVersion {
   return APP_VERSION;
 }
@@ -59,12 +65,11 @@ async function downloadGame(base: string): Promise<string | null> {
   }
 }
 
-function injectHtml(html: string): boolean {
+function runScripts(html: string): boolean {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
-    for (const s of doc.querySelectorAll("script")) s.remove();
-    document.documentElement.innerHTML = doc.documentElement.innerHTML;
+    window.__annexStop?.();
     for (const code of scripts) {
       if (!code.trim()) continue;
       const fn = new Function(code);
@@ -76,29 +81,16 @@ function injectHtml(html: string): boolean {
   }
 }
 
-function persist(build: number, html: string): void {
-  localStorage.setItem(APPLIED_KEY, String(build));
-  localStorage.setItem(HTML_KEY, html);
-}
-
-function markHtml(html: string, build: number): string {
-  if (html.includes("data-annex-applied=")) {
-    return html.replace(/data-annex-applied="\d+"/, `data-annex-applied="${build}"`);
-  }
-  return html.replace("<html", `<html data-annex-applied="${build}"`);
-}
-
 export async function applyUpdate(): Promise<UpdateState> {
   const remote = await fetchRemote();
   if (!remote) return "offline";
-  const html = await downloadGame(remote.base);
-  if (!html) return "offline";
-  const tagged = markHtml(html, remote.version.build);
-  if (remote.version.build === appliedBuild() && localStorage.getItem(HTML_KEY) === tagged) {
+  if (remote.version.build <= Math.max(appliedBuild(), APP_VERSION.build)) {
     return "latest";
   }
-  persist(remote.version.build, tagged);
-  if (!injectHtml(tagged)) return "offline";
+  const html = await downloadGame(remote.base);
+  if (!html) return "offline";
+  if (!runScripts(html)) return "offline";
+  localStorage.setItem(APPLIED_KEY, String(remote.version.build));
   return "ready";
 }
 
