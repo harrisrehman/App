@@ -89,6 +89,7 @@ export const FIGHT_RADIUS = 16;
 export const SOLDIER_GAP = 18;
 export const WALL_SENSE = 72;
 export const WALL_CHASE = 240;
+export const WALL_BASE_PAD = 16;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 

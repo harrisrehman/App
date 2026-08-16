@@ -6,6 +6,7 @@ import {
   SOLDIER_GAP,
   START_TROOPS,
   SPAWN_INTERVAL,
+  WALL_BASE_PAD,
   WALL_CHASE,
   WALL_SENSE,
   ringRadius,
@@ -16,6 +17,7 @@ import {
   closePath,
   dist,
   isClosedLasso,
+  nearPoly,
   offsetPath,
   pathHits,
   pathLength,
@@ -628,10 +630,18 @@ export class Game {
     return home ? this.invaders(home) : [];
   }
 
+  private hitsBase(p: Point): boolean {
+    for (const t of this.territories) {
+      if (dist(p, t.center) <= t.radius + WALL_BASE_PAD) return true;
+      if (nearPoly(p, t.poly, WALL_BASE_PAD)) return true;
+    }
+    return false;
+  }
+
   private packWall(wall: Wall): void {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return;
-    const spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP);
+    const spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     const used = new Set<number>();
     for (const s of crew) {
       let best = -1;

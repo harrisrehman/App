@@ -140,19 +140,96 @@ function behindSign(path, from) {
   return (from.x - mid.x) * nx + (from.y - mid.y) * ny >= 0 ? 1 : -1;
 }
 
-function wallSpots(path, count, from, gap) {
-  if (count < 1 || path.length === 0) return [];
+function densifyPath(path, step) {
+  const out = [{ x: path[0].x, y: path[0].y }];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const d = dist(a, b);
+    const n = Math.max(1, Math.ceil(d / Math.max(1, step)));
+    for (let k = 1; k <= n; k++) {
+      const t = k / n;
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+  }
+  return out;
+}
+
+function splitClear(path, blocked, step = 4) {
+  const samples = densifyPath(path, step);
+  const segs = [];
+  let cur = [];
+  for (const p of samples) {
+    if (blocked(p)) {
+      if (cur.length >= 2) segs.push(cur);
+      cur = [];
+    } else cur.push(p);
+  }
+  if (cur.length >= 2) segs.push(cur);
+  return segs;
+}
+
+function pointAlongSegments(segs, target) {
+  let acc = 0;
+  for (let s = 0; s < segs.length; s++) {
+    const seg = segs[s];
+    let len = 0;
+    for (let i = 1; i < seg.length; i++) len += dist(seg[i - 1], seg[i]);
+    const last = s === segs.length - 1;
+    if (!last && acc + len < target) {
+      acc += len;
+      continue;
+    }
+    let inner = Math.max(0, target - acc);
+    if (inner > len) inner = len;
+    let walk = 0;
+    for (let i = 1; i < seg.length; i++) {
+      const a = seg[i - 1];
+      const b = seg[i];
+      const d = dist(a, b);
+      if (walk + d >= inner || i === seg.length - 1) {
+        const t = d < 0.001 ? 0 : (inner - walk) / d;
+        const k = Math.max(0, Math.min(1, t));
+        return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+      }
+      walk += d;
+    }
+  }
+  const last = segs[segs.length - 1];
+  return last[last.length - 1];
+}
+
+function resampleSegments(segs, count) {
   let total = 0;
-  for (let i = 1; i < path.length; i++) total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-  const perLine = Math.max(1, Math.floor(total / gap) + 1);
+  for (const seg of segs) {
+    for (let i = 1; i < seg.length; i++) total += dist(seg[i - 1], seg[i]);
+  }
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(pointAlongSegments(segs, (i / Math.max(1, count - 1)) * total));
+  return out;
+}
+
+function wallSpots(path, count, from, gap, blocked) {
+  if (count < 1 || path.length === 0) return [];
+  const block = blocked || (() => false);
   const sign = behindSign(path, from);
   const out = [];
   let left = count;
   let rank = 0;
   while (left > 0 && rank < 24) {
-    const n = Math.min(perLine, left);
     const row = rank === 0 ? path : offsetPath(path, sign * rank * gap);
-    out.push(...resamplePath(row, n));
+    const segs = splitClear(row, block);
+    let usable = 0;
+    for (const seg of segs) {
+      for (let i = 1; i < seg.length; i++) usable += dist(seg[i - 1], seg[i]);
+    }
+    const cap = usable < 1 ? 0 : Math.max(1, Math.floor(usable / gap) + 1);
+    if (cap < 1) {
+      rank += 1;
+      continue;
+    }
+    const n = Math.min(left, cap);
+    out.push(...resampleSegments(segs, n));
     left -= n;
     rank += 1;
   }
@@ -168,6 +245,10 @@ assert(refill.length === 6 && refill.every((p) => Math.abs(p.y) < 0.01), "refill
 const thin = wallSpots([{ x: 0, y: 0 }, { x: 100, y: 0 }], 3, { x: 50, y: 20 }, 18);
 assert(thin.length === 3, "thin wall count failed");
 assert(Math.abs(thin[0].x) < 0.01 && Math.abs(thin[2].x - 100) < 0.01, "thin wall should spread");
+const blocked = (p) => p.x > 80 && p.x < 120;
+const clear = wallSpots([{ x: 0, y: 0 }, { x: 200, y: 0 }], 8, { x: 100, y: 20 }, 18, blocked);
+assert(clear.length === 8, "clipped wall count failed");
+assert(clear.every((p) => !blocked(p)), "wall soldiers overlap a base");
 function sendPool(soldiers, fromId) {
   return soldiers.filter((s) => s.homeId === fromId && s.state !== "march" && s.wallId == null);
 }

@@ -158,19 +158,141 @@ export function behindSign(path: Point[], from: Point): number {
   return (from.x - mid.x) * nx + (from.y - mid.y) * ny >= 0 ? 1 : -1;
 }
 
-export function wallSpots(path: Point[], count: number, from: Point, gap: number): Point[] {
+export function nearPoly(p: Point, poly: Point[], pad: number): boolean {
+  if (poly.length === 0) return false;
+  if (pointInPoly(p.x, p.y, poly)) return true;
+  if (pad <= 0) return false;
+  if (poly.length === 1) return dist(p, poly[0]) <= pad;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    if (distToSeg(p, poly[j], poly[i]) <= pad) return true;
+  }
+  return false;
+}
+
+export function densifyPath(path: Point[], step: number): Point[] {
+  if (path.length === 0) return [];
+  const out: Point[] = [{ x: path[0].x, y: path[0].y }];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const d = dist(a, b);
+    const n = Math.max(1, Math.ceil(d / Math.max(1, step)));
+    for (let k = 1; k <= n; k++) {
+      const t = k / n;
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+  }
+  return out;
+}
+
+export function splitClear(path: Point[], blocked: (p: Point) => boolean, step = 4): Point[][] {
+  const samples = densifyPath(path, step);
+  const segs: Point[][] = [];
+  let cur: Point[] = [];
+  for (const p of samples) {
+    if (blocked(p)) {
+      if (cur.length >= 2) segs.push(cur);
+      cur = [];
+    } else {
+      cur.push(p);
+    }
+  }
+  if (cur.length >= 2) segs.push(cur);
+  return segs;
+}
+
+function pointAlongSegments(segs: Point[][], target: number): Point {
+  let acc = 0;
+  for (let s = 0; s < segs.length; s++) {
+    const seg = segs[s];
+    const len = pathLength(seg);
+    const last = s === segs.length - 1;
+    if (!last && acc + len < target) {
+      acc += len;
+      continue;
+    }
+    let inner = Math.max(0, target - acc);
+    if (inner > len) inner = len;
+    if (seg.length === 0) continue;
+    if (seg.length === 1 || len < 0.001) return { x: seg[0].x, y: seg[0].y };
+    let walk = 0;
+    for (let i = 1; i < seg.length; i++) {
+      const a = seg[i - 1];
+      const b = seg[i];
+      const d = dist(a, b);
+      if (walk + d >= inner || i === seg.length - 1) {
+        const t = d < 0.001 ? 0 : (inner - walk) / d;
+        const k = Math.max(0, Math.min(1, t));
+        return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+      }
+      walk += d;
+    }
+    return { x: seg[seg.length - 1].x, y: seg[seg.length - 1].y };
+  }
+  const last = segs[segs.length - 1];
+  const p = last[last.length - 1];
+  return { x: p.x, y: p.y };
+}
+
+export function resampleSegments(segs: Point[][], count: number): Point[] {
+  if (count < 1 || segs.length === 0) return [];
+  const total = segs.reduce((n, s) => n + pathLength(s), 0);
+  if (total < 1) {
+    const p = segs[0][0];
+    return Array.from({ length: count }, () => ({ x: p.x, y: p.y }));
+  }
+  const out: Point[] = [];
+  for (let i = 0; i < count; i++) {
+    const target = (i / Math.max(1, count - 1)) * total;
+    out.push(pointAlongSegments(segs, target));
+  }
+  return out;
+}
+
+export function slideOff(p: Point, blocked: (q: Point) => boolean, max = 88): Point | null {
+  if (!blocked(p)) return p;
+  for (let r = 6; r <= max; r += 4) {
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      const q = { x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r };
+      if (!blocked(q)) return q;
+    }
+  }
+  return null;
+}
+
+export function wallSpots(
+  path: Point[],
+  count: number,
+  from: Point,
+  gap: number,
+  blocked?: (p: Point) => boolean,
+): Point[] {
   if (count < 1 || path.length === 0) return [];
-  const perLine = Math.max(1, Math.floor(pathLength(path) / gap) + 1);
+  const block = blocked ?? (() => false);
   const sign = behindSign(path, from);
   const out: Point[] = [];
   let left = count;
   let rank = 0;
   while (left > 0 && rank < 24) {
-    const n = Math.min(perLine, left);
     const line = rank === 0 ? path : offsetPath(path, sign * rank * gap);
-    out.push(...resamplePath(line, n));
+    const segs = splitClear(line, block);
+    const usable = segs.reduce((n, s) => n + pathLength(s), 0);
+    const cap = usable < 1 ? 0 : Math.max(1, Math.floor(usable / gap) + 1);
+    if (cap < 1) {
+      rank += 1;
+      continue;
+    }
+    const n = Math.min(left, cap);
+    out.push(...resampleSegments(segs, n));
     left -= n;
     rank += 1;
+  }
+  if (left > 0) {
+    for (const p of resamplePath(path, left)) {
+      const q = slideOff(p, block);
+      if (q) out.push(q);
+    }
   }
   return out;
 }
