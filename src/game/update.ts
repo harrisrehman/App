@@ -51,7 +51,7 @@ function bust(url: string): string {
 }
 
 function adoptShell(doc: Document): void {
-  for (const id of ["hud", "overlay"]) {
+  for (const id of ["hud", "overlay", "menu"]) {
     const next = doc.getElementById(id);
     const prev = document.getElementById(id);
     if (!next) continue;

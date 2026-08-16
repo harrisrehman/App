@@ -1,4 +1,16 @@
-export type Owner = "player" | "ai" | "neutral";
+export type BotId = "ai1" | "ai2" | "ai3" | "ai4";
+export type Faction = "player" | BotId;
+export type Owner = Faction | "neutral";
+
+export const BOTS: BotId[] = ["ai1", "ai2", "ai3", "ai4"];
+
+export function isBot(owner: Owner): owner is BotId {
+  return owner === "ai1" || owner === "ai2" || owner === "ai3" || owner === "ai4";
+}
+
+export function isFaction(owner: Owner): owner is Faction {
+  return owner !== "neutral";
+}
 
 export type Point = { x: number; y: number };
 
@@ -19,7 +31,7 @@ export type Territory = {
 
 export type Soldier = {
   id: number;
-  owner: Exclude<Owner, "neutral">;
+  owner: Faction;
   homeId: number;
   x: number;
   y: number;
@@ -38,7 +50,7 @@ export type Soldier = {
 
 export type Army = {
   id: number;
-  owner: Exclude<Owner, "neutral">;
+  owner: Faction;
   count: number;
   x: number;
   y: number;

@@ -25,9 +25,9 @@ const reinforce = { owner: "player", troops: 10, health: 10 };
 applyArrival(reinforce, { owner: "player", count: 5 });
 assert(reinforce.troops === 15 && reinforce.owner === "player", "reinforce failed");
 
-const stack = { owner: "ai", troops: 20, health: 10 };
-applyArrival(stack, { owner: "ai", count: 7 });
-assert(stack.troops === 27 && stack.owner === "ai", "no troop cap failed");
+const stack = { owner: "ai1", troops: 20, health: 10 };
+applyArrival(stack, { owner: "ai1", count: 7 });
+assert(stack.troops === 27 && stack.owner === "ai1", "no troop cap failed");
 
 const hold = { owner: "neutral", troops: 0, health: 10 };
 applyArrival(hold, { owner: "player", count: 5 });
@@ -37,13 +37,13 @@ const flip = { owner: "neutral", troops: 0, health: 10 };
 applyArrival(flip, { owner: "player", count: 10 });
 assert(flip.owner === "player" && flip.troops === 0 && flip.health === 10, "capture start failed");
 
-const empty = { owner: "ai", troops: 0, health: 10 };
+const empty = { owner: "ai1", troops: 0, health: 10 };
 takeBase(empty, "player");
 assert(empty.owner === "player" && empty.troops === 0 && empty.health === 10, "no free spawn failed");
 
-const siege = { owner: "ai", troops: 8, health: 10 };
+const siege = { owner: "ai1", troops: 8, health: 10 };
 applyArrival(siege, { owner: "player", count: 4 });
-assert(siege.owner === "ai" && siege.health === 6, "owned chip failed");
+assert(siege.owner === "ai1" && siege.health === 6, "owned chip failed");
 applyArrival(siege, { owner: "player", count: 6 });
 assert(siege.owner === "player" && siege.health === 10 && siege.troops === 0, "owned capture failed");
 

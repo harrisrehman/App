@@ -17,11 +17,29 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+    <div id="menu">
+      <h1>ANNEX</h1>
+      <p id="menu-ver">v0.5.9</p>
+      <div id="menu-home">
+        <button id="start-btn" type="button">Start</button>
+        <button id="menu-update-btn" type="button">Update</button>
+      </div>
+      <div id="menu-bots" class="hidden">
+        <p>How many bots?</p>
+        <div class="bot-picks">
+          <button type="button" data-bots="1">1</button>
+          <button type="button" data-bots="2">2</button>
+          <button type="button" data-bots="3">3</button>
+          <button type="button" data-bots="4">4</button>
+        </div>
+        <button id="menu-back" type="button">Back</button>
+      </div>
+    </div>
     <div id="hud">
       <div class="top">
         <div class="brand">
           <span id="title">ANNEX</span>
-          <span id="version">v0.5.8</span>
+          <span id="version">v0.5.9</span>
           <span id="score">0 · 0</span>
         </div>
         <div class="actions">
@@ -34,7 +52,10 @@
     </div>
     <div id="overlay" class="hidden">
       <h1 id="result"></h1>
-      <button id="restart-btn" type="button">Again</button>
+      <div class="end-actions">
+        <button id="restart-btn" type="button">Again</button>
+        <button id="menu-btn" type="button">Menu</button>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -5,7 +5,10 @@ import type { Owner, Point, Pop, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
   if (owner === "player") return COLORS.player;
-  if (owner === "ai") return COLORS.ai;
+  if (owner === "ai1") return COLORS.ai1;
+  if (owner === "ai2") return COLORS.ai2;
+  if (owner === "ai3") return COLORS.ai3;
+  if (owner === "ai4") return COLORS.ai4;
   return COLORS.neutral;
 }
 

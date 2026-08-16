@@ -1,6 +1,7 @@
 import { fitCamera, type Camera } from "./game/camera";
 import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
+import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
 import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
@@ -12,6 +13,7 @@ declare global {
     __annexJustUpdated?: string;
     __annexRestored?: boolean;
     __annexHudBound?: boolean;
+    __annexOnHudClick?: (e: Event) => void;
   }
 }
 
@@ -73,8 +75,43 @@ function ensureHud(): void {
   if (!document.querySelector("#overlay")) {
     const overlay = makeEl("div", "overlay");
     overlay.classList.add("hidden");
-    overlay.append(makeEl("h1", "result"), makeEl("button", "restart-btn", "Again"));
+    const actions = document.createElement("div");
+    actions.className = "end-actions";
+    actions.append(makeEl("button", "restart-btn", "Again"), makeEl("button", "menu-btn", "Menu"));
+    overlay.append(makeEl("h1", "result"), actions);
     document.body.appendChild(overlay);
+  } else {
+    const overlay = document.querySelector("#overlay");
+    if (overlay && !overlay.querySelector("#menu-btn")) {
+      let actions = overlay.querySelector(".end-actions");
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.className = "end-actions";
+        const again = overlay.querySelector("#restart-btn");
+        if (again) actions.appendChild(again);
+        overlay.appendChild(actions);
+      }
+      actions.appendChild(makeEl("button", "menu-btn", "Menu"));
+    }
+  }
+  if (!document.querySelector("#menu")) {
+    const menu = makeEl("div", "menu");
+    menu.append(makeEl("h1", undefined, "ANNEX"), makeEl("p", "menu-ver", "v"));
+    const home = makeEl("div", "menu-home");
+    home.append(makeEl("button", "start-btn", "Start"), makeEl("button", "menu-update-btn", "Update"));
+    const bots = makeEl("div", "menu-bots");
+    bots.classList.add("hidden");
+    bots.appendChild(makeEl("p", undefined, "How many bots?"));
+    const picks = document.createElement("div");
+    picks.className = "bot-picks";
+    for (let i = 1; i <= 4; i++) {
+      const b = makeEl("button", undefined, String(i));
+      b.dataset.bots = String(i);
+      picks.appendChild(b);
+    }
+    bots.append(picks, makeEl("button", "menu-back", "Back"));
+    menu.append(home, bots);
+    document.body.appendChild(menu);
   }
 }
 
@@ -91,8 +128,8 @@ let updateBusy = false;
 async function runUpdate(): Promise<void> {
   if (updateBusy) return;
   updateBusy = true;
-  const btn = document.querySelector<HTMLButtonElement>("#update-btn");
-  if (btn) {
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")];
+  for (const btn of buttons) {
     btn.disabled = true;
     btn.textContent = "…";
   }
@@ -105,30 +142,93 @@ async function runUpdate(): Promise<void> {
     showToast("Update failed. Try again.");
   } finally {
     updateBusy = false;
-    const again = document.querySelector<HTMLButtonElement>("#update-btn");
-    if (again) {
-      again.disabled = false;
-      again.textContent = "Update";
+    for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
+      btn.disabled = false;
+      btn.textContent = "Update";
     }
   }
 }
 
-function bindHudClicks(): void {
-  if (window.__annexHudBound) return;
-  window.__annexHudBound = true;
-  document.addEventListener("click", (e) => {
-    const t = (e.target as HTMLElement | null)?.closest("button");
-    if (!t) return;
-    if (t.id === "update-btn") {
-      e.preventDefault();
-      void runUpdate();
-    }
-  });
+function onHudClick(e: Event): void {
+  const t = (e.target as HTMLElement | null)?.closest("button");
+  if (!t) return;
+  if (t.id === "update-btn" || t.id === "menu-update-btn") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    void runUpdate();
+    return;
+  }
+  if (t.id === "start-btn") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showBotPick();
+    return;
+  }
+  if (t.id === "menu-back") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showMenuHome();
+    return;
+  }
+  if (t.id === "menu-btn") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showMenu();
+    return;
+  }
+  const bots = Number(t.dataset.bots || 0);
+  if (bots >= 1 && bots <= 4) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    startMatch(bots);
+  }
 }
 
-function startGame(): void {
+function bindHudClicks(): void {
+  window.__annexOnHudClick = onHudClick;
+  if (window.__annexHudBound) return;
+  window.__annexHudBound = true;
+  document.addEventListener(
+    "click",
+    (e) => {
+      window.__annexOnHudClick?.(e);
+    },
+    true,
+  );
+}
+
+function showMenu(): void {
+  window.__annexStop?.();
+  document.body.classList.add("menu");
+  document.body.classList.remove("playing");
+  document.querySelector("#menu")?.classList.remove("hidden");
+  document.querySelector("#overlay")?.classList.add("hidden");
+  showMenuHome();
+}
+
+function showMenuHome(): void {
+  document.querySelector("#menu-home")?.classList.remove("hidden");
+  document.querySelector("#menu-bots")?.classList.add("hidden");
+}
+
+function showBotPick(): void {
+  document.querySelector("#menu-home")?.classList.add("hidden");
+  document.querySelector("#menu-bots")?.classList.remove("hidden");
+}
+
+function startMatch(bots: number): void {
+  document.body.classList.remove("menu");
+  document.body.classList.add("playing");
+  document.querySelector("#menu")?.classList.add("hidden");
+  startGame(bots);
+}
+
+function startGame(bots = 1): void {
   window.__annexStop?.();
   ensureHud();
+  document.body.classList.add("playing");
+  document.body.classList.remove("menu");
+  document.querySelector("#menu")?.classList.add("hidden");
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
@@ -157,8 +257,8 @@ function startGame(): void {
   const again = restartEl;
   const version = versionEl;
 
-  const game = new Game();
-  const ai = new Commander();
+  const game = new Game(Date.now(), bots);
+  const ais = BOTS.slice(0, game.bots).map((id) => new Commander(id));
   let cam: Camera = fitCamera(1, 1);
   let shownWinner = false;
   let alive = true;
@@ -177,7 +277,7 @@ function startGame(): void {
 
   function syncHud(): void {
     const totals = game.totals();
-    score.textContent = `${Math.floor(totals.player)} · ${Math.floor(totals.ai)}`;
+    score.textContent = [totals.player, ...totals.bots].map((n) => Math.floor(n)).join(" · ");
     if (game.winner && !shownWinner) {
       shownWinner = true;
       result.textContent = game.winner === "player" ? "You win" : "You lose";
@@ -190,10 +290,12 @@ function startGame(): void {
   }, 4500);
 
   const onRestart = (): void => {
-    game.restart();
-    ai.wait = 1.8;
-    ai.lastTarget = -1;
-    ai.repeats = 0;
+    game.restart(Date.now(), game.bots);
+    for (const ai of ais) {
+      ai.wait = 1.8;
+      ai.lastTarget = -1;
+      ai.repeats = 0;
+    }
     shownWinner = false;
     endScreen.classList.add("hidden");
   };
@@ -252,7 +354,7 @@ function startGame(): void {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     game.update(dt);
-    ai.tick(game, dt);
+    for (const ai of ais) ai.tick(game, dt);
     render(draw, game, cam);
     syncHud();
     syncWall();
@@ -276,8 +378,11 @@ function boot(): void {
     ensureHud();
     bindHudClicks();
     dropStalePersist();
+    document.body.classList.add("menu");
+    const ver = document.querySelector("#menu-ver");
+    if (ver) ver.textContent = `v${localVersion().version}`;
     if (restorePersisted()) return;
-    startGame();
+    showMenu();
   } catch {
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
   }

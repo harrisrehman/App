@@ -8,6 +8,10 @@ export const COLORS = {
   muted: "#8a8a92",
   player: "#4a9eff",
   ai: "#ff5a4a",
+  ai1: "#ff5a4a",
+  ai2: "#5ae07a",
+  ai3: "#f5c542",
+  ai4: "#c46bff",
   neutral: "#7a7a80",
   line: "#ffffff",
 } as const;

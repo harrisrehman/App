@@ -2,7 +2,7 @@ import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, BASE_HEALTH, SPAWN_INTERVAL } fro
 import { dist } from "./geo";
 import { randRange } from "./rng";
 import type { Game } from "./engine";
-import type { Territory } from "./types";
+import { isFaction, type Faction, type Territory } from "./types";
 
 type Move = { from: Territory; to: Territory };
 
@@ -10,6 +10,8 @@ export class Commander {
   wait = 1.4;
   lastTarget = -1;
   repeats = 0;
+
+  constructor(readonly self: Faction) {}
 
   tick(game: Game, dt: number): void {
     if (game.winner) return;
@@ -24,20 +26,24 @@ export class Commander {
     return game.garrison(t.id).length;
   }
 
-  private lands(game: Game, owner: "player" | "ai"): Territory[] {
+  private lands(game: Game, owner: Faction): Territory[] {
     return game.territories.filter((t) => t.owner === owner);
   }
 
+  private foes(game: Game): Territory[] {
+    return game.territories.filter((t) => isFaction(t.owner) && t.owner !== this.self);
+  }
+
   private mine(game: Game, min = 1): Territory[] {
-    return this.lands(game, "ai").filter((t) => this.have(game, t) >= min);
+    return this.lands(game, this.self).filter((t) => this.have(game, t) >= min);
   }
 
   private behind(game: Game): boolean {
-    return this.lands(game, "ai").length < this.lands(game, "player").length;
+    return this.lands(game, this.self).length < this.foes(game).length;
   }
 
   private desperate(game: Game): boolean {
-    return this.lands(game, "ai").length * 2 <= this.lands(game, "player").length;
+    return this.lands(game, this.self).length * 2 <= this.foes(game).length;
   }
 
   private nearestTo(t: Territory, others: Territory[]): number {
@@ -51,11 +57,11 @@ export class Commander {
   }
 
   private frontThreat(game: Game, t: Territory): number {
-    return 520 / (this.nearestTo(t, this.lands(game, "ai")) + 55);
+    return 520 / (this.nearestTo(t, this.lands(game, this.self)) + 55);
   }
 
   private frontDanger(game: Game, t: Territory): number {
-    return 520 / (this.nearestTo(t, this.lands(game, "player")) + 55);
+    return 520 / (this.nearestTo(t, this.foes(game)) + 55);
   }
 
   private greyFront(game: Game, t: Territory): number {
@@ -84,11 +90,11 @@ export class Commander {
   }
 
   private flipCost(game: Game, from: Territory, dest: Territory): number {
-    const aiIn = game.incoming(dest.id, "ai");
-    const playerIn = game.incoming(dest.id, "player");
+    const selfIn = game.incoming(dest.id, this.self);
+    const foeIn = game.incomingElse(dest.id, this.self);
     const travel = dist(from.center, dest.center) / ARMY_SPEED;
-    const growth = dest.owner === "player" ? travel / SPAWN_INTERVAL : 0;
-    return Math.max(1, Math.ceil(dest.health + dest.troops + playerIn + growth - aiIn));
+    const growth = dest.owner !== "neutral" && dest.owner !== this.self ? travel / SPAWN_INTERVAL : 0;
+    return Math.max(1, Math.ceil(dest.health + dest.troops + foeIn + growth - selfIn));
   }
 
   private canFlip(game: Game, from: Territory, dest: Territory): boolean {
@@ -100,14 +106,14 @@ export class Commander {
     const keep = this.desperate(game) ? 0 : 1;
     for (const dest of game.territories) {
       if (dest.owner !== "neutral") continue;
-      const playerIn = game.incoming(dest.id, "player");
-      if (playerIn <= 0) continue;
-      const aiIn = game.incoming(dest.id, "ai");
-      const need = dest.health + playerIn - aiIn;
+      const foeIn = game.incomingElse(dest.id, this.self);
+      if (foeIn <= 0) continue;
+      const selfIn = game.incoming(dest.id, this.self);
+      const need = dest.health + foeIn - selfIn;
       if (need <= 0) continue;
       const from = this.closest(this.mine(game, Math.max(keep + 1, need)), dest);
       if (!from) continue;
-      const risk = playerIn - aiIn + (BASE_HEALTH - dest.health) + this.greyFront(game, dest);
+      const risk = foeIn - selfIn + (BASE_HEALTH - dest.health) + this.greyFront(game, dest);
       if (!best || risk > best.risk) best = { dest, from, risk };
     }
     if (!best) return false;
@@ -129,7 +135,7 @@ export class Commander {
     for (const from of this.mine(game, 1)) {
       if (this.have(game, from) <= this.keepFor(game, from)) continue;
       for (const to of greys) {
-        if (game.incoming(to.id, "ai") >= to.health) continue;
+        if (game.incoming(to.id, this.self) >= to.health) continue;
         if (!this.canFlip(game, from, to)) continue;
         const close = 90 / (dist(from.center, to.center) + 40);
         const score = close + this.greyFront(game, to) * 6 + (this.behind(game) ? 16 : 0);
@@ -142,15 +148,15 @@ export class Commander {
   }
 
   private defend(game: Game): Move | null {
-    const mine = this.lands(game, "ai");
+    const mine = this.lands(game, this.self);
     if (mine.length < 2) return null;
     let save: Territory | null = null;
     let need = 0;
     let danger = -1;
     for (const t of mine) {
-      const incoming = game.incoming(t.id, "player");
+      const incoming = game.incomingElse(t.id, this.self);
       if (incoming <= 0) continue;
-      const gap = incoming - this.have(game, t) - game.incoming(t.id, "ai");
+      const gap = incoming - this.have(game, t) - game.incoming(t.id, this.self);
       if (gap < 0) continue;
       const risk = gap + this.frontDanger(game, t) * 4;
       if (risk > danger) {
@@ -174,14 +180,14 @@ export class Commander {
 
   private capture(game: Game): Move | null {
     const greysLeft = game.territories.some(
-      (t) => t.owner === "neutral" && game.incoming(t.id, "ai") < t.health,
+      (t) => t.owner === "neutral" && game.incoming(t.id, this.self) < t.health,
     );
     if (greysLeft && this.behind(game)) return null;
 
     let best: { move: Move; score: number } | null = null;
     for (const from of this.mine(game, 1)) {
       if (this.have(game, from) <= this.keepFor(game, from)) continue;
-      for (const to of this.lands(game, "player")) {
+      for (const to of this.foes(game)) {
         if (!this.canFlip(game, from, to)) continue;
         const close = 70 / (dist(from.center, to.center) + 50);
         const score = this.frontThreat(game, to) * 10 + close - this.flipCost(game, from, to) * 0.3;

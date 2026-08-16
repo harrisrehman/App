@@ -6,29 +6,39 @@ function dist(a, b) {
 
 const START_MIN_DIST = 640;
 
-function pickStarts(centers, rng) {
+function pickStarts(centers, rng, count = 2) {
   const n = centers.length;
-  const pairs = [];
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      const d = dist(centers[i], centers[j]);
-      if (d >= START_MIN_DIST) pairs.push({ a: i, b: j, d });
-    }
-  }
-  if (pairs.length === 0) {
-    let best = { a: 0, b: 1, d: -1 };
+  const need = Math.min(Math.max(2, count), n);
+  const picked = [Math.floor(rng() * n)];
+  while (picked.length < need) {
+    let best = -1;
+    let bestScore = -1;
     for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const d = dist(centers[i], centers[j]);
-        if (d > best.d) best = { a: i, b: j, d };
+      if (picked.includes(i)) continue;
+      let minD = 9999;
+      for (const p of picked) minD = Math.min(minD, dist(centers[i], centers[p]));
+      if (minD > bestScore) {
+        bestScore = minD;
+        best = i;
       }
     }
-    return [best.a, best.b];
+    if (best < 0) break;
+    picked.push(best);
   }
-  pairs.sort((x, y) => y.d - x.d);
-  const cut = Math.max(1, Math.ceil(pairs.length * 0.3));
-  const pick = pairs[Math.floor(rng() * cut)];
-  return [pick.a, pick.b];
+  if (picked.length >= 2 && dist(centers[picked[0]], centers[picked[1]]) < START_MIN_DIST * 0.55) {
+    let far = picked[1];
+    let farD = -1;
+    for (let i = 0; i < n; i++) {
+      if (i === picked[0]) continue;
+      const d = dist(centers[picked[0]], centers[i]);
+      if (d > farD) {
+        farD = d;
+        far = i;
+      }
+    }
+    picked[1] = far;
+  }
+  return picked;
 }
 
 function assert(cond, msg) {
@@ -46,9 +56,12 @@ for (let t = 0; t < 40; t++) {
   for (let i = 0; i < 16; i++) {
     centers.push({ x: 80 + rng() * 840, y: 80 + rng() * 1440 });
   }
-  const [a, b] = pickStarts(centers, rng);
+  const [a, b] = pickStarts(centers, rng, 2);
   const d = dist(centers[a], centers[b]);
-  assert(d >= START_MIN_DIST, `starts too close: ${d}`);
+  assert(d >= START_MIN_DIST * 0.55, `starts too close: ${d}`);
+  const many = pickStarts(centers, rng, 5);
+  assert(many.length === 5, "need 5 starts");
+  assert(new Set(many).size === 5, "starts must be unique");
 }
 
 function separate(list, pad = 10) {

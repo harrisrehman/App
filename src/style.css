@@ -160,7 +160,71 @@ button {
   gap: 18px;
 }
 
-#overlay.hidden {
+#overlay.hidden,
+#menu-home.hidden,
+#menu-bots.hidden,
+#menu.hidden {
+  display: none;
+}
+
+#menu {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #0e0e10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  pointer-events: auto;
+}
+
+#menu h1 {
+  margin: 0;
+  letter-spacing: 0.2em;
+  font-size: 42px;
+}
+
+#menu-ver {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+#menu-home,
+#menu-bots {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+#menu-home button,
+#menu-back {
+  min-width: 180px;
+  padding: 14px 22px;
+}
+
+.bot-picks {
+  display: flex;
+  gap: 10px;
+}
+
+.bot-picks button {
+  min-width: 56px;
+}
+
+.end-actions {
+  display: flex;
+  gap: 10px;
+}
+
+body.menu #hud .top,
+body.menu #hint {
+  visibility: hidden;
+}
+
+body.playing #menu {
   display: none;
 }
 

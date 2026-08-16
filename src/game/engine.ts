@@ -11,7 +11,7 @@ import {
 import { dist, pathLength, resamplePath } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
-import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
+import { isBot, type Army, type Faction, type Owner, type Point, type Pop, type Soldier, type Territory, type Winner } from "./types";
 
 export function perimeterRadius(t: Territory): number {
   return ringRadius(t.radius);
@@ -65,19 +65,22 @@ export class Game {
   strokeFade = 0;
   stroking = false;
   wallMode = false;
+  bots = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
   rng: () => number;
 
-  constructor(seed = Date.now()) {
+  constructor(seed = Date.now(), bots = 1) {
+    this.bots = Math.max(1, Math.min(4, bots));
     this.rng = mulberry32(seed);
-    this.territories = createMap(seed);
+    this.territories = createMap(seed, this.bots);
     this.seedOwned();
   }
 
-  restart(seed = Date.now()): void {
+  restart(seed = Date.now(), bots = this.bots): void {
+    this.bots = Math.max(1, Math.min(4, bots));
     this.rng = mulberry32(seed);
-    this.territories = createMap(seed);
+    this.territories = createMap(seed, this.bots);
     this.soldiers = [];
     this.armies = [];
     this.pops = [];
@@ -107,6 +110,14 @@ export class Game {
     let n = 0;
     for (const s of this.soldiers) {
       if (s.state === "march" && s.toId === id && s.owner === owner) n += 1;
+    }
+    return n;
+  }
+
+  incomingElse(id: number, owner: Owner): number {
+    let n = 0;
+    for (const s of this.soldiers) {
+      if (s.state === "march" && s.toId === id && s.owner !== owner) n += 1;
     }
     return n;
   }
@@ -220,17 +231,14 @@ export class Game {
   }
 
   private clash(dead: Set<number>): void {
-    const players: Soldier[] = [];
-    const foes: Soldier[] = [];
-    for (const s of this.soldiers) {
-      if (s.owner === "player") players.push(s);
-      else foes.push(s);
-    }
+    const live = this.soldiers;
     const r2 = FIGHT_RADIUS * FIGHT_RADIUS;
-    for (const a of players) {
+    for (let i = 0; i < live.length; i++) {
+      const a = live[i];
       if (dead.has(a.id)) continue;
-      for (const b of foes) {
-        if (dead.has(b.id)) continue;
+      for (let j = i + 1; j < live.length; j++) {
+        const b = live[j];
+        if (dead.has(b.id) || a.owner === b.owner) continue;
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         if (dx * dx + dy * dy > r2) continue;
@@ -381,7 +389,7 @@ export class Game {
     return false;
   }
 
-  private takeBase(dest: Territory, owner: Exclude<Owner, "neutral">, dead: Set<number>): void {
+  private takeBase(dest: Territory, owner: Faction, dead: Set<number>): void {
     dest.owner = owner;
     dest.spawnAcc = 0;
     dest.health = BASE_HEALTH;
@@ -426,16 +434,23 @@ export class Game {
 
   private checkWinner(): void {
     const playerLand = this.territories.some((t) => t.owner === "player");
-    const aiLand = this.territories.some((t) => t.owner === "ai");
+    const aiLand = this.territories.some((t) => isBot(t.owner));
     const playerArmy = this.soldiers.some((s) => s.owner === "player");
-    const aiArmy = this.soldiers.some((s) => s.owner === "ai");
+    const aiArmy = this.soldiers.some((s) => isBot(s.owner));
     if (!aiLand && !aiArmy) this.winner = "player";
     if (!playerLand && !playerArmy) this.winner = "ai";
   }
 
-  totals(): { player: number; ai: number } {
-    const sum = { player: 0, ai: 0 };
-    for (const s of this.soldiers) sum[s.owner] += 1;
-    return sum;
+  totals(): { player: number; bots: number[] } {
+    const bots = [0, 0, 0, 0];
+    let player = 0;
+    for (const s of this.soldiers) {
+      if (s.owner === "player") player += 1;
+      if (s.owner === "ai1") bots[0] += 1;
+      if (s.owner === "ai2") bots[1] += 1;
+      if (s.owner === "ai3") bots[2] += 1;
+      if (s.owner === "ai4") bots[3] += 1;
+    }
+    return { player, bots: bots.slice(0, this.bots) };
   }
 }

@@ -14,7 +14,7 @@ import {
 } from "./config";
 import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
-import type { Point, Territory } from "./types";
+import { BOTS, type BotId, type Point, type Territory } from "./types";
 
 const PAD = 96;
 const MIN_GAP = BASE_GAP;
@@ -173,32 +173,42 @@ function nearestIds(index: number, centers: Point[], k: number): number[] {
     .map((x) => x.id);
 }
 
-function pickStarts(centers: Point[], rng: () => number): [number, number] {
+function pickStarts(centers: Point[], rng: () => number, count: number): number[] {
   const n = centers.length;
-  const pairs: { a: number; b: number; d: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      const d = dist(centers[i], centers[j]);
-      if (d >= START_MIN_DIST) pairs.push({ a: i, b: j, d });
-    }
-  }
-  if (pairs.length === 0) {
-    let best = { a: 0, b: 1, d: -1 };
+  const need = Math.min(Math.max(2, count), n);
+  const picked = [Math.floor(rng() * n)];
+  while (picked.length < need) {
+    let best = -1;
+    let bestScore = -1;
     for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const d = dist(centers[i], centers[j]);
-        if (d > best.d) best = { a: i, b: j, d };
+      if (picked.includes(i)) continue;
+      let minD = 9999;
+      for (const p of picked) minD = Math.min(minD, dist(centers[i], centers[p]));
+      if (minD > bestScore) {
+        bestScore = minD;
+        best = i;
       }
     }
-    return rng() < 0.5 ? [best.a, best.b] : [best.b, best.a];
+    if (best < 0) break;
+    picked.push(best);
   }
-  pairs.sort((x, y) => y.d - x.d);
-  const cut = Math.max(1, Math.ceil(pairs.length * 0.3));
-  const pick = pairs[Math.floor(rng() * cut)];
-  return rng() < 0.5 ? [pick.a, pick.b] : [pick.b, pick.a];
+  if (picked.length >= 2 && dist(centers[picked[0]], centers[picked[1]]) < START_MIN_DIST * 0.55) {
+    let far = picked[1];
+    let farD = -1;
+    for (let i = 0; i < n; i++) {
+      if (i === picked[0]) continue;
+      const d = dist(centers[picked[0]], centers[i]);
+      if (d > farD) {
+        farD = d;
+        far = i;
+      }
+    }
+    picked[1] = far;
+  }
+  return picked;
 }
 
-export function createMap(seed = 20260815): Territory[] {
+export function createMap(seed = 20260815, bots = 1): Territory[] {
   const rng = mulberry32(seed);
   const n = randInt(rng, BASE_COUNT_MIN, BASE_COUNT_MAX);
   const centers = placeCenters(rng, n);
@@ -229,13 +239,18 @@ export function createMap(seed = 20260815): Territory[] {
   const placed = territories.map((t) => t.center);
   for (const t of territories) t.neighbors = nearestIds(t.id, placed, 4);
 
-  const [a, b] = pickStarts(placed, rng);
-  territories[a].owner = "player";
-  territories[a].troops = START_TROOPS;
-  territories[a].health = BASE_HEALTH;
-  territories[b].owner = "ai";
-  territories[b].troops = START_TROOPS;
-  territories[b].health = BASE_HEALTH;
+  const starts = pickStarts(placed, rng, bots + 1);
+  const playerId = starts[0];
+  territories[playerId].owner = "player";
+  territories[playerId].troops = START_TROOPS;
+  territories[playerId].health = BASE_HEALTH;
+  for (let i = 1; i < starts.length; i++) {
+    const bot: BotId = BOTS[i - 1] ?? "ai1";
+    const id = starts[i];
+    territories[id].owner = bot;
+    territories[id].troops = START_TROOPS;
+    territories[id].health = BASE_HEALTH;
+  }
 
   return territories;
 }
