@@ -2,11 +2,11 @@ import {
   ARMY_SPEED,
   BASE_HEALTH,
   FIGHT_RADIUS,
-  PERIMETER_PAD,
   POP_CAP,
   POP_LIFE,
   SPAWN_INTERVAL,
   START_TROOPS,
+  ringRadius,
 } from "./config";
 import { dist } from "./geo";
 import { createMap } from "./map";
@@ -14,7 +14,7 @@ import { mulberry32 } from "./rng";
 import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
 
 export function perimeterRadius(t: Territory): number {
-  return (t.radius + PERIMETER_PAD) * 2;
+  return ringRadius(t.radius);
 }
 
 export function applyArrival(dest: Territory, army: Army): void {
@@ -44,8 +44,9 @@ function ejectPath(base: Territory, rng: () => number): {
 } {
   const angle = rng() * Math.PI * 2;
   const rim = Math.max(base.radius, 22);
+  const ring = ringRadius(base.radius);
   const startR = rim * 0.88;
-  const restR = rim + 18 + rng() * 22;
+  const restR = Math.min(ring - 6, rim + 10 + rng() * 8);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   return {

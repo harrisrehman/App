@@ -5,18 +5,20 @@ import {
   BASE_HEALTH,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
+  RING_GAP,
   START_MIN_DIST,
   START_TROOPS,
   WORLD_H,
   WORLD_W,
+  ringRadius,
 } from "./config";
 import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
 import type { Point, Territory } from "./types";
 
-const PAD = 72;
+const PAD = 86;
 const MIN_GAP = BASE_GAP;
-const GAP_FLOOR = BASE_RADIUS * 2.3;
+const GAP_FLOOR = 2 * ringRadius(BASE_RADIUS * 0.95) + RING_GAP;
 
 type ShapeKind = "pent" | "hex" | "hept" | "tri" | "kite" | "blob";
 
@@ -127,12 +129,6 @@ function meanRadius(center: Point, poly: Point[]): number {
   return poly.reduce((s, p) => s + dist(center, p), 0) / poly.length;
 }
 
-function extentOf(t: Territory): number {
-  let m = 0;
-  for (const p of t.localPoly) m = Math.max(m, Math.hypot(p.x, p.y));
-  return m;
-}
-
 function clampCenter(t: Territory, extra: number): void {
   const { x0, y0, w, h } = inBounds();
   t.center.x = Math.min(x0 + w - extra, Math.max(x0 + extra, t.center.x));
@@ -140,15 +136,14 @@ function clampCenter(t: Territory, extra: number): void {
 }
 
 function separateBases(list: Territory[]): void {
-  const extents = list.map(extentOf);
-  const pad = 12;
-  for (let iter = 0; iter < 48; iter++) {
+  const rings = list.map((t) => ringRadius(t.radius));
+  for (let iter = 0; iter < 64; iter++) {
     let moved = false;
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i];
         const b = list[j];
-        const need = extents[i] + extents[j] + pad;
+        const need = rings[i] + rings[j] + RING_GAP;
         const d = dist(a.center, b.center);
         if (d >= need) continue;
         const nx = d < 0.001 ? 1 : (b.center.x - a.center.x) / d;
@@ -161,7 +156,7 @@ function separateBases(list: Territory[]): void {
         moved = true;
       }
     }
-    for (let i = 0; i < list.length; i++) clampCenter(list[i], extents[i]);
+    for (let i = 0; i < list.length; i++) clampCenter(list[i], rings[i]);
     if (!moved) break;
   }
   for (const t of list) {

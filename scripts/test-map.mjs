@@ -51,8 +51,8 @@ for (let t = 0; t < 40; t++) {
   assert(d >= START_MIN_DIST, `starts too close: ${d}`);
 }
 
-function separate(list, pad = 12) {
-  for (let iter = 0; iter < 48; iter++) {
+function separate(list, pad = 10) {
+  for (let iter = 0; iter < 64; iter++) {
     let moved = false;
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
@@ -75,13 +75,13 @@ function separate(list, pad = 12) {
   }
 }
 
-const blobs = [
-  { x: 100, y: 100, r: 46 },
-  { x: 110, y: 108, r: 46 },
-  { x: 400, y: 400, r: 40 },
+const rings = [
+  { x: 100, y: 100, r: 62 },
+  { x: 120, y: 118, r: 62 },
+  { x: 500, y: 500, r: 60 },
 ];
-separate(blobs);
-assert(dist(blobs[0], blobs[1]) >= 46 + 46 + 12 - 0.01, "bases still overlap");
-assert(dist(blobs[0], blobs[2]) >= 40, "far base moved too much");
+separate(rings);
+assert(dist(rings[0], rings[1]) >= 62 + 62 + 10 - 0.01, "perimeters still overlap");
+assert(dist(rings[0], rings[2]) >= 60, "far ring moved too much");
 
 console.log("map tests passed");

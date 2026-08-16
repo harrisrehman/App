@@ -17,9 +17,15 @@ export const SPAWN_INTERVAL = 2;
 export const BASE_HEALTH = 10;
 export const START_TROOPS = 10;
 export const NEUTRAL_TROOPS = 0;
-export const PERIMETER_PAD = 30;
+export const PERIMETER_PAD = 22;
 export const BASE_RADIUS = 40;
-export const BASE_GAP = BASE_RADIUS * 2.6 + 28;
+export const RING_GAP = 10;
+
+export function ringRadius(baseRadius: number): number {
+  return baseRadius + PERIMETER_PAD;
+}
+
+export const BASE_GAP = 2 * ringRadius(BASE_RADIUS * 1.15) + RING_GAP;
 export const BASE_COUNT_MIN = 14;
 export const BASE_COUNT_MAX = 18;
 export const START_MIN_DIST = 640;
