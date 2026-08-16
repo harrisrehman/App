@@ -40,6 +40,35 @@ export class Commander {
     return this.lands(game, "ai").length * 2 <= this.lands(game, "player").length;
   }
 
+  private nearestTo(t: Territory, others: Territory[]): number {
+    if (others.length === 0) return 9999;
+    let best = 9999;
+    for (const o of others) {
+      const d = dist(t.center, o.center);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  private frontThreat(game: Game, t: Territory): number {
+    return 520 / (this.nearestTo(t, this.lands(game, "ai")) + 55);
+  }
+
+  private frontDanger(game: Game, t: Territory): number {
+    return 520 / (this.nearestTo(t, this.lands(game, "player")) + 55);
+  }
+
+  private greyFront(game: Game, t: Territory): number {
+    return this.frontThreat(game, t) + this.frontDanger(game, t);
+  }
+
+  private keepFor(game: Game, from: Territory): number {
+    if (this.desperate(game)) return 0;
+    const front = this.frontDanger(game, from) > 1.4;
+    if (this.behind(game)) return front ? 2 : 1;
+    return front ? 4 : 2;
+  }
+
   private launch(game: Game, move: Move): boolean {
     const have = this.have(game, move.from);
     const send = Math.min(move.want, Math.max(0, have - move.keep));
@@ -86,7 +115,7 @@ export class Commander {
       if (need <= 0) continue;
       const from = this.closest(this.mine(game, keep + 1), dest);
       if (!from) continue;
-      const risk = playerIn - aiIn + (5 - dest.troops);
+      const risk = playerIn - aiIn + (5 - dest.troops) + this.greyFront(game, dest);
       if (!best || risk > best.risk) best = { dest, need, from, risk };
     }
     if (!best) return false;
@@ -104,17 +133,16 @@ export class Commander {
   private expand(game: Game): Move | null {
     const greys = game.territories.filter((t) => t.owner === "neutral");
     if (greys.length === 0) return null;
-    const keep = this.desperate(game) ? 0 : this.behind(game) ? 1 : 2;
-    const mine = this.mine(game, keep + 1);
-    if (mine.length === 0) return null;
     let best: { move: Move; score: number } | null = null;
-    for (const from of mine) {
+    for (const from of this.mine(game, 1)) {
+      const keep = this.keepFor(game, from);
+      if (this.have(game, from) <= keep) continue;
       for (const to of greys) {
         if (game.incoming(to.id, "ai") >= to.troops) continue;
         const cost = this.canFlip(game, from, to, keep);
         if (cost < 1) continue;
-        const close = 100 / (dist(from.center, to.center) + 40);
-        const score = close + (this.behind(game) ? 20 : 0) + game.rng();
+        const close = 90 / (dist(from.center, to.center) + 40);
+        const score = close + this.greyFront(game, to) * 6 + (this.behind(game) ? 16 : 0);
         if (!best || score > best.score) {
           best = { move: { from, to, want: cost, keep }, score };
         }
@@ -128,11 +156,15 @@ export class Commander {
     if (mine.length < 2) return null;
     let save: Territory | null = null;
     let need = 0;
+    let danger = -1;
     for (const t of mine) {
       const incoming = game.incoming(t.id, "player");
       if (incoming <= 0) continue;
       const gap = incoming - this.have(game, t) - game.incoming(t.id, "ai");
-      if (gap >= 0 && gap >= need) {
+      if (gap < 0) continue;
+      const risk = gap + this.frontDanger(game, t) * 4;
+      if (risk > danger) {
+        danger = risk;
         need = gap + 1;
         save = t;
       }
@@ -141,7 +173,11 @@ export class Commander {
     const keep = this.behind(game) ? 1 : 2;
     const rich = mine
       .filter((t) => t.id !== save.id && this.have(game, t) - keep >= need)
-      .sort((a, b) => this.have(game, b) - this.have(game, a))[0];
+      .sort((a, b) => {
+        const sa = this.have(game, a) - this.frontDanger(game, a) * 4;
+        const sb = this.have(game, b) - this.frontDanger(game, b) * 4;
+        return sb - sa;
+      })[0];
     if (!rich) return null;
     return { from: rich, to: save, want: need, keep };
   }
@@ -152,16 +188,15 @@ export class Commander {
     );
     if (greysLeft && this.behind(game)) return null;
 
-    const keep = this.desperate(game) ? 0 : this.behind(game) ? 1 : 3;
-    const mine = this.mine(game, keep + 1);
-    if (mine.length === 0) return null;
     let best: { move: Move; score: number } | null = null;
-    for (const from of mine) {
+    for (const from of this.mine(game, 1)) {
+      const keep = this.keepFor(game, from);
+      if (this.have(game, from) <= keep) continue;
       for (const to of this.lands(game, "player")) {
         const cost = this.canFlip(game, from, to, keep);
         if (cost < 1) continue;
-        const close = 80 / (dist(from.center, to.center) + 50);
-        const score = 30 - cost + close + game.rng() * 2;
+        const close = 70 / (dist(from.center, to.center) + 50);
+        const score = this.frontThreat(game, to) * 10 + close - cost * 0.3;
         if (!best || score > best.score) {
           best = { move: { from, to, want: cost, keep }, score };
         }
