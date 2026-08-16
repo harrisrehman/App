@@ -23,7 +23,6 @@ import {
   pathHits,
   pathLength,
   pointInPoly,
-  wallSlotsPacked,
   wallSpots,
 } from "./geo";
 import { createMap } from "./map";
@@ -319,7 +318,7 @@ export class Game {
     };
     this.walls.push(wall);
     for (const s of pool) s.wallId = wall.id;
-    wall.spots = wallSlotsPacked(wall.path, pool.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+    wall.spots = wallSpots(wall.path, pool.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     for (const s of pool) {
       s.toId = null;
       s.state = "return";
@@ -707,7 +706,7 @@ export class Game {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return;
     if (wall.spots.length === 0) {
-      wall.spots = wallSlotsPacked(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+      wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     }
     const used = new Set<number>();
     for (const s of crew) {

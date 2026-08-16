@@ -1,4 +1,4 @@
-import { COLORS, RING_SPIN, WALL_SENSE, rules } from "./config";
+import { COLORS, RING_SPIN, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -58,8 +58,6 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   for (const t of game.territories) {
     drawBase(ctx, t, game.selected.has(t.id));
   }
-
-  drawWalls(ctx, game);
 
   for (const s of game.soldiers) {
     if (s.state !== "march") drawSoldier(ctx, s, soldierPicked(game, s));
@@ -128,40 +126,6 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolea
   ctx.strokeStyle = COLORS.line;
   ctx.lineWidth = 1.4;
   ctx.stroke();
-}
-
-function strokeLine(ctx: CanvasRenderingContext2D, path: Point[]): void {
-  if (path.length < 2) return;
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke();
-}
-
-function drawWalls(ctx: CanvasRenderingContext2D, game: Game): void {
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  for (const wall of game.walls) {
-    if (wall.path.length < 2) continue;
-    ctx.globalAlpha = 0.18;
-    ctx.strokeStyle = COLORS.player;
-    ctx.lineWidth = WALL_SENSE * 2;
-    ctx.setLineDash([]);
-    strokeLine(ctx, wall.path);
-    ctx.globalAlpha = 0.9;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([6, 5]);
-    strokeLine(ctx, wall.path);
-  }
-  if (game.wallMode && game.stroke.length >= 2) {
-    ctx.globalAlpha = 0.14;
-    ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = WALL_SENSE * 2;
-    ctx.setLineDash([]);
-    strokeLine(ctx, game.stroke);
-  }
-  ctx.globalAlpha = 1;
-  ctx.setLineDash([]);
 }
 
 function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {
