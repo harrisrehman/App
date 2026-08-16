@@ -1,6 +1,7 @@
 import {
   BASE_COUNT_MAX,
   BASE_COUNT_MIN,
+  BASE_HEALTH,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
   START_MIN_DIST,
@@ -177,6 +178,7 @@ export function createMap(seed = 20260815): Territory[] {
       radius: meanRadius(center, poly),
       owner: "neutral",
       troops: NEUTRAL_TROOPS,
+      health: BASE_HEALTH,
       spawnAcc: 0,
       neighbors: nearestIds(id, centers, 4),
     };
@@ -185,8 +187,10 @@ export function createMap(seed = 20260815): Territory[] {
   const [a, b] = pickStarts(centers, rng);
   territories[a].owner = "player";
   territories[a].troops = START_TROOPS;
+  territories[a].health = BASE_HEALTH;
   territories[b].owner = "ai";
   territories[b].troops = START_TROOPS;
+  territories[b].health = BASE_HEALTH;
 
   return territories;
 }

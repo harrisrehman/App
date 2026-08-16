@@ -1,4 +1,4 @@
-import { COLORS } from "./config";
+import { BASE_HEALTH, COLORS } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import type { Owner, Point, Pop, Soldier, Territory } from "./types";
@@ -86,11 +86,22 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+  const barW = 36;
+  const barH = 4;
+  const barX = t.center.x - barW / 2;
+  const barY = t.center.y - 14;
+  const ratio = Math.max(0, Math.min(1, t.health / BASE_HEALTH));
+  ctx.fillStyle = "#0e0e10";
+  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+  ctx.fillStyle = "#2a2a30";
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = color;
+  ctx.fillRect(barX, barY, barW * ratio, barH);
   ctx.fillStyle = COLORS.bg;
   ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 1);
+  ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);
 }
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {

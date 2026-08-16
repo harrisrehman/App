@@ -22,10 +22,11 @@ export function applyArrival(dest: Territory, army: Army): void {
     dest.troops += army.count;
     return;
   }
-  dest.troops -= army.count;
-  if (dest.troops <= 0) {
+  dest.health -= army.count;
+  if (dest.health <= 0) {
     dest.owner = army.owner;
-    dest.troops = BASE_HEALTH;
+    dest.health = BASE_HEALTH;
+    dest.troops = 0;
   }
 }
 
@@ -325,8 +326,8 @@ export class Game {
     }
 
     if (dest.owner === "neutral") {
-      dest.troops -= 1;
-      if (dest.troops > 0) return false;
+      dest.health -= 1;
+      if (dest.health > 0) return false;
       this.takeBase(dest, s.owner);
       return false;
     }
@@ -339,8 +340,8 @@ export class Game {
   private takeBase(dest: Territory, owner: Exclude<Owner, "neutral">): void {
     dest.owner = owner;
     dest.spawnAcc = 0;
-    dest.troops = BASE_HEALTH;
-    for (let i = 0; i < BASE_HEALTH; i++) this.spawnSoldier(dest);
+    dest.health = BASE_HEALTH;
+    dest.troops = 0;
   }
 
   private inPerimeter(t: Territory, p: Point): boolean {

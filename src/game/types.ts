@@ -12,6 +12,7 @@ export type Territory = {
   radius: number;
   owner: Owner;
   troops: number;
+  health: number;
   spawnAcc: number;
   neighbors: number[];
 };

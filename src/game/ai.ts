@@ -87,7 +87,7 @@ export class Commander {
     const aiIn = game.incoming(dest.id, "ai");
     const playerIn = game.incoming(dest.id, "player");
     if (dest.owner === "neutral") {
-      return Math.max(1, dest.troops + playerIn - aiIn);
+      return Math.max(1, dest.health + playerIn - aiIn);
     }
     const travel = dist(from.center, dest.center) / ARMY_SPEED;
     const growth = dest.owner === "player" ? travel / SPAWN_INTERVAL : 0;
@@ -106,11 +106,11 @@ export class Commander {
       const playerIn = game.incoming(dest.id, "player");
       if (playerIn <= 0) continue;
       const aiIn = game.incoming(dest.id, "ai");
-      const need = dest.troops + playerIn - aiIn;
+      const need = dest.health + playerIn - aiIn;
       if (need <= 0) continue;
       const from = this.closest(this.mine(game, Math.max(keep + 1, need)), dest);
       if (!from) continue;
-      const risk = playerIn - aiIn + (BASE_HEALTH - dest.troops) + this.greyFront(game, dest);
+      const risk = playerIn - aiIn + (BASE_HEALTH - dest.health) + this.greyFront(game, dest);
       if (!best || risk > best.risk) best = { dest, from, risk };
     }
     if (!best) return false;
@@ -132,7 +132,7 @@ export class Commander {
     for (const from of this.mine(game, 1)) {
       if (this.have(game, from) <= this.keepFor(game, from)) continue;
       for (const to of greys) {
-        if (game.incoming(to.id, "ai") >= to.troops) continue;
+        if (game.incoming(to.id, "ai") >= to.health) continue;
         if (!this.canFlip(game, from, to)) continue;
         const close = 90 / (dist(from.center, to.center) + 40);
         const score = close + this.greyFront(game, to) * 6 + (this.behind(game) ? 16 : 0);
@@ -177,7 +177,7 @@ export class Commander {
 
   private capture(game: Game): Move | null {
     const greysLeft = game.territories.some(
-      (t) => t.owner === "neutral" && game.incoming(t.id, "ai") < t.troops,
+      (t) => t.owner === "neutral" && game.incoming(t.id, "ai") < t.health,
     );
     if (greysLeft && this.behind(game)) return null;
 
