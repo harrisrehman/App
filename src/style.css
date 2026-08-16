@@ -93,13 +93,19 @@ button {
   background: var(--panel);
   color: var(--text);
   border-radius: 999px;
-  padding: 10px 16px;
+  padding: 10px 14px;
   font: inherit;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
-#update-btn.badge {
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+#update-btn.badge,
+#wall-btn.on {
   border-color: var(--player);
   color: var(--player);
 }

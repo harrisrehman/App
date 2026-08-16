@@ -116,8 +116,8 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
 function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {
   if (game.stroke.length < 2) return;
   ctx.globalAlpha = 0.82 * (1 - game.strokeFade);
-  ctx.strokeStyle = COLORS.player;
-  ctx.lineWidth = 3.4;
+  ctx.strokeStyle = game.wallMode ? COLORS.line : COLORS.player;
+  ctx.lineWidth = game.wallMode ? 4.2 : 3.4;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();

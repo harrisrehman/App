@@ -50,3 +50,43 @@ export function dist(a: Point, b: Point): number {
 export function nearPoint(a: Point, b: Point, eps = 6): boolean {
   return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps;
 }
+
+export function pathLength(path: Point[]): number {
+  let n = 0;
+  for (let i = 1; i < path.length; i++) n += dist(path[i - 1], path[i]);
+  return n;
+}
+
+export function resamplePath(path: Point[], count: number): Point[] {
+  if (count < 1) return [];
+  if (path.length === 0) return [];
+  if (path.length === 1 || count === 1) {
+    const mid = path[Math.floor(path.length / 2)];
+    return Array.from({ length: count }, () => ({ x: mid.x, y: mid.y }));
+  }
+  const total = pathLength(path);
+  if (total < 1) {
+    return Array.from({ length: count }, () => ({ x: path[0].x, y: path[0].y }));
+  }
+  const out: Point[] = [];
+  for (let i = 0; i < count; i++) {
+    const target = (i / Math.max(1, count - 1)) * total;
+    let acc = 0;
+    let placed = false;
+    for (let s = 1; s < path.length; s++) {
+      const a = path[s - 1];
+      const b = path[s];
+      const seg = dist(a, b);
+      if (acc + seg >= target || s === path.length - 1) {
+        const t = seg < 0.001 ? 0 : (target - acc) / seg;
+        const k = Math.max(0, Math.min(1, t));
+        out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+        placed = true;
+        break;
+      }
+      acc += seg;
+    }
+    if (!placed) out.push({ x: path[path.length - 1].x, y: path[path.length - 1].y });
+  }
+  return out;
+}

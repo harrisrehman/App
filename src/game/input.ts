@@ -64,6 +64,10 @@ export function bindInput(
     held = false;
     dragged = false;
     swept = false;
+    if (game.wallMode) {
+      game.beginStroke(p);
+      return;
+    }
     const id = hitTerritory(game, p.x, p.y);
     if (id === null) game.selected.clear();
     game.beginStroke(p);
@@ -82,7 +86,7 @@ export function bindInput(
       dragged = true;
       clearHold();
     }
-    sweep(hitTerritory(game, p.x, p.y));
+    if (!game.wallMode) sweep(hitTerritory(game, p.x, p.y));
   };
 
   const tap = (id: number | null): void => {
@@ -116,6 +120,15 @@ export function bindInput(
     }
     const didHold = held;
     const p = start ? pos(e) : null;
+    if (game.wallMode) {
+      const path = game.stroke.slice();
+      game.endStroke();
+      clearHold();
+      start = null;
+      held = false;
+      game.formWall(path);
+      return;
+    }
     game.endStroke();
     clearHold();
     start = null;

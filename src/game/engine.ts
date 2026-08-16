@@ -8,7 +8,7 @@ import {
   START_TROOPS,
   ringRadius,
 } from "./config";
-import { dist } from "./geo";
+import { dist, pathLength, resamplePath } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
 import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
@@ -64,6 +64,7 @@ export class Game {
   stroke: Point[] = [];
   strokeFade = 0;
   stroking = false;
+  wallMode = false;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
   rng: () => number;
@@ -84,6 +85,7 @@ export class Game {
     this.stroke = [];
     this.strokeFade = 0;
     this.stroking = false;
+    this.wallMode = false;
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
@@ -152,6 +154,26 @@ export class Game {
       this.stroke = [];
       this.strokeFade = 0;
     }
+  }
+
+  formWall(path: Point[]): boolean {
+    if (this.winner) return false;
+    const ids = [...this.selected].filter((id) => this.territories[id]?.owner === "player");
+    if (ids.length === 0) return false;
+    if (pathLength(path) < 28) return false;
+    const pool = ids.flatMap((id) => this.garrison(id));
+    if (pool.length < 1) return false;
+    const spots = resamplePath(path, pool.length);
+    for (let i = 0; i < pool.length; i++) {
+      const s = pool[i];
+      const p = spots[i] ?? spots[spots.length - 1];
+      s.restX = p.x;
+      s.restY = p.y;
+      s.toId = null;
+      s.state = "return";
+    }
+    this.wallMode = false;
+    return true;
   }
 
   sendSelected(toId: number): boolean {

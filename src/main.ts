@@ -21,6 +21,7 @@ function startGame(): void {
   const drawEl = boardEl?.getContext("2d");
   const scoreEl = document.querySelector("#score");
   const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
+  const wallEl = document.querySelector<HTMLButtonElement>("#wall-btn");
   const toastEl = document.querySelector("#toast");
   const overlayEl = document.querySelector("#overlay");
   const resultEl = document.querySelector("#result");
@@ -28,7 +29,7 @@ function startGame(): void {
   const versionEl = document.querySelector("#version");
   const hint = document.querySelector("#hint");
 
-  if (!boardEl || !drawEl || !scoreEl || !updateEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+  if (!boardEl || !drawEl || !scoreEl || !updateEl || !wallEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
   }
@@ -37,6 +38,7 @@ function startGame(): void {
   const draw = drawEl;
   const score = scoreEl;
   const update = updateEl;
+  const wall = wallEl;
   const toastBox = toastEl;
   const endScreen = overlayEl;
   const result = resultEl;
@@ -90,6 +92,34 @@ function startGame(): void {
     endScreen.classList.add("hidden");
   };
 
+  const syncWall = (): void => {
+    wall.classList.toggle("on", game.wallMode);
+  };
+
+  const onWall = (): void => {
+    if (game.winner) return;
+    if (game.wallMode) {
+      game.wallMode = false;
+      game.endStroke();
+      syncWall();
+      toast("Wall canceled.");
+      return;
+    }
+    const mine = [...game.selected].some((id) => game.territories[id]?.owner === "player");
+    if (!mine) {
+      toast("Select a base first.");
+      return;
+    }
+    const troops = [...game.selected].reduce((n, id) => n + game.garrison(id).length, 0);
+    if (troops < 1) {
+      toast("No soldiers to wall.");
+      return;
+    }
+    game.wallMode = true;
+    syncWall();
+    toast("Draw a wall line.");
+  };
+
   const onUpdate = async (): Promise<void> => {
     update.disabled = true;
     update.textContent = "…";
@@ -103,6 +133,7 @@ function startGame(): void {
   };
 
   again.addEventListener("click", onRestart);
+  wall.addEventListener("click", onWall);
   update.addEventListener("click", onUpdate);
 
   const unbind = bindInput(board, game, () => cam);
@@ -131,6 +162,7 @@ function startGame(): void {
     ai.tick(game, dt);
     render(draw, game, cam);
     syncHud();
+    syncWall();
     requestAnimationFrame(loop);
   }
 
@@ -140,6 +172,7 @@ function startGame(): void {
     unbind();
     window.removeEventListener("resize", resize);
     again.removeEventListener("click", onRestart);
+    wall.removeEventListener("click", onWall);
     update.removeEventListener("click", onUpdate);
   };
 

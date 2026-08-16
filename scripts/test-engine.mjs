@@ -65,4 +65,40 @@ const home = { x: 80, y: 20, restX: 10, restY: 10, state: "return" };
 walkHome(home, 100);
 assert(home.x === 10 && home.y === 10 && home.state === "idle", "return home failed");
 
+function resamplePath(path, count) {
+  if (count < 1 || path.length === 0) return [];
+  if (path.length === 1 || count === 1) {
+    const mid = path[Math.floor(path.length / 2)];
+    return Array.from({ length: count }, () => ({ x: mid.x, y: mid.y }));
+  }
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  }
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const target = (i / Math.max(1, count - 1)) * total;
+    let acc = 0;
+    for (let s = 1; s < path.length; s++) {
+      const a = path[s - 1];
+      const b = path[s];
+      const seg = Math.hypot(b.x - a.x, b.y - a.y);
+      if (acc + seg >= target || s === path.length - 1) {
+        const t = seg < 0.001 ? 0 : (target - acc) / seg;
+        const k = Math.max(0, Math.min(1, t));
+        out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+        break;
+      }
+      acc += seg;
+    }
+  }
+  return out;
+}
+
+const line = resamplePath([{ x: 0, y: 0 }, { x: 100, y: 0 }], 5);
+assert(line.length === 5, "wall count failed");
+assert(line[0].x === 0 && line[4].x === 100, "wall ends failed");
+assert(Math.abs(line[2].x - 50) < 0.01, "wall mid failed");
+
 console.log("engine tests passed");
+
