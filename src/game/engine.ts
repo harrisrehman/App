@@ -213,9 +213,9 @@ export class Game {
       dest.troops -= 1;
       if (dest.troops > 0) return false;
       dest.owner = s.owner;
+      dest.troops = 0;
       dest.spawnAcc = 0;
-      this.startEject(s, dest);
-      return true;
+      return false;
     }
 
     const defender = this.garrison(dest.id).find((x) => !dead.has(x.id));

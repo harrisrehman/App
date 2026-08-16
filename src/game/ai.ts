@@ -57,9 +57,8 @@ export class Commander {
     for (const from of mine) {
       for (const to of game.territories) {
         if (to.owner !== "neutral") continue;
-        const need = to.troops + 1;
-        const send = Math.floor(from.troops * 0.5);
-        if (send < need && from.troops < need + 4) continue;
+        const send = from.troops;
+        if (send < to.troops) continue;
         options.push({
           from,
           to,
