@@ -15,6 +15,7 @@ import {
 import {
   behindSign,
   closePath,
+  densifyPath,
   dist,
   isClosedLasso,
   nearPoly,
@@ -126,6 +127,7 @@ export class Game {
   selected = new Set<number>();
   picked = new Set<number>();
   walls: Wall[] = [];
+  notice: string | null = null;
   stroke: Point[] = [];
   strokeFade = 0;
   stroking = false;
@@ -152,6 +154,7 @@ export class Game {
     this.selected.clear();
     this.picked.clear();
     this.walls = [];
+    this.notice = null;
     this.stroke = [];
     this.strokeFade = 0;
     this.stroking = false;
@@ -287,9 +290,19 @@ export class Game {
     }
   }
 
+  pullNotice(): string | null {
+    const text = this.notice;
+    this.notice = null;
+    return text;
+  }
+
   formWall(path: Point[]): boolean {
     if (this.winner) return false;
     if (pathLength(path) < 28) return false;
+    if (this.pathHitsEnemy(path)) {
+      this.notice = "You can't make walls through enemy bases.";
+      return false;
+    }
     const pool = this.wallPool();
     if (pool.length < 1) return false;
     const from = {
@@ -374,6 +387,7 @@ export class Game {
       for (let j = i + 1; j < live.length; j++) {
         const b = live[j];
         if (dead.has(b.id) || a.owner === b.owner) continue;
+        if (!this.canClash(a) || !this.canClash(b)) continue;
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         if (dx * dx + dy * dy > r2) continue;
@@ -630,6 +644,27 @@ export class Game {
     return home ? this.invaders(home) : [];
   }
 
+  private canClash(s: Soldier): boolean {
+    if (s.wallId == null) return true;
+    return s.state !== "return" && s.state !== "eject";
+  }
+
+  private wallPosted(s: Soldier): boolean {
+    if (s.wallId == null) return true;
+    return s.state === "idle" || s.state === "defend";
+  }
+
+  private pathHitsEnemy(path: Point[]): boolean {
+    for (const t of this.territories) {
+      if (t.owner === "neutral" || t.owner === "player") continue;
+      if (pathHits(path, t.center, t.radius + WALL_BASE_PAD)) return true;
+      for (const p of densifyPath(path, 6)) {
+        if (nearPoly(p, t.poly, WALL_BASE_PAD)) return true;
+      }
+    }
+    return false;
+  }
+
   private hitsBase(p: Point): boolean {
     for (const t of this.territories) {
       if (dist(p, t.center) <= t.radius + WALL_BASE_PAD) return true;
@@ -726,7 +761,10 @@ export class Game {
       if (crew.length === 0) continue;
       const threats = this.wallThreats(wall);
       if (threats.length > 0) {
-        for (const s of crew) s.state = "defend";
+        for (const s of crew) {
+          if (!this.wallPosted(s) && s.state !== "defend") continue;
+          s.state = "defend";
+        }
         continue;
       }
       const fighting = crew.some((s) => s.state === "defend");

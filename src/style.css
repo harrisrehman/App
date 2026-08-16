@@ -173,7 +173,51 @@ button {
   gap: 18px;
 }
 
+#error {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  background: rgba(14, 14, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.error-card {
+  background: var(--panel);
+  border: 1px solid #ff5a4a;
+  border-radius: 16px;
+  padding: 18px 20px;
+  max-width: 260px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.error-card h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #ff5a4a;
+}
+
+.error-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+#error-ok {
+  align-self: center;
+}
+
 #overlay.hidden,
+#error.hidden,
 #menu-home.hidden,
 #menu-bots.hidden,
 #menu.hidden,

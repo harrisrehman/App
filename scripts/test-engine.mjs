@@ -331,6 +331,9 @@ function isClosedLasso(path) {
 const slash = [{ x: 0, y: 0 }, { x: 80, y: 0 }];
 assert(pathHits(slash, { x: 40, y: 8 }, 16), "line thru soldier failed");
 assert(!pathHits(slash, { x: 40, y: 30 }, 16), "far soldier selected");
+const thruEnemy = [{ x: 0, y: 0 }, { x: 200, y: 0 }];
+assert(pathHits(thruEnemy, { x: 100, y: 0 }, 30 + 16), "wall thru enemy base");
+assert(!pathHits(thruEnemy, { x: 100, y: 80 }, 20 + 16), "wall past enemy base");
 
 const box = [
   { x: 0, y: 0 },

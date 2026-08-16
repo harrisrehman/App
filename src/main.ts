@@ -75,6 +75,15 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) hud.appendChild(makeEl("div", "hint"));
+  if (!document.querySelector("#error")) {
+    const box = makeEl("div", "error");
+    box.classList.add("hidden");
+    const card = document.createElement("div");
+    card.className = "error-card";
+    card.append(makeEl("h2", undefined, "Can't wall there"), makeEl("p", "error-text"), makeEl("button", "error-ok", "OK"));
+    box.appendChild(card);
+    document.body.appendChild(box);
+  }
   if (!document.querySelector("#overlay")) {
     const overlay = makeEl("div", "overlay");
     overlay.classList.add("hidden");
@@ -173,6 +182,18 @@ function toggleDev(): void {
   syncDevPanel();
 }
 
+function showError(text: string): void {
+  const box = document.querySelector("#error");
+  const msg = document.querySelector("#error-text");
+  if (!box || !msg) return;
+  msg.textContent = text;
+  box.classList.remove("hidden");
+}
+
+function hideError(): void {
+  document.querySelector("#error")?.classList.add("hidden");
+}
+
 function showToast(text: string): void {
   const box = document.querySelector("#toast");
   if (!box) return;
@@ -232,6 +253,12 @@ function onHudClick(e: Event): void {
     e.preventDefault();
     e.stopImmediatePropagation();
     showMenu();
+    return;
+  }
+  if (t.id === "error-ok") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    hideError();
     return;
   }
   if (t.id === "menu-dev-btn") {
@@ -369,6 +396,7 @@ function startGame(bots = 1): void {
     for (const ai of ais) ai.reset();
     shownWinner = false;
     endScreen.classList.add("hidden");
+    hideError();
   };
 
   const syncWall = (): void => {
@@ -424,6 +452,8 @@ function startGame(bots = 1): void {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     game.update(dt);
+    const note = game.pullNotice();
+    if (note) showError(note);
     for (const ai of ais) ai.tick(game, dt);
     render(draw, game, cam);
     syncHud();
