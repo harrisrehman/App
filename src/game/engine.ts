@@ -28,15 +28,18 @@ function ejectPath(base: Territory, rng: () => number): {
   from: { x: number; y: number };
   to: { x: number; y: number };
 } {
-  const angle = rng() * Math.PI * 2;
   const rim = Math.max(base.radius, 22);
-  const startR = rim * 0.88;
-  const restR = rim + 18 + rng() * 22;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
+  const spot = (minR: number, maxR: number) => {
+    const angle = rng() * Math.PI * 2;
+    const radius = minR + rng() * (maxR - minR);
+    return {
+      x: base.center.x + Math.cos(angle) * radius,
+      y: base.center.y + Math.sin(angle) * radius,
+    };
+  };
   return {
-    from: { x: base.center.x + cos * startR, y: base.center.y + sin * startR },
-    to: { x: base.center.x + cos * restR, y: base.center.y + sin * restR },
+    from: spot(rim * 0.15, rim * 0.75),
+    to: spot(rim * 0.9, rim * 1.55),
   };
 }
 
