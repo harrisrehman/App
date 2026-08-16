@@ -41,10 +41,6 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   ctx.translate(cam.ox, cam.oy);
   ctx.scale(scale, scale);
 
-  for (const t of game.territories) {
-    drawBase(ctx, t, game.selected === t.id);
-  }
-
   for (const s of game.soldiers) {
     if (s.state !== "march") drawSoldier(ctx, s);
   }
@@ -53,7 +49,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   }
 
   for (const t of game.territories) {
-    drawBadge(ctx, t, game.selected === t.id);
+    drawBase(ctx, t, game.selected === t.id);
   }
 
   ctx.restore();
@@ -61,15 +57,13 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
-  const alpha = t.owner === "neutral" ? 0.28 : selected ? 0.72 : 0.5;
-  ctx.beginPath();
-  ctx.moveTo(t.poly[0].x, t.poly[0].y);
-  for (let i = 1; i < t.poly.length; i++) ctx.lineTo(t.poly[i].x, t.poly[i].y);
-  ctx.closePath();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  const scale = (selected ? 38 : 34) / Math.max(t.radius, 1);
+  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, scale, color, 1);
+  ctx.fillStyle = COLORS.bg;
+  ctx.font = "700 24px ui-sans-serif, system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 1);
 }
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
@@ -78,13 +72,3 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
 }
 
-function drawBadge(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
-  const color = fill(t.owner);
-  const scale = (selected ? 30 : 26) / Math.max(t.radius, 1);
-  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, scale, color, 1);
-  ctx.fillStyle = COLORS.bg;
-  ctx.font = "700 24px ui-sans-serif, system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 1);
-}

@@ -1,4 +1,4 @@
-import { dist, pointInPoly } from "./geo";
+import { dist } from "./geo";
 import type { Camera } from "./camera";
 import { toWorld } from "./camera";
 import type { Game } from "./engine";
@@ -6,9 +6,8 @@ import type { Game } from "./engine";
 export function hitTerritory(game: Game, x: number, y: number): number | null {
   let best: { id: number; d: number } | null = null;
   for (const t of game.territories) {
-    const inside = pointInPoly(x, y, t.poly);
     const d = dist({ x, y }, t.center);
-    if (!inside && d > t.radius + 36) continue;
+    if (d > 56) continue;
     if (!best || d < best.d) best = { id: t.id, d };
   }
   return best?.id ?? null;
