@@ -14,7 +14,7 @@ import { mulberry32 } from "./rng";
 import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
 
 export function perimeterRadius(t: Territory): number {
-  return t.radius + PERIMETER_PAD;
+  return (t.radius + PERIMETER_PAD) * 2;
 }
 
 export function applyArrival(dest: Territory, army: Army): void {

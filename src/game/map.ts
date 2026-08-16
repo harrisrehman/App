@@ -1,6 +1,7 @@
 import {
   BASE_COUNT_MAX,
   BASE_COUNT_MIN,
+  BASE_GAP,
   BASE_HEALTH,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
@@ -13,8 +14,9 @@ import { centroid, dist } from "./geo";
 import { mulberry32, randInt, randRange } from "./rng";
 import type { Point, Territory } from "./types";
 
-const PAD = 56;
-const MIN_GAP = 126;
+const PAD = 72;
+const MIN_GAP = BASE_GAP;
+const GAP_FLOOR = BASE_RADIUS * 2.3;
 
 type ShapeKind = "pent" | "hex" | "hept" | "tri" | "kite" | "blob";
 
@@ -37,7 +39,7 @@ function minDist(p: Point, pts: Point[]): number {
   return best;
 }
 
-function placeCenters(rng: () => number, n: number): Point[] {
+function tryPlace(rng: () => number, n: number, gap: number): Point[] {
   const { x0, y0, w, h } = inBounds();
   const pts: Point[] = [];
   const quads = [
@@ -52,31 +54,33 @@ function placeCenters(rng: () => number, n: number): Point[] {
   }
   for (const [qx, qy] of quads) {
     if (pts.length >= n) break;
-    pts.push(randPoint(rng, x0 + qx * w * 0.5, y0 + qy * h * 0.5, w * 0.5, h * 0.5));
-  }
-
-  let gap = MIN_GAP;
-  for (let relax = 0; relax < 8 && pts.length < n; relax++) {
-    for (let i = 0; i < 80 && pts.length < n; i++) {
-      let best: Point | null = null;
-      let bestD = -1;
-      for (let s = 0; s < 18; s++) {
-        const p = randPoint(rng, x0, y0, w, h);
-        const d = minDist(p, pts);
-        if (d >= gap && d > bestD) {
-          best = p;
-          bestD = d;
-        }
+    let placed: Point | null = null;
+    for (let s = 0; s < 40; s++) {
+      const p = randPoint(rng, x0 + qx * w * 0.5, y0 + qy * h * 0.5, w * 0.5, h * 0.5);
+      if (pts.length === 0 || minDist(p, pts) >= gap) {
+        placed = p;
+        break;
       }
-      if (best) pts.push(best);
     }
-    gap -= 12;
+    if (placed) pts.push(placed);
   }
 
-  while (pts.length < n) {
-    pts.push(randPoint(rng, x0, y0, w, h));
+  for (let i = 0; i < n * 220 && pts.length < n; i++) {
+    const p = randPoint(rng, x0, y0, w, h);
+    if (minDist(p, pts) >= gap) pts.push(p);
   }
-  return pts.slice(0, n);
+  return pts;
+}
+
+function placeCenters(rng: () => number, n: number): Point[] {
+  let gap = MIN_GAP;
+  for (let pass = 0; pass < 8; pass++) {
+    const pts = tryPlace(rng, n, gap);
+    if (pts.length >= n) return pts.slice(0, n);
+    gap = Math.max(GAP_FLOOR, gap - 6);
+  }
+  const packed = tryPlace(rng, n, GAP_FLOOR);
+  return packed.length >= 2 ? packed : tryPlace(rng, Math.max(2, n), GAP_FLOOR);
 }
 
 function ring(cx: number, cy: number, radii: number[], twist: number): Point[] {
@@ -121,6 +125,48 @@ function makeShape(kind: ShapeKind, c: Point, rng: () => number): Point[] {
 
 function meanRadius(center: Point, poly: Point[]): number {
   return poly.reduce((s, p) => s + dist(center, p), 0) / poly.length;
+}
+
+function extentOf(t: Territory): number {
+  let m = 0;
+  for (const p of t.localPoly) m = Math.max(m, Math.hypot(p.x, p.y));
+  return m;
+}
+
+function clampCenter(t: Territory, extra: number): void {
+  const { x0, y0, w, h } = inBounds();
+  t.center.x = Math.min(x0 + w - extra, Math.max(x0 + extra, t.center.x));
+  t.center.y = Math.min(y0 + h - extra, Math.max(y0 + extra, t.center.y));
+}
+
+function separateBases(list: Territory[]): void {
+  const extents = list.map(extentOf);
+  const pad = 12;
+  for (let iter = 0; iter < 48; iter++) {
+    let moved = false;
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i];
+        const b = list[j];
+        const need = extents[i] + extents[j] + pad;
+        const d = dist(a.center, b.center);
+        if (d >= need) continue;
+        const nx = d < 0.001 ? 1 : (b.center.x - a.center.x) / d;
+        const ny = d < 0.001 ? 0 : (b.center.y - a.center.y) / d;
+        const push = (need - Math.max(d, 0.001)) / 2 + 0.6;
+        a.center.x -= nx * push;
+        a.center.y -= ny * push;
+        b.center.x += nx * push;
+        b.center.y += ny * push;
+        moved = true;
+      }
+    }
+    for (let i = 0; i < list.length; i++) clampCenter(list[i], extents[i]);
+    if (!moved) break;
+  }
+  for (const t of list) {
+    t.poly = t.localPoly.map((p) => ({ x: t.center.x + p.x, y: t.center.y + p.y }));
+  }
 }
 
 function nearestIds(index: number, centers: Point[], k: number): number[] {
@@ -180,11 +226,15 @@ export function createMap(seed = 20260815): Territory[] {
       troops: NEUTRAL_TROOPS,
       health: BASE_HEALTH,
       spawnAcc: 0,
-      neighbors: nearestIds(id, centers, 4),
+      neighbors: [],
     };
   });
 
-  const [a, b] = pickStarts(centers, rng);
+  separateBases(territories);
+  const placed = territories.map((t) => t.center);
+  for (const t of territories) t.neighbors = nearestIds(t.id, placed, 4);
+
+  const [a, b] = pickStarts(placed, rng);
   territories[a].owner = "player";
   territories[a].troops = START_TROOPS;
   territories[a].health = BASE_HEALTH;

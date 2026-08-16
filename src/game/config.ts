@@ -19,6 +19,7 @@ export const START_TROOPS = 10;
 export const NEUTRAL_TROOPS = 0;
 export const PERIMETER_PAD = 30;
 export const BASE_RADIUS = 40;
+export const BASE_GAP = BASE_RADIUS * 2.6 + 28;
 export const BASE_COUNT_MIN = 14;
 export const BASE_COUNT_MAX = 18;
 export const START_MIN_DIST = 640;
