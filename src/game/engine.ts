@@ -18,6 +18,11 @@ export function perimeterRadius(t: Territory): number {
   return ringRadius(t.radius);
 }
 
+export function reachedBase(x: number, y: number, dest: Territory): boolean {
+  if (dist({ x, y }, dest.center) <= dest.radius) return true;
+  return pointInPoly(x, y, dest.poly);
+}
+
 export function applyArrival(dest: Territory, army: Army): void {
   if (dest.owner === army.owner) {
     dest.troops += army.count;
@@ -194,7 +199,7 @@ export class Game {
     const hit = (p: Point, radius: number): boolean =>
       pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, loop));
     for (const s of this.soldiers) {
-      if (s.owner !== "player" || s.state === "march") continue;
+      if (s.owner !== "player") continue;
       if (hit({ x: s.x, y: s.y }, 16)) this.selected.add(s.homeId);
     }
     for (const t of this.territories) {
@@ -273,7 +278,7 @@ export class Game {
     for (const s of this.soldiers) {
       if (s.state !== "march" || s.toId === null || dead.has(s.id)) continue;
       const dest = this.territories[s.toId];
-      if (dist({ x: s.x, y: s.y }, dest.center) > dest.radius * 0.85) continue;
+      if (!reachedBase(s.x, s.y, dest)) continue;
       const keep = this.arrive(s, dest, dead);
       if (!keep) dead.add(s.id);
     }
@@ -429,17 +434,20 @@ export class Game {
 
     if (s.state === "march" && s.toId !== null) {
       const dest = this.territories[s.toId];
-      const toCenter = dist({ x: s.x, y: s.y }, dest.center);
-      const spread = toCenter > dest.radius ? 12 : 0;
-      const aim = {
-        x: dest.center.x + Math.sin(s.id * 12.9898) * spread,
-        y: dest.center.y + Math.cos(s.id * 78.233) * spread,
-      };
-      const d = dist({ x: s.x, y: s.y }, aim);
-      if (d < 1) return;
+      if (reachedBase(s.x, s.y, dest)) {
+        s.x = dest.center.x;
+        s.y = dest.center.y;
+        return;
+      }
+      const d = dist({ x: s.x, y: s.y }, dest.center);
+      if (d < 1) {
+        s.x = dest.center.x;
+        s.y = dest.center.y;
+        return;
+      }
       const step = ARMY_SPEED * dt;
-      s.x += ((aim.x - s.x) / d) * step;
-      s.y += ((aim.y - s.y) / d) * step;
+      s.x += ((dest.center.x - s.x) / d) * step;
+      s.y += ((dest.center.y - s.y) / d) * step;
       return;
     }
 

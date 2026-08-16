@@ -55,15 +55,15 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   ctx.translate(cam.ox, cam.oy);
   ctx.scale(scale, scale);
 
+  for (const t of game.territories) {
+    drawBase(ctx, t, game.selected.has(t.id));
+  }
+
   for (const s of game.soldiers) {
     if (s.state !== "march") drawSoldier(ctx, s, game.selected.has(s.homeId));
   }
   for (const s of game.soldiers) {
-    if (s.state === "march") drawSoldier(ctx, s, false);
-  }
-
-  for (const t of game.territories) {
-    drawBase(ctx, t, game.selected.has(t.id));
+    if (s.state === "march") drawSoldier(ctx, s, game.selected.has(s.homeId));
   }
 
   for (const p of game.pops) drawPop(ctx, p);

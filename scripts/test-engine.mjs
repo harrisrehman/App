@@ -37,13 +37,13 @@ const flip = { owner: "neutral", troops: 0, health: 10 };
 applyArrival(flip, { owner: "player", count: 10 });
 assert(flip.owner === "player" && flip.troops === 0 && flip.health === 10, "capture start failed");
 
-function canArrive(s, dest) {
-  return Math.hypot(s.x - dest.center.x, s.y - dest.center.y) <= dest.radius * 0.85;
+function reachedBase(s, dest) {
+  return Math.hypot(s.x - dest.center.x, s.y - dest.center.y) <= dest.radius;
 }
 const base = { center: { x: 0, y: 0 }, radius: 40 };
-assert(canArrive({ x: 16, y: 0 }, base), "offset marcher should still hit");
-assert(canArrive({ x: 30, y: 0 }, base), "base rim should still hit");
-assert(!canArrive({ x: 50, y: 0 }, base), "far marcher should not hit");
+assert(reachedBase({ x: 16, y: 0 }, base), "soldier under base should hit");
+assert(reachedBase({ x: 40, y: 0 }, base), "base rim should still hit");
+assert(!reachedBase({ x: 50, y: 0 }, base), "far marcher should not hit");
 
 const empty = { owner: "ai1", troops: 0, health: 10 };
 takeBase(empty, "player");
