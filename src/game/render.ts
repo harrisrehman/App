@@ -1,6 +1,7 @@
 import { BASE_HEALTH, COLORS, RING_SPIN } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
+import { isClosedLasso } from "./geo";
 import type { Owner, Point, Pop, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
@@ -55,10 +56,10 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   ctx.scale(scale, scale);
 
   for (const s of game.soldiers) {
-    if (s.state !== "march") drawSoldier(ctx, s);
+    if (s.state !== "march") drawSoldier(ctx, s, game.selected.has(s.homeId));
   }
   for (const s of game.soldiers) {
-    if (s.state === "march") drawSoldier(ctx, s);
+    if (s.state === "march") drawSoldier(ctx, s, false);
   }
 
   for (const t of game.territories) {
@@ -110,17 +111,21 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);
 }
 
-function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
+function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const scale = (9 * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
+  if (!selected || s.owner !== "player" || s.state === "march") return;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+  ctx.strokeStyle = COLORS.line;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
 }
 
 function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {
   if (game.stroke.length < 2) return;
-  ctx.globalAlpha = 0.82 * (1 - game.strokeFade);
-  ctx.strokeStyle = game.wallMode ? COLORS.line : COLORS.player;
-  ctx.lineWidth = game.wallMode ? 4.2 : 3.4;
+  const fade = 1 - game.strokeFade;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();
@@ -128,6 +133,15 @@ function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {
   for (let i = 1; i < game.stroke.length; i++) {
     ctx.lineTo(game.stroke[i].x, game.stroke[i].y);
   }
+  if (!game.wallMode && isClosedLasso(game.stroke)) {
+    ctx.closePath();
+    ctx.globalAlpha = 0.14 * fade;
+    ctx.fillStyle = COLORS.player;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 0.82 * fade;
+  ctx.strokeStyle = game.wallMode ? COLORS.line : COLORS.player;
+  ctx.lineWidth = game.wallMode ? 4.2 : 3.4;
   ctx.stroke();
   ctx.globalAlpha = 1;
 }

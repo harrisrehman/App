@@ -8,7 +8,7 @@ import {
   START_TROOPS,
   ringRadius,
 } from "./config";
-import { dist, pathLength, resamplePath } from "./geo";
+import { dist, isClosedLasso, pathHits, pathLength, pointInPoly, resamplePath } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
 import { isBot, type Army, type Faction, type Owner, type Point, type Pop, type Soldier, type Territory, type Winner } from "./types";
@@ -151,7 +151,23 @@ export class Game {
     const last = this.stroke[this.stroke.length - 1];
     if (last && dist(last, p) < 10) return;
     this.stroke.push({ x: p.x, y: p.y });
-    if (this.stroke.length > 64) this.stroke.shift();
+    if (this.stroke.length > 256) this.stroke.shift();
+  }
+
+  selectFromStroke(path: Point[]): void {
+    this.selected.clear();
+    if (path.length < 1) return;
+    const closed = isClosedLasso(path);
+    const hit = (p: Point, radius: number): boolean =>
+      pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, path));
+    for (const s of this.soldiers) {
+      if (s.owner !== "player" || s.state === "march") continue;
+      if (hit({ x: s.x, y: s.y }, 16)) this.selected.add(s.homeId);
+    }
+    for (const t of this.territories) {
+      if (t.owner !== "player") continue;
+      if (hit(t.center, t.radius * 0.55)) this.selected.add(t.id);
+    }
   }
 
   endStroke(): void {

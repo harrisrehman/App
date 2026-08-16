@@ -57,6 +57,31 @@ export function pathLength(path: Point[]): number {
   return n;
 }
 
+export function distToSeg(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 0.0001) return dist(p, a);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return dist(p, { x: a.x + dx * t, y: a.y + dy * t });
+}
+
+export function pathHits(path: Point[], p: Point, radius: number): boolean {
+  if (path.length === 0) return false;
+  if (path.length === 1) return dist(path[0], p) <= radius;
+  for (let i = 1; i < path.length; i++) {
+    if (distToSeg(p, path[i - 1], path[i]) <= radius) return true;
+  }
+  return false;
+}
+
+export function isClosedLasso(path: Point[]): boolean {
+  if (path.length < 8) return false;
+  if (dist(path[0], path[path.length - 1]) > 52) return false;
+  return pathLength(path) > 140;
+}
+
 export function resamplePath(path: Point[], count: number): Point[] {
   if (count < 1) return [];
   if (path.length === 0) return [];

@@ -100,5 +100,71 @@ assert(line.length === 5, "wall count failed");
 assert(line[0].x === 0 && line[4].x === 100, "wall ends failed");
 assert(Math.abs(line[2].x - 50) < 0.01, "wall mid failed");
 
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function distToSeg(p, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 0.0001) return dist(p, a);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return dist(p, { x: a.x + dx * t, y: a.y + dy * t });
+}
+
+function pathHits(path, p, radius) {
+  if (path.length === 0) return false;
+  if (path.length === 1) return dist(path[0], p) <= radius;
+  for (let i = 1; i < path.length; i++) {
+    if (distToSeg(p, path[i - 1], path[i]) <= radius) return true;
+  }
+  return false;
+}
+
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x;
+    const yi = poly[i].y;
+    const xj = poly[j].x;
+    const yj = poly[j].y;
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 0.0000001) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pathLength(path) {
+  let n = 0;
+  for (let i = 1; i < path.length; i++) n += dist(path[i - 1], path[i]);
+  return n;
+}
+
+function isClosedLasso(path) {
+  if (path.length < 8) return false;
+  if (dist(path[0], path[path.length - 1]) > 52) return false;
+  return pathLength(path) > 140;
+}
+
+const slash = [{ x: 0, y: 0 }, { x: 80, y: 0 }];
+assert(pathHits(slash, { x: 40, y: 8 }, 16), "line thru soldier failed");
+assert(!pathHits(slash, { x: 40, y: 30 }, 16), "far soldier selected");
+
+const box = [
+  { x: 0, y: 0 },
+  { x: 80, y: 0 },
+  { x: 80, y: 80 },
+  { x: 0, y: 80 },
+  { x: 0, y: 8 },
+  { x: 0, y: 4 },
+  { x: 0, y: 2 },
+  { x: 0, y: 0 },
+];
+assert(isClosedLasso(box), "lasso close failed");
+assert(pointInPoly(40, 40, box), "lasso inside failed");
+assert(!pointInPoly(120, 40, box), "lasso outside failed");
+
 console.log("engine tests passed");
 
