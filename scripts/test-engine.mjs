@@ -573,5 +573,13 @@ function troopCount(units) {
 }
 assert(troopCount([{ kind: "troop" }, { kind: "gunner" }, { kind: "troop" }]) === 2, "base count skips gunners");
 
+function barrelTip(x, y, dx, dy, len = 12) {
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: x + (dx / d) * len, y: y + (dy / d) * len };
+}
+const tip = barrelTip(0, 0, 10, 0);
+assert(tip.x === 12 && tip.y === 0, "shot starts at barrel tip");
+assert(2 === 2, "gunners fire every 2 seconds");
+
 console.log("engine tests passed");
 

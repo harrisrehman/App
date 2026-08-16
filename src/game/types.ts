@@ -53,6 +53,8 @@ export type Soldier = {
   kind: SoldierKind;
   shootAcc: number;
   aimId: number | null;
+  faceX: number;
+  faceY: number;
 };
 
 export type Shot = {

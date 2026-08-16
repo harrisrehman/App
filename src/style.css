@@ -118,6 +118,20 @@ body {
   color: var(--player);
 }
 
+#filters button.filter-icon {
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 6px;
+}
+
+#filters button.filter-icon svg {
+  display: block;
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+
 .filter-count {
   min-width: 40px;
   pointer-events: none;

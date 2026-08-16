@@ -1,4 +1,4 @@
-import { COLORS, RING_SPIN, rules } from "./config";
+import { COLORS, GUNNER_BARREL, GUNNER_BARREL_W, RING_SPIN, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -126,9 +126,8 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolea
   const scale = (size * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
   if (s.kind === "gunner") {
-    const tip = s.poly[0] ?? { x: 1, y: 0 };
-    let ax = tip.x;
-    let ay = tip.y;
+    let ax = s.faceX;
+    let ay = s.faceY;
     if (s.aimId != null) {
       const foe = game.soldiers.find((o) => o.id === s.aimId);
       if (foe) {
@@ -137,20 +136,14 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolea
       }
     }
     const d = Math.hypot(ax, ay) || 1;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x + (ax / d) * 11 * pop, s.y + (ay / d) * 11 * pop);
-    ctx.strokeStyle = fill(s.owner);
-    ctx.lineWidth = 2.6;
-    ctx.lineCap = "round";
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, 6.4 * pop, 0, Math.PI * 2);
-    ctx.strokeStyle = COLORS.line;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+    const len = GUNNER_BARREL * pop;
+    const wide = GUNNER_BARREL_W * pop;
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(Math.atan2(ay, ax));
+    ctx.fillStyle = fill(s.owner);
+    ctx.fillRect(4 * pop, -wide / 2, len - 3 * pop, wide);
+    ctx.restore();
   }
   if (!selected || s.owner !== "player" || s.state === "march") return;
   ctx.beginPath();

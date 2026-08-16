@@ -10,6 +10,7 @@ import {
   DEFENSE_FIRE,
   DEFENSE_HIT,
   DEFENSE_SHOT_SPEED,
+  GUNNER_BARREL,
   GUNNER_CLOSE,
   GUNNER_ORBIT,
   GUNNER_STEER,
@@ -308,6 +309,7 @@ export class Game {
     for (const s of pool) {
       s.state = "march";
       s.toId = toId;
+      this.faceToward(s, to.center.x, to.center.y);
     }
     this.syncTroops();
     return true;
@@ -533,6 +535,8 @@ export class Game {
       kind: "troop",
       shootAcc: 0,
       aimId: null,
+      faceX: 1,
+      faceY: 0,
     });
   }
 
@@ -561,6 +565,8 @@ export class Game {
       kind: "gunner",
       shootAcc: 0,
       aimId: null,
+      faceX: 1,
+      faceY: 0,
     });
   }
 
@@ -584,6 +590,8 @@ export class Game {
     if (!s.kind) s.kind = "troop";
     s.shootAcc = s.shootAcc ?? 0;
     s.aimId = null;
+    s.faceX = s.faceX ?? 1;
+    s.faceY = s.faceY ?? 0;
   }
 
   applyRules(): void {
@@ -708,18 +716,26 @@ export class Game {
     return { x: 0, y: 0 };
   }
 
-  private fireShot(from: Soldier, to: Soldier): void {
+  private faceToward(s: Soldier, x: number, y: number): void {
+    const d = Math.hypot(x - s.x, y - s.y) || 1;
+    s.faceX = (x - s.x) / d;
+    s.faceY = (y - s.y) / d;
+  }
+
+  private aimPoint(from: Soldier, to: Soldier): Point {
     const v = this.soldierVel(to);
-    const range = dist(from, to);
-    const eta = range / DEFENSE_SHOT_SPEED;
-    const ax = to.x + v.x * eta;
-    const ay = to.y + v.y * eta;
-    const d = Math.hypot(ax - from.x, ay - from.y) || 1;
+    const eta = dist(from, to) / DEFENSE_SHOT_SPEED;
+    return { x: to.x + v.x * eta, y: to.y + v.y * eta };
+  }
+
+  private fireShot(from: Soldier, to: Soldier): void {
+    const aim = this.aimPoint(from, to);
+    this.faceToward(from, aim.x, aim.y);
     this.shots.push({
-      x: from.x,
-      y: from.y,
-      vx: ((ax - from.x) / d) * DEFENSE_SHOT_SPEED,
-      vy: ((ay - from.y) / d) * DEFENSE_SHOT_SPEED,
+      x: from.x + from.faceX * GUNNER_BARREL,
+      y: from.y + from.faceY * GUNNER_BARREL,
+      vx: from.faceX * DEFENSE_SHOT_SPEED,
+      vy: from.faceY * DEFENSE_SHOT_SPEED,
       owner: from.owner,
       life: 1.4,
       toId: to.id,
@@ -751,6 +767,10 @@ export class Game {
         s.y += ((spot.y - s.y) / d) * step;
       }
       s.state = foe ? "defend" : "idle";
+    }
+    if (foe) {
+      const aim = this.aimPoint(s, foe);
+      this.faceToward(s, aim.x, aim.y);
     }
     s.shootAcc += dt;
     if (foe && s.shootAcc >= DEFENSE_FIRE && this.inPerimeter(home, s)) {
@@ -1099,6 +1119,7 @@ export class Game {
     s.wallId = null;
     s.state = "march";
     s.toId = toId;
+    this.faceToward(s, to.center.x, to.center.y);
     return true;
   }
 
