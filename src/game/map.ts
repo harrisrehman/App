@@ -3,6 +3,7 @@ import {
   BASE_COUNT_MIN,
   BASE_RADIUS,
   NEUTRAL_TROOPS,
+  START_MIN_DIST,
   START_TROOPS,
   WORLD_H,
   WORLD_W,
@@ -132,29 +133,27 @@ function nearestIds(index: number, centers: Point[], k: number): number[] {
 
 function pickStarts(centers: Point[], rng: () => number): [number, number] {
   const n = centers.length;
-  const a = Math.floor(rng() * n);
-  const far: { id: number; d: number }[] = [];
+  const pairs: { a: number; b: number; d: number }[] = [];
   for (let i = 0; i < n; i++) {
-    if (i === a) continue;
-    const d = dist(centers[a], centers[i]);
-    if (d >= 240) far.push({ id: i, d });
+    for (let j = i + 1; j < n; j++) {
+      const d = dist(centers[i], centers[j]);
+      if (d >= START_MIN_DIST) pairs.push({ a: i, b: j, d });
+    }
   }
-  if (far.length === 0) {
-    let b = (a + 1) % n;
-    let bestD = -1;
+  if (pairs.length === 0) {
+    let best = { a: 0, b: 1, d: -1 };
     for (let i = 0; i < n; i++) {
-      if (i === a) continue;
-      const d = dist(centers[a], centers[i]);
-      if (d > bestD) {
-        bestD = d;
-        b = i;
+      for (let j = i + 1; j < n; j++) {
+        const d = dist(centers[i], centers[j]);
+        if (d > best.d) best = { a: i, b: j, d };
       }
     }
-    return rng() < 0.5 ? [a, b] : [b, a];
+    return rng() < 0.5 ? [best.a, best.b] : [best.b, best.a];
   }
-  far.sort((x, y) => y.d - x.d);
-  const pick = far[Math.floor(rng() ** 0.45 * far.length)];
-  return rng() < 0.5 ? [a, pick.id] : [pick.id, a];
+  pairs.sort((x, y) => y.d - x.d);
+  const cut = Math.max(1, Math.ceil(pairs.length * 0.3));
+  const pick = pairs[Math.floor(rng() * cut)];
+  return rng() < 0.5 ? [pick.a, pick.b] : [pick.b, pick.a];
 }
 
 export function createMap(seed = 20260815): Territory[] {

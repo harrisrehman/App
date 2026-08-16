@@ -22,6 +22,7 @@ export const PERIMETER_PAD = 30;
 export const BASE_RADIUS = 40;
 export const BASE_COUNT_MIN = 14;
 export const BASE_COUNT_MAX = 18;
+export const START_MIN_DIST = 640;
 
 export const AI_MIN_WAIT = 1.15;
 export const AI_MAX_WAIT = 2.1;
