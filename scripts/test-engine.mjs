@@ -203,10 +203,26 @@ function pathLength(path) {
   return n;
 }
 
+function polygonArea(poly) {
+  let a = 0;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    a += poly[j].x * poly[i].y - poly[i].x * poly[j].y;
+  }
+  return Math.abs(a) * 0.5;
+}
+
+function closePath(path) {
+  if (path.length < 2) return path.slice();
+  const a = path[0];
+  const b = path[path.length - 1];
+  if (dist(a, b) < 2) return path.slice();
+  return [...path, { x: a.x, y: a.y }];
+}
+
 function isClosedLasso(path) {
-  if (path.length < 8) return false;
-  if (dist(path[0], path[path.length - 1]) > 52) return false;
-  return pathLength(path) > 140;
+  if (path.length < 5) return false;
+  if (pathLength(path) < 70) return false;
+  return polygonArea(closePath(path)) > 1200;
 }
 
 const slash = [{ x: 0, y: 0 }, { x: 80, y: 0 }];
@@ -226,6 +242,19 @@ const box = [
 assert(isClosedLasso(box), "lasso close failed");
 assert(pointInPoly(40, 40, box), "lasso inside failed");
 assert(!pointInPoly(120, 40, box), "lasso outside failed");
+
+const openC = [
+  { x: 0, y: 0 },
+  { x: 80, y: 0 },
+  { x: 80, y: 80 },
+  { x: 0, y: 80 },
+  { x: 0, y: 40 },
+];
+assert(isClosedLasso(openC), "rough circle should auto-close");
+const loop = closePath(openC);
+assert(pointInPoly(40, 40, loop), "auto-close inside failed");
+assert(!pointInPoly(120, 40, loop), "auto-close outside failed");
+assert(!isClosedLasso(slash), "line should not become a lasso");
 
 function scatterRest(base, taken, rng, gap = 18) {
   const inner = 48;

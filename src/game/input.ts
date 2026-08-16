@@ -4,6 +4,7 @@ import { toWorld } from "./camera";
 import type { Game } from "./engine";
 
 const DRAG = 16;
+const HOLD_MS = 400;
 
 export function hitTerritory(game: Game, x: number, y: number): number | null {
   let best: { id: number; d: number } | null = null;
@@ -27,25 +28,50 @@ export function bindInput(
   };
 
   let lastTouch = 0;
+  let holdTimer = 0;
+  let held = false;
   let dragged = false;
   let picking = false;
   let start: { x: number; y: number } | null = null;
+
+  const clearHold = (): void => {
+    window.clearTimeout(holdTimer);
+    holdTimer = 0;
+  };
+
+  const sendHold = (id: number): void => {
+    if (game.winner) return;
+    if (game.selected.size === 0) return;
+    if (![...game.selected].some((from) => from !== id)) return;
+    game.sendSelected(id);
+    game.finger = null;
+    held = true;
+  };
 
   const down = (e: TouchEvent | MouseEvent): void => {
     if ("touches" in e) e.preventDefault();
     if (game.winner) return;
     const p = pos(e);
     start = p;
+    held = false;
     dragged = false;
     picking = false;
     game.beginStroke(p);
+    clearHold();
+    const id = hitTerritory(game, p.x, p.y);
+    if (id !== null && game.selected.size > 0) {
+      holdTimer = window.setTimeout(() => sendHold(id), HOLD_MS);
+    }
   };
 
   const move = (e: TouchEvent | MouseEvent): void => {
     if (!start) return;
     const p = pos(e);
     game.extendStroke(p);
-    if (dist(p, start) > DRAG) dragged = true;
+    if (dist(p, start) > DRAG) {
+      dragged = true;
+      clearHold();
+    }
     if (game.wallMode || !dragged) return;
     if (!picking) {
       picking = true;
@@ -91,24 +117,31 @@ export function bindInput(
       lastTouch = Date.now();
     } else if (Date.now() - lastTouch < 600) {
       game.endStroke();
+      clearHold();
       start = null;
+      held = false;
       dragged = false;
       picking = false;
       return;
     }
+    const didHold = held;
     const p = start ? pos(e) : null;
     if (game.wallMode) {
       const path = game.stroke.slice();
       game.endStroke();
+      clearHold();
       start = null;
+      held = false;
       dragged = false;
       picking = false;
       game.formWall(path);
       return;
     }
     game.endStroke();
+    clearHold();
     start = null;
-    if (game.winner) {
+    if (didHold || game.winner) {
+      held = false;
       dragged = false;
       picking = false;
       return;
@@ -116,13 +149,16 @@ export function bindInput(
     if (!p) return;
     if (dragged) finishDrag(p);
     else tap(hitTerritory(game, p.x, p.y));
+    held = false;
     dragged = false;
     picking = false;
   };
 
   const cancel = (): void => {
     game.endStroke();
+    clearHold();
     start = null;
+    held = false;
     dragged = false;
     picking = false;
   };
@@ -144,5 +180,6 @@ export function bindInput(
     canvas.removeEventListener("mousedown", down);
     canvas.removeEventListener("mousemove", move);
     canvas.removeEventListener("mouseup", up);
+    window.clearTimeout(holdTimer);
   };
 }

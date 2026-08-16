@@ -76,10 +76,18 @@ export function pathHits(path: Point[], p: Point, radius: number): boolean {
   return false;
 }
 
+export function closePath(path: Point[]): Point[] {
+  if (path.length < 2) return path.slice();
+  const a = path[0];
+  const b = path[path.length - 1];
+  if (dist(a, b) < 2) return path.slice();
+  return [...path, { x: a.x, y: a.y }];
+}
+
 export function isClosedLasso(path: Point[]): boolean {
-  if (path.length < 8) return false;
-  if (dist(path[0], path[path.length - 1]) > 52) return false;
-  return pathLength(path) > 140;
+  if (path.length < 5) return false;
+  if (pathLength(path) < 70) return false;
+  return polygonArea(closePath(path)) > 1200;
 }
 
 export function resamplePath(path: Point[], count: number): Point[] {

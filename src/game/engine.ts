@@ -9,7 +9,7 @@ import {
   START_TROOPS,
   ringRadius,
 } from "./config";
-import { dist, isClosedLasso, pathHits, pathLength, pointInPoly, wallSpots } from "./geo";
+import { closePath, dist, isClosedLasso, pathHits, pathLength, pointInPoly, wallSpots } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
 import { isBot, type Army, type Faction, type Owner, type Point, type Pop, type Soldier, type Territory, type Winner } from "./types";
@@ -189,9 +189,10 @@ export class Game {
   selectFromStroke(path: Point[]): void {
     this.selected.clear();
     if (path.length < 1) return;
+    const loop = closePath(path);
     const closed = isClosedLasso(path);
     const hit = (p: Point, radius: number): boolean =>
-      pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, path));
+      pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, loop));
     for (const s of this.soldiers) {
       if (s.owner !== "player" || s.state === "march") continue;
       if (hit({ x: s.x, y: s.y }, 16)) this.selected.add(s.homeId);
