@@ -4,11 +4,12 @@ import {
   FIGHT_RADIUS,
   POP_CAP,
   POP_LIFE,
+  SOLDIER_GAP,
   SPAWN_INTERVAL,
   START_TROOPS,
   ringRadius,
 } from "./config";
-import { dist, isClosedLasso, pathHits, pathLength, pointInPoly, resamplePath } from "./geo";
+import { dist, isClosedLasso, pathHits, pathLength, pointInPoly, wallSpots } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
 import { isBot, type Army, type Faction, type Owner, type Point, type Pop, type Soldier, type Territory, type Winner } from "./types";
@@ -38,15 +39,29 @@ function easeOutBack(t: number): number {
   return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
 }
 
-function ejectPath(base: Territory, rng: () => number): {
+function restRadius(base: Territory, ring: number): number {
+  const rim = Math.max(base.radius, 22);
+  const inner = Math.min(ringRadius(base.radius) - 6, rim + 12);
+  return inner + ring * SOLDIER_GAP;
+}
+
+function ejectPath(base: Territory, slot: number): {
   from: { x: number; y: number };
   to: { x: number; y: number };
 } {
-  const angle = rng() * Math.PI * 2;
   const rim = Math.max(base.radius, 22);
-  const ring = ringRadius(base.radius);
   const startR = rim * 0.88;
-  const restR = Math.min(ring - 6, rim + 10 + rng() * 8);
+  let ring = 0;
+  let idx = Math.max(0, slot);
+  let restR = restRadius(base, 0);
+  let cap = Math.max(1, Math.floor((Math.PI * 2 * restR) / SOLDIER_GAP));
+  while (idx >= cap && ring < 12) {
+    idx -= cap;
+    ring += 1;
+    restR = restRadius(base, ring);
+    cap = Math.max(1, Math.floor((Math.PI * 2 * restR) / SOLDIER_GAP));
+  }
+  const angle = (idx / cap) * Math.PI * 2 + ring * 0.35;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   return {
@@ -190,7 +205,11 @@ export class Game {
     if (pathLength(path) < 28) return false;
     const pool = ids.flatMap((id) => this.garrison(id));
     if (pool.length < 1) return false;
-    const spots = resamplePath(path, pool.length);
+    const from = {
+      x: pool.reduce((n, s) => n + s.x, 0) / pool.length,
+      y: pool.reduce((n, s) => n + s.y, 0) / pool.length,
+    };
+    const spots = wallSpots(path, pool.length, from, SOLDIER_GAP);
     for (let i = 0; i < pool.length; i++) {
       const s = pool[i];
       const p = spots[i] ?? spots[spots.length - 1];
@@ -288,9 +307,17 @@ export class Game {
     this.pops = keep;
   }
 
+  private homeCount(id: number): number {
+    let n = 0;
+    for (const s of this.soldiers) {
+      if (s.homeId === id && s.state !== "march") n += 1;
+    }
+    return n;
+  }
+
   private spawnSoldier(base: Territory): void {
     if (base.owner === "neutral") return;
-    const path = ejectPath(base, this.rng);
+    const path = ejectPath(base, this.homeCount(base.id));
     this.soldiers.push({
       id: nextSoldierId++,
       owner: base.owner,
@@ -312,7 +339,7 @@ export class Game {
   }
 
   private startEject(s: Soldier, base: Territory): void {
-    const path = ejectPath(base, this.rng);
+    const path = ejectPath(base, this.homeCount(base.id));
     s.homeId = base.id;
     s.toId = null;
     s.state = "eject";

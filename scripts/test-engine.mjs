@@ -100,6 +100,67 @@ assert(line.length === 5, "wall count failed");
 assert(line[0].x === 0 && line[4].x === 100, "wall ends failed");
 assert(Math.abs(line[2].x - 50) < 0.01, "wall mid failed");
 
+function offsetPath(path, amount) {
+  if (path.length === 1) return [{ x: path[0].x, y: path[0].y + amount }];
+  return path.map((p, i) => {
+    let dx = 0;
+    let dy = 0;
+    if (i === 0) {
+      dx = path[1].x - p.x;
+      dy = path[1].y - p.y;
+    } else if (i === path.length - 1) {
+      dx = p.x - path[i - 1].x;
+      dy = p.y - path[i - 1].y;
+    } else {
+      dx = path[i + 1].x - path[i - 1].x;
+      dy = path[i + 1].y - path[i - 1].y;
+    }
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: p.x + (-dy / len) * amount, y: p.y + (dx / len) * amount };
+  });
+}
+
+function behindSign(path, from) {
+  const mid = path[Math.floor(path.length / 2)];
+  const a = path[0];
+  const b = path[path.length - 1];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  return (from.x - mid.x) * nx + (from.y - mid.y) * ny >= 0 ? 1 : -1;
+}
+
+function wallSpots(path, count, from, gap) {
+  if (count < 1 || path.length === 0) return [];
+  let total = 0;
+  for (let i = 1; i < path.length; i++) total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  const perLine = Math.max(1, Math.floor(total / gap) + 1);
+  const sign = behindSign(path, from);
+  const out = [];
+  let left = count;
+  let rank = 0;
+  while (left > 0 && rank < 24) {
+    const n = Math.min(perLine, left);
+    const row = rank === 0 ? path : offsetPath(path, sign * rank * gap);
+    out.push(...resamplePath(row, n));
+    left -= n;
+    rank += 1;
+  }
+  return out;
+}
+
+const wall = wallSpots([{ x: 0, y: 0 }, { x: 100, y: 0 }], 10, { x: 50, y: 20 }, 18);
+assert(wall.length === 10, "wall ranks count failed");
+assert(wall.slice(0, 6).every((p) => Math.abs(p.y) < 0.01), "first rank not on line");
+assert(wall.slice(6).every((p) => Math.abs(p.y - 18) < 0.01), "second rank not behind");
+for (let i = 0; i < wall.length; i++) {
+  for (let j = i + 1; j < wall.length; j++) {
+    assert(Math.hypot(wall[i].x - wall[j].x, wall[i].y - wall[j].y) >= 17.9, "wall soldiers overlap");
+  }
+}
+
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }

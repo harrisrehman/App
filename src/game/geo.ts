@@ -115,3 +115,54 @@ export function resamplePath(path: Point[], count: number): Point[] {
   }
   return out;
 }
+
+export function offsetPath(path: Point[], amount: number): Point[] {
+  if (path.length === 0) return [];
+  if (path.length === 1) return [{ x: path[0].x, y: path[0].y + amount }];
+  return path.map((p, i) => {
+    let dx = 0;
+    let dy = 0;
+    if (i === 0) {
+      dx = path[1].x - p.x;
+      dy = path[1].y - p.y;
+    } else if (i === path.length - 1) {
+      dx = p.x - path[i - 1].x;
+      dy = p.y - path[i - 1].y;
+    } else {
+      dx = path[i + 1].x - path[i - 1].x;
+      dy = path[i + 1].y - path[i - 1].y;
+    }
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: p.x + (-dy / len) * amount, y: p.y + (dx / len) * amount };
+  });
+}
+
+export function behindSign(path: Point[], from: Point): number {
+  if (path.length === 0) return 1;
+  const mid = path[Math.floor(path.length / 2)];
+  const a = path[0];
+  const b = path[path.length - 1];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  return (from.x - mid.x) * nx + (from.y - mid.y) * ny >= 0 ? 1 : -1;
+}
+
+export function wallSpots(path: Point[], count: number, from: Point, gap: number): Point[] {
+  if (count < 1 || path.length === 0) return [];
+  const perLine = Math.max(1, Math.floor(pathLength(path) / gap) + 1);
+  const sign = behindSign(path, from);
+  const out: Point[] = [];
+  let left = count;
+  let rank = 0;
+  while (left > 0 && rank < 24) {
+    const n = Math.min(perLine, left);
+    const line = rank === 0 ? path : offsetPath(path, sign * rank * gap);
+    out.push(...resamplePath(line, n));
+    left -= n;
+    rank += 1;
+  }
+  return out;
+}
