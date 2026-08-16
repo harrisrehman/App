@@ -17,12 +17,12 @@ export const ARMY_SPEED = 110;
 export const SPAWN_INTERVAL = 2;
 export const START_TROOPS = 0;
 export const NEUTRAL_TROOPS = 5;
-export const BASE_RADIUS = 80;
-export const BASE_COUNT_MIN = 5;
-export const BASE_COUNT_MAX = 6;
+export const BASE_RADIUS = 40;
+export const BASE_COUNT_MIN = 10;
+export const BASE_COUNT_MAX = 13;
 
-export const AI_MIN_WAIT = 1.4;
-export const AI_MAX_WAIT = 3.8;
+export const AI_MIN_WAIT = 0.28;
+export const AI_MAX_WAIT = 0.7;
 
 export const UPDATE_SOURCES = [
   {

@@ -71,11 +71,11 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   if (selected) {
     pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
     ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
   ctx.fillStyle = COLORS.bg;
-  ctx.font = "700 24px ui-sans-serif, system-ui, sans-serif";
+  ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 1);
@@ -83,7 +83,7 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
 
 function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  const scale = (18 * pop) / 80;
+  const scale = (9 * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
 }
 
