@@ -4,7 +4,7 @@ import { randRange } from "./rng";
 import type { Game } from "./engine";
 import type { Territory } from "./types";
 
-type Move = { from: Territory; to: Territory; want: number; keep: number };
+type Move = { from: Territory; to: Territory };
 
 export class Commander {
   wait = 1.4;
@@ -70,10 +70,8 @@ export class Commander {
   }
 
   private launch(game: Game, move: Move): boolean {
-    const have = this.have(game, move.from);
-    const send = Math.min(move.want, Math.max(0, have - move.keep));
-    if (send < 1) return false;
-    if (!game.send(move.from.id, move.to.id, send / have)) return false;
+    if (this.have(game, move.from) < 1) return false;
+    if (!game.send(move.from.id, move.to.id)) return false;
     if (move.to.id === this.lastTarget) this.repeats += 1;
     else this.repeats = 0;
     this.lastTarget = move.to.id;
@@ -96,15 +94,12 @@ export class Commander {
     return Math.max(1, Math.ceil(dest.troops + playerIn + growth - aiIn + 1));
   }
 
-  private canFlip(game: Game, from: Territory, dest: Territory, keep: number): number {
-    const cost = this.flipCost(game, from, dest);
-    const send = this.have(game, from) - keep;
-    if (send < cost) return 0;
-    return cost;
+  private canFlip(game: Game, from: Territory, dest: Territory): boolean {
+    return this.have(game, from) >= this.flipCost(game, from, dest);
   }
 
   private race(game: Game): boolean {
-    let best: { dest: Territory; need: number; from: Territory; risk: number } | null = null;
+    let best: { dest: Territory; from: Territory; risk: number } | null = null;
     const keep = this.desperate(game) ? 0 : 1;
     for (const dest of game.territories) {
       if (dest.owner !== "neutral") continue;
@@ -113,14 +108,14 @@ export class Commander {
       const aiIn = game.incoming(dest.id, "ai");
       const need = dest.troops + playerIn - aiIn;
       if (need <= 0) continue;
-      const from = this.closest(this.mine(game, keep + 1), dest);
+      const from = this.closest(this.mine(game, Math.max(keep + 1, need)), dest);
       if (!from) continue;
       const risk = playerIn - aiIn + (5 - dest.troops) + this.greyFront(game, dest);
-      if (!best || risk > best.risk) best = { dest, need, from, risk };
+      if (!best || risk > best.risk) best = { dest, from, risk };
     }
     if (!best) return false;
     this.wait = randRange(game.rng, 0.5, 0.9);
-    return this.launch(game, { from: best.from, to: best.dest, want: best.need, keep });
+    return this.launch(game, { from: best.from, to: best.dest });
   }
 
   private act(game: Game): void {
@@ -135,16 +130,14 @@ export class Commander {
     if (greys.length === 0) return null;
     let best: { move: Move; score: number } | null = null;
     for (const from of this.mine(game, 1)) {
-      const keep = this.keepFor(game, from);
-      if (this.have(game, from) <= keep) continue;
+      if (this.have(game, from) <= this.keepFor(game, from)) continue;
       for (const to of greys) {
         if (game.incoming(to.id, "ai") >= to.troops) continue;
-        const cost = this.canFlip(game, from, to, keep);
-        if (cost < 1) continue;
+        if (!this.canFlip(game, from, to)) continue;
         const close = 90 / (dist(from.center, to.center) + 40);
         const score = close + this.greyFront(game, to) * 6 + (this.behind(game) ? 16 : 0);
         if (!best || score > best.score) {
-          best = { move: { from, to, want: cost, keep }, score };
+          best = { move: { from, to }, score };
         }
       }
     }
@@ -172,14 +165,14 @@ export class Commander {
     if (!save) return null;
     const keep = this.behind(game) ? 1 : 2;
     const rich = mine
-      .filter((t) => t.id !== save.id && this.have(game, t) - keep >= need)
+      .filter((t) => t.id !== save.id && this.have(game, t) > keep && this.have(game, t) >= need)
       .sort((a, b) => {
         const sa = this.have(game, a) - this.frontDanger(game, a) * 4;
         const sb = this.have(game, b) - this.frontDanger(game, b) * 4;
         return sb - sa;
       })[0];
     if (!rich) return null;
-    return { from: rich, to: save, want: need, keep };
+    return { from: rich, to: save };
   }
 
   private capture(game: Game): Move | null {
@@ -190,15 +183,13 @@ export class Commander {
 
     let best: { move: Move; score: number } | null = null;
     for (const from of this.mine(game, 1)) {
-      const keep = this.keepFor(game, from);
-      if (this.have(game, from) <= keep) continue;
+      if (this.have(game, from) <= this.keepFor(game, from)) continue;
       for (const to of this.lands(game, "player")) {
-        const cost = this.canFlip(game, from, to, keep);
-        if (cost < 1) continue;
+        if (!this.canFlip(game, from, to)) continue;
         const close = 70 / (dist(from.center, to.center) + 50);
-        const score = this.frontThreat(game, to) * 10 + close - cost * 0.3;
+        const score = this.frontThreat(game, to) * 10 + close - this.flipCost(game, from, to) * 0.3;
         if (!best || score > best.score) {
-          best = { move: { from, to, want: cost, keep }, score };
+          best = { move: { from, to }, score };
         }
       }
     }

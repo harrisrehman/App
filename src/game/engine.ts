@@ -2,7 +2,7 @@ import { ARMY_SPEED, FIGHT_RADIUS, POP_CAP, POP_LIFE, SPAWN_INTERVAL, TROOP_CAP 
 import { dist } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
-import type { Army, Owner, Point, Pop, SendRatio, Soldier, Territory, Winner } from "./types";
+import type { Army, Owner, Point, Pop, Soldier, Territory, Winner } from "./types";
 
 export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void {
   if (dest.owner === army.owner) {
@@ -49,7 +49,6 @@ export class Game {
   stroke: Point[] = [];
   strokeFade = 0;
   stroking = false;
-  sendRatio: SendRatio = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
   rng: () => number;
@@ -95,7 +94,7 @@ export class Game {
     return n;
   }
 
-  send(fromId: number, toId: number, ratio: number = this.sendRatio): boolean {
+  send(fromId: number, toId: number): boolean {
     if (this.winner) return false;
     if (fromId === toId) return false;
     const from = this.territories[fromId];
@@ -103,11 +102,9 @@ export class Game {
     if (!from || !to || from.owner === "neutral") return false;
 
     const pool = this.garrison(fromId);
-    const count = Math.floor(pool.length * ratio);
-    if (count < 1) return false;
+    if (pool.length < 1) return false;
 
-    for (let i = 0; i < count; i++) {
-      const s = pool[i];
+    for (const s of pool) {
       s.state = "march";
       s.toId = toId;
     }
@@ -145,7 +142,7 @@ export class Game {
   sendSelected(toId: number): boolean {
     let sent = false;
     for (const fromId of [...this.selected]) {
-      if (this.send(fromId, toId, 1)) sent = true;
+      if (this.send(fromId, toId)) sent = true;
     }
     this.selected.clear();
     return sent;
