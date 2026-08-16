@@ -23,6 +23,7 @@ import {
   pathHits,
   pathLength,
   pointInPoly,
+  wallSlotsPacked,
   wallSpots,
 } from "./geo";
 import { createMap } from "./map";
@@ -314,15 +315,16 @@ export class Game {
       owner: "player",
       path: path.map((p) => ({ x: p.x, y: p.y })),
       from,
+      spots: [],
     };
     this.walls.push(wall);
     for (const s of pool) s.wallId = wall.id;
-    this.packWall(wall);
+    wall.spots = wallSlotsPacked(wall.path, pool.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     for (const s of pool) {
       s.toId = null;
       s.state = "return";
     }
-    this.pruneWalls();
+    this.guideWall(wall);
     this.wallMode = false;
     this.clearSelection();
     return true;
@@ -358,6 +360,7 @@ export class Game {
     }
 
     this.assignDefense();
+    this.guideWalls();
     for (const s of this.soldiers) this.stepSoldier(s, dt);
 
     const dead = new Set<number>();
@@ -686,43 +689,69 @@ export class Game {
     return false;
   }
 
+  private nearestSlot(spots: Point[], used: Set<number>, p: Point): number {
+    let best = -1;
+    let bestD = 9999;
+    for (let i = 0; i < spots.length; i++) {
+      if (used.has(i)) continue;
+      const d = dist(p, spots[i]);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  private guideWall(wall: Wall): void {
+    const crew = this.wallCrew(wall);
+    if (crew.length === 0) return;
+    if (wall.spots.length === 0) {
+      wall.spots = wallSlotsPacked(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+    }
+    const used = new Set<number>();
+    for (const s of crew) {
+      if (s.state !== "idle" && s.state !== "defend") continue;
+      const i = this.nearestSlot(wall.spots, used, { x: s.restX, y: s.restY });
+      if (i >= 0) used.add(i);
+    }
+    const incoming = crew.filter((s) => s.state === "return").sort((a, b) => {
+      const ia = this.nearestSlot(wall.spots, used, a);
+      const ib = this.nearestSlot(wall.spots, used, b);
+      const da = ia < 0 ? 9999 : dist(a, wall.spots[ia]);
+      const db = ib < 0 ? 9999 : dist(b, wall.spots[ib]);
+      return da - db;
+    });
+    for (const s of incoming) {
+      const i = this.nearestSlot(wall.spots, used, s);
+      if (i < 0) continue;
+      used.add(i);
+      s.restX = wall.spots[i].x;
+      s.restY = wall.spots[i].y;
+    }
+  }
+
+  private guideWalls(): void {
+    for (const wall of this.walls) this.guideWall(wall);
+  }
+
   private packWall(wall: Wall): void {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return;
-    const spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+    wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     const used = new Set<number>();
     for (const s of crew) {
-      let best = -1;
-      let bestD = 9999;
-      for (let i = 0; i < spots.length; i++) {
-        if (used.has(i)) continue;
-        const d = dist({ x: s.x, y: s.y }, spots[i]);
-        if (d < bestD) {
-          bestD = d;
-          best = i;
-        }
-      }
-      if (best < 0) continue;
-      used.add(best);
-      s.restX = spots[best].x;
-      s.restY = spots[best].y;
+      const i = this.nearestSlot(wall.spots, used, { x: s.x, y: s.y });
+      if (i < 0) continue;
+      used.add(i);
+      s.restX = wall.spots[i].x;
+      s.restY = wall.spots[i].y;
     }
   }
 
   private pruneWalls(): void {
-    const keep: Wall[] = [];
-    for (const wall of this.walls) {
-      const crew = this.wallCrew(wall);
-      if (crew.length === 0) continue;
-      if (this.wallThreats(wall).length === 0) {
-        this.packWall(wall);
-        for (const s of crew) {
-          if (s.state !== "defend" && s.state !== "march") this.sendHome(s);
-        }
-      }
-      keep.push(wall);
-    }
-    this.walls = keep;
+    this.walls = this.walls.filter((wall) => this.wallCrew(wall).length > 0);
+    this.guideWalls();
   }
 
   private wallPool(): Soldier[] {

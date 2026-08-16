@@ -249,6 +249,50 @@ const blocked = (p) => p.x > 80 && p.x < 120;
 const clear = wallSpots([{ x: 0, y: 0 }, { x: 200, y: 0 }], 8, { x: 100, y: 20 }, 18, blocked);
 assert(clear.length === 8, "clipped wall count failed");
 assert(clear.every((p) => !blocked(p)), "wall soldiers overlap a base");
+
+function packAlongSegments(segs, gap, from) {
+  let points = [];
+  for (const seg of segs) points = points.concat(seg);
+  if (points.length < 2) return points.slice();
+  if (dist(from, points[0]) > dist(from, points[points.length - 1])) points = points.slice().reverse();
+  const out = [{ x: points[0].x, y: points[0].y }];
+  let since = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const d = dist(a, b);
+    since += d;
+    while (since >= gap - 0.001) {
+      since -= gap;
+      const t = d < 0.001 ? 1 : 1 - since / d;
+      const k = Math.max(0, Math.min(1, t));
+      out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+    }
+  }
+  return out;
+}
+
+function wallSlotsPacked(path, count, from, gap, blocked) {
+  const block = blocked || (() => false);
+  const sign = behindSign(path, from);
+  const out = [];
+  let rank = 0;
+  while (out.length < count && rank < 24) {
+    const line = rank === 0 ? path : offsetPath(path, sign * rank * gap);
+    const packed = packAlongSegments(splitClear(line, block), gap, from);
+    for (const p of packed) {
+      if (out.length >= count) break;
+      out.push(p);
+    }
+    rank += 1;
+  }
+  return out;
+}
+
+const packed = wallSlotsPacked([{ x: 0, y: 0 }, { x: 200, y: 0 }], 3, { x: 0, y: 20 }, 18);
+assert(packed.length === 3, "packed wall count failed");
+assert(packed[0].x < 1 && packed[1].x < 20 && packed[2].x < 38, "packed wall should fill nearest end");
+assert(packed[2].x < 80, "packed wall should not stretch across the line");
 function sendPool(soldiers, fromId) {
   return soldiers.filter((s) => s.homeId === fromId && s.state !== "march" && s.wallId == null);
 }

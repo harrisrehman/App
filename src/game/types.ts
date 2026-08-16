@@ -55,6 +55,7 @@ export type Wall = {
   owner: Faction;
   path: Point[];
   from: Point;
+  spots: Point[];
 };
 
 export type Army = {

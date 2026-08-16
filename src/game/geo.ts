@@ -261,6 +261,54 @@ export function slideOff(p: Point, blocked: (q: Point) => boolean, max = 88): Po
   return null;
 }
 
+export function packAlongSegments(segs: Point[][], gap: number, from: Point): Point[] {
+  let points: Point[] = [];
+  for (const seg of segs) points = points.concat(seg);
+  if (points.length === 0) return [];
+  if (points.length === 1) return [{ x: points[0].x, y: points[0].y }];
+  if (dist(from, points[0]) > dist(from, points[points.length - 1])) points = points.slice().reverse();
+  const out: Point[] = [{ x: points[0].x, y: points[0].y }];
+  let since = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const d = dist(a, b);
+    since += d;
+    while (since >= gap - 0.001) {
+      since -= gap;
+      const t = d < 0.001 ? 1 : 1 - since / d;
+      const k = Math.max(0, Math.min(1, t));
+      out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+    }
+  }
+  return out;
+}
+
+export function wallSlotsPacked(
+  path: Point[],
+  count: number,
+  from: Point,
+  gap: number,
+  blocked?: (p: Point) => boolean,
+): Point[] {
+  if (count < 1 || path.length === 0) return [];
+  const block = blocked ?? (() => false);
+  const sign = behindSign(path, from);
+  const out: Point[] = [];
+  let rank = 0;
+  while (out.length < count && rank < 24) {
+    const line = rank === 0 ? path : offsetPath(path, sign * rank * gap);
+    const packed = packAlongSegments(splitClear(line, block), gap, from);
+    for (const p of packed) {
+      if (out.length >= count) break;
+      out.push(p);
+    }
+    rank += 1;
+    if (packed.length === 0 && rank > 2) break;
+  }
+  return out;
+}
+
 export function wallSpots(
   path: Point[],
   count: number,
