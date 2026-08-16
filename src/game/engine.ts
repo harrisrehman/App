@@ -24,12 +24,19 @@ function easeOutBack(t: number): number {
   return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
 }
 
-function around(base: Territory, rng: () => number, minR: number, maxR: number): { x: number; y: number } {
+function ejectPath(base: Territory, rng: () => number): {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+} {
   const angle = rng() * Math.PI * 2;
-  const ring = minR + rng() * (maxR - minR);
+  const rim = Math.max(base.radius, 48);
+  const startR = rim * 0.88;
+  const restR = rim + 42 + rng() * 38;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
   return {
-    x: base.center.x + Math.cos(angle) * ring,
-    y: base.center.y + Math.sin(angle) * ring,
+    from: { x: base.center.x + cos * startR, y: base.center.y + sin * startR },
+    to: { x: base.center.x + cos * restR, y: base.center.y + sin * restR },
   };
 }
 
@@ -139,45 +146,43 @@ export class Game {
 
   private spawnSoldier(base: Territory): void {
     if (base.owner === "neutral") return;
-    const edge = around(base, this.rng, 18, 26);
-    const rest = around(base, this.rng, 36, 78);
+    const path = ejectPath(base, this.rng);
     this.soldiers.push({
       id: nextSoldierId++,
       owner: base.owner,
       homeId: base.id,
-      x: edge.x,
-      y: edge.y,
+      x: path.from.x,
+      y: path.from.y,
       state: "eject",
       toId: null,
       slot: 0,
       ejectT: 0,
-      fromX: edge.x,
-      fromY: edge.y,
-      toX: rest.x,
-      toY: rest.y,
+      fromX: path.from.x,
+      fromY: path.from.y,
+      toX: path.to.x,
+      toY: path.to.y,
       poly: base.localPoly.map((p) => ({ x: p.x, y: p.y })),
     });
   }
 
   private startEject(s: Soldier, base: Territory): void {
-    const edge = around(base, this.rng, 18, 26);
-    const rest = around(base, this.rng, 36, 78);
+    const path = ejectPath(base, this.rng);
     s.homeId = base.id;
     s.toId = null;
     s.state = "eject";
     s.ejectT = 0;
-    s.x = edge.x;
-    s.y = edge.y;
-    s.fromX = edge.x;
-    s.fromY = edge.y;
-    s.toX = rest.x;
-    s.toY = rest.y;
+    s.x = path.from.x;
+    s.y = path.from.y;
+    s.fromX = path.from.x;
+    s.fromY = path.from.y;
+    s.toX = path.to.x;
+    s.toY = path.to.y;
     s.poly = base.localPoly.map((p) => ({ x: p.x, y: p.y }));
   }
 
   private stepSoldier(s: Soldier, dt: number): void {
     if (s.state === "eject") {
-      s.ejectT = Math.min(1, s.ejectT + dt / 0.84);
+      s.ejectT = Math.min(1, s.ejectT + dt / 1.05);
       const k = easeOutBack(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
