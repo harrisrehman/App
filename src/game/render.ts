@@ -1,4 +1,4 @@
-import { BASE_HEALTH, COLORS } from "./config";
+import { BASE_HEALTH, COLORS, RING_SPIN } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import type { Owner, Point, Pop, Soldier, Territory } from "./types";
@@ -71,11 +71,14 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
   drawPoly(ctx, t.localPoly, t.center.x, t.center.y, 1, color, 1);
+  const spin = (performance.now() / 1000) * RING_SPIN;
+  const dir = t.id % 2 === 0 ? 1 : -1;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.globalAlpha = 0.55;
   ctx.lineWidth = 1.5;
   ctx.setLineDash([3.5, 4.5]);
+  ctx.lineDashOffset = dir * -spin;
   ctx.beginPath();
   ctx.arc(t.center.x, t.center.y, perimeterRadius(t), 0, Math.PI * 2);
   ctx.stroke();

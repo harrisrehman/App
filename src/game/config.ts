@@ -20,6 +20,7 @@ export const NEUTRAL_TROOPS = 0;
 export const PERIMETER_PAD = 22;
 export const BASE_RADIUS = 40;
 export const RING_GAP = 10;
+export const RING_SPIN = 14;
 
 export function ringRadius(baseRadius: number): number {
   return (baseRadius + PERIMETER_PAD) * 1.25;
