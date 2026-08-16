@@ -25,11 +25,14 @@ async function readVersion(base: string): Promise<AppVersion | null> {
 }
 
 export async function fetchRemote(): Promise<{ base: string; version: AppVersion } | null> {
+  const found: { base: string; version: AppVersion }[] = [];
   for (const base of REMOTE_CANDIDATES) {
     const version = await readVersion(base);
-    if (version) return { base, version };
+    if (version) found.push({ base, version });
   }
-  return null;
+  if (found.length === 0) return null;
+  found.sort((a, b) => b.version.build - a.version.build);
+  return found[0];
 }
 
 async function downloadGame(base: string): Promise<string | null> {
@@ -76,9 +79,12 @@ function swapIn(html: string, build: number): void {
 export async function applyUpdate(): Promise<UpdateState> {
   const remote = await fetchRemote();
   if (!remote) return "offline";
-  if (remote.version.build <= appliedBuild() && appliedBuild() > 0) return "latest";
   const html = await downloadGame(remote.base);
   if (!html) return "offline";
+  if (remote.version.build === appliedBuild() && appliedBuild() > 0) {
+    const cached = localStorage.getItem(HTML_KEY);
+    if (cached === markHtml(html, remote.version.build)) return "latest";
+  }
   swapIn(html, remote.version.build);
   return "ready";
 }
