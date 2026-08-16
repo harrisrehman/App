@@ -41,6 +41,7 @@ import {
   type Owner,
   type Point,
   type Pop,
+  type SendFilter,
   type Shot,
   type Soldier,
   type Territory,
@@ -145,6 +146,7 @@ export class Game {
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
   clock = 0;
+  sendFilter: SendFilter = "all";
   rng: () => number;
 
   constructor(seed = Date.now(), bots = 1) {
@@ -173,6 +175,7 @@ export class Game {
     this.winner = null;
     this.finger = null;
     this.clock = 0;
+    this.sendFilter = "all";
     nextSoldierId = 1;
     nextWallId = 1;
     this.seedOwned();
@@ -191,6 +194,33 @@ export class Game {
 
   freeGarrison(id: number): Soldier[] {
     return this.garrison(id).filter((s) => s.wallId == null && s.kind !== "gunner");
+  }
+
+  matchesFilter(s: Soldier, filter: SendFilter = this.sendFilter): boolean {
+    if (filter === "all") return true;
+    if (filter === "gunner") return s.kind === "gunner";
+    return s.kind === "troop";
+  }
+
+  sendPool(id: number, filter: SendFilter = this.sendFilter): Soldier[] {
+    return this.garrison(id).filter((s) => s.wallId == null && this.matchesFilter(s, filter));
+  }
+
+  setSendFilter(filter: SendFilter): void {
+    this.sendFilter = filter;
+  }
+
+  selectByFilter(): void {
+    this.clearSelection();
+    for (const t of this.territories) {
+      if (t.owner !== "player") continue;
+      if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
+    }
+    if (this.sendFilter === "gunner") return;
+    for (const s of this.soldiers) {
+      if (s.owner !== "player" || s.wallId == null || s.state === "march") continue;
+      if (this.matchesFilter(s)) this.picked.add(s.id);
+    }
   }
 
   canBuyDefense(): boolean {
@@ -265,14 +295,14 @@ export class Game {
     return n;
   }
 
-  send(fromId: number, toId: number): boolean {
+  send(fromId: number, toId: number, filter: SendFilter = "all"): boolean {
     if (this.winner) return false;
     if (fromId === toId) return false;
     const from = this.territories[fromId];
     const to = this.territories[toId];
     if (!from || !to || from.owner === "neutral") return false;
 
-    const pool = this.freeGarrison(fromId);
+    const pool = this.sendPool(fromId, filter);
     if (pool.length < 1) return false;
 
     for (const s of pool) {
@@ -306,6 +336,7 @@ export class Game {
       pathHits(path, p, radius) || (closed && pointInPoly(p.x, p.y, loop));
     for (const s of this.soldiers) {
       if (s.owner !== "player") continue;
+      if (!this.matchesFilter(s)) continue;
       if (!hit({ x: s.x, y: s.y }, 16)) continue;
       if (s.wallId != null) this.picked.add(s.id);
       else this.selected.add(s.homeId);
@@ -371,7 +402,7 @@ export class Game {
   sendSelected(toId: number): boolean {
     let sent = false;
     for (const fromId of [...this.selected]) {
-      if (this.send(fromId, toId)) sent = true;
+      if (this.send(fromId, toId, this.sendFilter)) sent = true;
     }
     for (const sid of [...this.picked]) {
       if (this.sendSoldier(sid, toId)) sent = true;
@@ -776,7 +807,7 @@ export class Game {
   }
 
   private stepSoldier(s: Soldier, dt: number): void {
-    if (s.kind === "gunner" && s.state !== "eject") {
+    if (s.kind === "gunner" && s.state !== "eject" && s.state !== "march") {
       this.stepGunner(s, dt);
       return;
     }
@@ -1063,7 +1094,7 @@ export class Game {
     if (this.winner) return false;
     const s = this.soldiers.find((x) => x.id === id);
     const to = this.territories[toId];
-    if (!s || !to || s.state === "march" || s.kind === "gunner") return false;
+    if (!s || !to || s.state === "march" || !this.matchesFilter(s)) return false;
     if (s.owner !== "player") return false;
     s.wallId = null;
     s.state = "march";

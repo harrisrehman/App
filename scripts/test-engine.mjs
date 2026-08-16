@@ -539,5 +539,34 @@ const b = orbitSpot(1, 2, 0, 80);
 assert(Math.abs(Math.hypot(a.x, a.y) - 80) < 0.01, "orbit sits on ring");
 assert(Math.abs(a.x - b.x) > 100, "two gunners sit opposite");
 
+function matchesFilter(kind, filter) {
+  if (filter === "all") return true;
+  if (filter === "gunner") return kind === "gunner";
+  return kind === "troop";
+}
+function filterPool(units, filter) {
+  return units.filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
+}
+const mix = [
+  { kind: "troop", wallId: null },
+  { kind: "troop", wallId: 1 },
+  { kind: "gunner", wallId: null },
+];
+assert(filterPool(mix, "all").length === 2, "all sends troops and gunners");
+assert(filterPool(mix, "gunner").every((s) => s.kind === "gunner"), "gunner filter skips troops");
+assert(filterPool(mix, "troop").every((s) => s.kind === "troop"), "soldier filter skips gunners");
+assert(filterPool(mix, "troop").length === 1, "walled troops stay");
+
+function minScale(w, h, ww = 1000, wh = 1600) {
+  return Math.min(w / ww, h / wh);
+}
+function clampScale(scale, min, maxMul = 3) {
+  return Math.max(min, Math.min(min * maxMul, scale));
+}
+const fit = minScale(400, 800);
+assert(clampScale(fit * 0.5, fit) === fit, "cannot zoom out past fit");
+assert(clampScale(fit * 4, fit) === fit * 3, "zoom caps at 3x");
+assert(clampScale(fit * 2, fit) === fit * 2, "mid zoom stays");
+
 console.log("engine tests passed");
 

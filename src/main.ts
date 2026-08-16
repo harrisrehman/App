@@ -1,4 +1,5 @@
-import { fitCamera, type Camera } from "./game/camera";
+import { clampCamera, fitCamera, type Camera } from "./game/camera";
+import type { SendFilter } from "./game/types";
 import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
@@ -75,7 +76,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Select a base. Tap Gunner to convert 4 soldiers.");
+    const hint = makeEl("div", "hint", "Use All, Gunners, or Soldiers. Pinch to zoom.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -84,6 +85,23 @@ function ensureHud(): void {
     shop.id = "shop";
     shop.className = "bottom";
     hud.appendChild(shop);
+  }
+  if (!hud.querySelector("#filters")) {
+    const filters = document.createElement("nav");
+    filters.id = "filters";
+    filters.className = "side";
+    const items: [SendFilter, string][] = [
+      ["all", "All"],
+      ["gunner", "Gunners"],
+      ["troop", "Soldiers"],
+    ];
+    for (const [id, label] of items) {
+      const btn = makeEl("button", undefined, label);
+      btn.dataset.filter = id;
+      if (id === "all") btn.classList.add("on");
+      filters.appendChild(btn);
+    }
+    hud.appendChild(filters);
   }
   if (!shop.querySelector("#defense-btn")) {
     const btn = makeEl("button", "defense-btn");
@@ -296,11 +314,29 @@ function onHudClick(e: Event): void {
     window.__annexGame?.applyRules();
     return;
   }
+  if (t.dataset.filter) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const game = window.__annexGame;
+    if (!game || game.winner) return;
+    const filter = t.dataset.filter as SendFilter;
+    if (filter !== "all" && filter !== "gunner" && filter !== "troop") return;
+    game.setSendFilter(filter);
+    game.selectByFilter();
+    syncFilterHud(game);
+    return;
+  }
   const bots = Number(t.dataset.bots || 0);
   if (bots >= 1 && bots <= 4) {
     e.preventDefault();
     e.stopImmediatePropagation();
     startMatch(bots);
+  }
+}
+
+function syncFilterHud(game: Game): void {
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]")) {
+    btn.classList.toggle("on", btn.dataset.filter === game.sendFilter);
   }
 }
 
@@ -384,7 +420,7 @@ function startGame(bots = 1): void {
   const game = new Game(Date.now(), bots);
   window.__annexGame = game;
   const ais = BOTS.slice(0, game.bots).map((id) => new Commander(id));
-  let cam: Camera = fitCamera(1, 1);
+  const cam: Camera = fitCamera(1, 1);
   let shownWinner = false;
   let alive = true;
 
@@ -397,7 +433,15 @@ function startGame(bots = 1): void {
     board.style.width = `${w}px`;
     board.style.height = `${h}px`;
     draw.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cam = fitCamera(w, h);
+    const next = fitCamera(w, h);
+    cam.width = next.width;
+    cam.height = next.height;
+    if (cam.scale <= 0.001) {
+      cam.scale = next.scale;
+      cam.ox = next.ox;
+      cam.oy = next.oy;
+    }
+    clampCamera(cam);
   }
 
   function syncHud(): void {
@@ -409,6 +453,7 @@ function startGame(bots = 1): void {
       endScreen.classList.remove("hidden");
     }
     defense.disabled = !game.canBuyDefense();
+    syncFilterHud(game);
   }
 
   const hintTimer = window.setTimeout(() => {
@@ -465,7 +510,7 @@ function startGame(bots = 1): void {
   wall.addEventListener("click", onWall);
   defense.addEventListener("click", onDefense);
 
-  const unbind = bindInput(board, game, () => cam);
+  const unbind = bindInput(board, game, cam);
   window.addEventListener("resize", resize);
   resize();
 

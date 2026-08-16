@@ -1,6 +1,6 @@
 import { dist } from "./geo";
 import type { Camera } from "./camera";
-import { toWorld } from "./camera";
+import { pinchCamera, toWorld } from "./camera";
 import type { Game } from "./engine";
 
 const DRAG = 16;
@@ -15,25 +15,50 @@ export function hitTerritory(game: Game, x: number, y: number): number | null {
   return best?.id ?? null;
 }
 
-export function bindInput(
-  canvas: HTMLCanvasElement,
-  game: Game,
-  getCam: () => Camera,
-): () => void {
+function pair(e: TouchEvent, rect: DOMRect): { x: number; y: number; dist: number } | null {
+  if (e.touches.length < 2) return null;
+  const a = e.touches[0];
+  const b = e.touches[1];
+  return {
+    x: (a.clientX + b.clientX) / 2 - rect.left,
+    y: (a.clientY + b.clientY) / 2 - rect.top,
+    dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+  };
+}
+
+export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): () => void {
   const pos = (e: TouchEvent | MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
     const p = "touches" in e ? e.changedTouches[0] ?? e.touches[0] : e;
-    return toWorld(getCam(), p.clientX - rect.left, p.clientY - rect.top);
+    return toWorld(cam, p.clientX - rect.left, p.clientY - rect.top);
   };
 
   let lastTouch = 0;
   let dragged = false;
   let picking = false;
+  let pinching = false;
+  let pinch: { x: number; y: number; dist: number } | null = null;
   let start: { x: number; y: number } | null = null;
 
+  const startPinch = (e: TouchEvent): void => {
+    pinching = true;
+    game.endStroke();
+    game.stroke = [];
+    start = null;
+    dragged = false;
+    picking = false;
+    pinch = pair(e, canvas.getBoundingClientRect());
+  };
+
   const down = (e: TouchEvent | MouseEvent): void => {
-    if ("touches" in e) e.preventDefault();
-    if (game.winner) return;
+    if ("touches" in e) {
+      e.preventDefault();
+      if (e.touches.length >= 2) {
+        startPinch(e);
+        return;
+      }
+    }
+    if (game.winner || pinching) return;
     const p = pos(e);
     start = p;
     dragged = false;
@@ -42,6 +67,17 @@ export function bindInput(
   };
 
   const move = (e: TouchEvent | MouseEvent): void => {
+    if ("touches" in e) {
+      e.preventDefault();
+      if (e.touches.length >= 2) {
+        if (!pinching) startPinch(e);
+        const next = pair(e, canvas.getBoundingClientRect());
+        if (pinch && next) pinchCamera(cam, pinch, next);
+        pinch = next;
+        return;
+      }
+      if (pinching) return;
+    }
     if (!start) return;
     const p = pos(e);
     game.extendStroke(p);
@@ -68,6 +104,13 @@ export function bindInput(
     if ("touches" in e) {
       e.preventDefault();
       lastTouch = Date.now();
+      if (pinching) {
+        if (e.touches.length < 2) {
+          pinching = false;
+          pinch = null;
+        }
+        return;
+      }
     } else if (Date.now() - lastTouch < 600) {
       game.endStroke();
       start = null;
@@ -104,6 +147,18 @@ export function bindInput(
     start = null;
     dragged = false;
     picking = false;
+    pinching = false;
+    pinch = null;
+  };
+
+  const wheel = (e: WheelEvent): void => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const from = { x, y, dist: 100 };
+    const to = { x, y, dist: e.deltaY < 0 ? 108 : 100 / 1.08 };
+    pinchCamera(cam, from, to);
   };
 
   const opts = { passive: false } as const;
@@ -114,6 +169,7 @@ export function bindInput(
   canvas.addEventListener("mousedown", down);
   canvas.addEventListener("mousemove", move);
   canvas.addEventListener("mouseup", up);
+  canvas.addEventListener("wheel", wheel, opts);
 
   return () => {
     canvas.removeEventListener("touchstart", down);
@@ -123,5 +179,6 @@ export function bindInput(
     canvas.removeEventListener("mousedown", down);
     canvas.removeEventListener("mousemove", move);
     canvas.removeEventListener("mouseup", up);
+    canvas.removeEventListener("wheel", wheel);
   };
 }

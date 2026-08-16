@@ -16,6 +16,7 @@ export type Point = { x: number; y: number };
 
 export type SoldierState = "eject" | "idle" | "gather" | "defend" | "return" | "march";
 export type SoldierKind = "troop" | "gunner";
+export type SendFilter = "all" | "gunner" | "troop";
 
 export type Territory = {
   id: number;
