@@ -1,52 +1,71 @@
-import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, SPAWN_INTERVAL, rules } from "./config";
+import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, SPAWN_INTERVAL } from "./config";
 import { dist } from "./geo";
 import { randRange } from "./rng";
 import type { Game } from "./engine";
 import { isFaction, type Faction, type Territory } from "./types";
 
-type Move = { from: Territory; to: Territory };
+const GREY_RANGE = 580;
+const CONTEST_RANGE = 500;
+const POACH = 70;
+const PULL_SPAN = 380;
+const SNATCH_RANGE = 340;
+
+export function scoreGrey(dSelf: number, dFoe: number, secured: boolean): number {
+  if (secured) return -1;
+  if (dSelf > GREY_RANGE) return -1;
+  if (dFoe + POACH < dSelf && dSelf > 240) return -1;
+  return 900 / (dSelf + 50) + (dFoe - dSelf) / 70;
+}
+
+export function scoreAttack(travel: number, count: number, health: number): number {
+  return 1000 / (travel + 60) - count * 5 - health * 0.4;
+}
 
 export class Commander {
-  wait = 1.4;
+  wait = 1.8;
   lastTarget = -1;
   repeats = 0;
+  age = 0;
 
   constructor(readonly self: Faction) {}
 
+  reset(): void {
+    this.wait = 1.8;
+    this.lastTarget = -1;
+    this.repeats = 0;
+    this.age = 0;
+  }
+
   tick(game: Game, dt: number): void {
     if (game.winner) return;
-    if (this.race(game)) return;
+    this.age += dt;
+    if (this.defend(game)) {
+      this.wait = randRange(game.rng, 0.55, 0.95);
+      return;
+    }
     this.wait -= dt;
     if (this.wait > 0) return;
     this.wait = randRange(game.rng, AI_MIN_WAIT, AI_MAX_WAIT);
-    this.act(game);
+    this.plan(game);
   }
 
   private have(game: Game, t: Territory): number {
     return game.garrison(t.id).length;
   }
 
-  private lands(game: Game, owner: Faction): Territory[] {
-    return game.territories.filter((t) => t.owner === owner);
+  private lands(game: Game): Territory[] {
+    return game.territories.filter((t) => t.owner === this.self);
   }
 
   private foes(game: Game): Territory[] {
     return game.territories.filter((t) => isFaction(t.owner) && t.owner !== this.self);
   }
 
-  private mine(game: Game, min = 1): Territory[] {
-    return this.lands(game, this.self).filter((t) => this.have(game, t) >= min);
+  private greys(game: Game): Territory[] {
+    return game.territories.filter((t) => t.owner === "neutral");
   }
 
-  private behind(game: Game): boolean {
-    return this.lands(game, this.self).length < this.foes(game).length;
-  }
-
-  private desperate(game: Game): boolean {
-    return this.lands(game, this.self).length * 2 <= this.foes(game).length;
-  }
-
-  private nearestTo(t: Territory, others: Territory[]): number {
+  private nearest(t: Territory, others: Territory[]): number {
     if (others.length === 0) return 9999;
     let best = 9999;
     for (const o of others) {
@@ -56,146 +75,207 @@ export class Commander {
     return best;
   }
 
-  private frontThreat(game: Game, t: Territory): number {
-    return 520 / (this.nearestTo(t, this.lands(game, this.self)) + 55);
-  }
-
-  private frontDanger(game: Game, t: Territory): number {
-    return 520 / (this.nearestTo(t, this.foes(game)) + 55);
-  }
-
-  private greyFront(game: Game, t: Territory): number {
-    return this.frontThreat(game, t) + this.frontDanger(game, t);
-  }
-
-  private keepFor(game: Game, from: Territory): number {
-    if (this.desperate(game)) return 0;
-    const front = this.frontDanger(game, from) > 1.4;
-    if (this.behind(game)) return front ? 2 : 1;
-    return front ? 4 : 2;
-  }
-
-  private launch(game: Game, move: Move): boolean {
-    if (this.have(game, move.from) < 1) return false;
-    if (!game.send(move.from.id, move.to.id)) return false;
-    if (move.to.id === this.lastTarget) this.repeats += 1;
-    else this.repeats = 0;
-    this.lastTarget = move.to.id;
-    return true;
-  }
-
   private closest(from: Territory[], dest: Territory): Territory | null {
     if (from.length === 0) return null;
     return [...from].sort((a, b) => dist(a.center, dest.center) - dist(b.center, dest.center))[0];
   }
 
-  private flipCost(game: Game, from: Territory, dest: Territory): number {
+  private travel(from: Territory, to: Territory): number {
+    return dist(from.center, to.center) / ARMY_SPEED;
+  }
+
+  private need(game: Game, dest: Territory, from: Territory): number {
     const selfIn = game.incoming(dest.id, this.self);
     const foeIn = game.incomingElse(dest.id, this.self);
-    const travel = dist(from.center, dest.center) / ARMY_SPEED;
-      const growth = dest.owner !== "neutral" && dest.owner !== this.self ? travel / SPAWN_INTERVAL : 0;
-    return Math.max(1, Math.ceil(dest.health + dest.troops + foeIn + growth - selfIn));
-  }
-
-  private canFlip(game: Game, from: Territory, dest: Territory): boolean {
-    return this.have(game, from) >= this.flipCost(game, from, dest);
-  }
-
-  private race(game: Game): boolean {
-    let best: { dest: Territory; from: Territory; risk: number } | null = null;
-    const keep = this.desperate(game) ? 0 : 1;
-    for (const dest of game.territories) {
-      if (dest.owner !== "neutral") continue;
-      const foeIn = game.incomingElse(dest.id, this.self);
-      if (foeIn <= 0) continue;
-      const selfIn = game.incoming(dest.id, this.self);
-      const need = dest.health + foeIn - selfIn;
-      if (need <= 0) continue;
-      const from = this.closest(this.mine(game, Math.max(keep + 1, need)), dest);
-      if (!from) continue;
-      const risk = foeIn - selfIn + (rules.baseHealth - dest.health) + this.greyFront(game, dest);
-      if (!best || risk > best.risk) best = { dest, from, risk };
+    if (dest.owner === "neutral") {
+      return Math.max(1, Math.ceil(dest.health + foeIn - selfIn));
     }
-    if (!best) return false;
-    this.wait = randRange(game.rng, 0.5, 0.9);
-    return this.launch(game, { from: best.from, to: best.dest });
+    if (dest.owner === this.self) {
+      return Math.max(1, Math.ceil(foeIn - this.have(game, dest) - selfIn + 1));
+    }
+    const hold = this.have(game, dest);
+    const growth = this.travel(from, dest) / SPAWN_INTERVAL;
+    return Math.max(1, Math.ceil(dest.health + hold + foeIn + growth - selfIn));
   }
 
-  private act(game: Game): void {
-    const move = this.expand(game) ?? this.defend(game) ?? this.capture(game);
-    if (!move) return;
-    if (move.to.id === this.lastTarget && this.repeats >= 2) return;
-    this.launch(game, move);
+  private threatened(game: Game, t: Territory): boolean {
+    return game.incomingElse(t.id, this.self) > 0;
   }
 
-  private expand(game: Game): Move | null {
-    const greys = game.territories.filter((t) => t.owner === "neutral");
-    if (greys.length === 0) return null;
-    let best: { move: Move; score: number } | null = null;
-    for (const from of this.mine(game, 1)) {
-      if (this.have(game, from) <= this.keepFor(game, from)) continue;
-      for (const to of greys) {
-        if (game.incoming(to.id, this.self) >= to.health) continue;
-        if (!this.canFlip(game, from, to)) continue;
-        const close = 90 / (dist(from.center, to.center) + 40);
-        const score = close + this.greyFront(game, to) * 6 + (this.behind(game) ? 16 : 0);
-        if (!best || score > best.score) {
-          best = { move: { from, to }, score };
+  private spare(game: Game, t: Territory): number {
+    if (t.owner !== this.self) return 0;
+    if (this.threatened(game, t)) return 0;
+    return this.have(game, t);
+  }
+
+  private fund(game: Game, dest: Territory, need: number): Territory[] | null {
+    const ranked = this.lands(game)
+      .filter((t) => this.spare(game, t) > 0)
+      .sort((a, b) => dist(a.center, dest.center) - dist(b.center, dest.center));
+    if (ranked.length === 0) return null;
+    const picked: Territory[] = [];
+    let got = 0;
+    const near = dist(ranked[0].center, dest.center);
+    for (const t of ranked) {
+      if (dist(t.center, dest.center) > near + PULL_SPAN) break;
+      picked.push(t);
+      got += this.have(game, t);
+      if (got >= need) return picked;
+    }
+    return null;
+  }
+
+  private launch(game: Game, from: Territory, to: Territory): boolean {
+    if (this.have(game, from) < 1) return false;
+    if (!game.send(from.id, to.id)) return false;
+    if (to.id === this.lastTarget) this.repeats += 1;
+    else this.repeats = 0;
+    this.lastTarget = to.id;
+    return true;
+  }
+
+  private commit(game: Game, dest: Territory, froms: Territory[]): boolean {
+    if (dest.id === this.lastTarget && this.repeats >= 3) return false;
+    let sent = false;
+    for (const from of froms) {
+      if (this.launch(game, from, dest)) sent = true;
+    }
+    return sent;
+  }
+
+  private greyValue(game: Game, g: Territory): number {
+    const secured =
+      game.incoming(g.id, this.self) >= g.health + game.incomingElse(g.id, this.self);
+    return scoreGrey(this.nearest(g, this.lands(game)), this.nearest(g, this.foes(game)), secured);
+  }
+
+  private bestGrey(game: Game): Territory | null {
+    let best: { t: Territory; score: number } | null = null;
+    for (const g of this.greys(game)) {
+      const score = this.greyValue(game, g);
+      if (score < 0) continue;
+      if (!best || score > best.score) best = { t: g, score };
+    }
+    return best?.t ?? null;
+  }
+
+  private plan(game: Game): void {
+    if (this.snatch(game)) return;
+    const grey = this.bestGrey(game);
+    if (grey) {
+      const home = this.closest(this.lands(game), grey);
+      if (home) {
+        const froms = this.fund(game, grey, this.need(game, grey, home));
+        if (froms) {
+          this.commit(game, grey, froms);
+          return;
         }
       }
     }
-    return best?.move ?? null;
+    if (this.contest(game)) return;
+    if (grey) {
+      this.wait = randRange(game.rng, 2.4, 3.4);
+      return;
+    }
+    this.attack(game);
   }
 
-  private defend(game: Game): Move | null {
-    const mine = this.lands(game, this.self);
-    if (mine.length < 2) return null;
+  private defend(game: Game): boolean {
+    const mine = this.lands(game);
+    if (mine.length < 2) return false;
     let save: Territory | null = null;
-    let need = 0;
     let danger = -1;
+    let need = 0;
     for (const t of mine) {
       const incoming = game.incomingElse(t.id, this.self);
       if (incoming <= 0) continue;
       const gap = incoming - this.have(game, t) - game.incoming(t.id, this.self);
       if (gap < 0) continue;
-      const risk = gap + this.frontDanger(game, t) * 4;
+      const risk = gap + 400 / (this.nearest(t, this.foes(game)) + 40);
       if (risk > danger) {
         danger = risk;
         need = gap + 1;
         save = t;
       }
     }
-    if (!save) return null;
-    const keep = this.behind(game) ? 1 : 2;
+    if (!save) return false;
+    const froms: Territory[] = [];
+    let got = 0;
     const rich = mine
-      .filter((t) => t.id !== save.id && this.have(game, t) > keep && this.have(game, t) >= need)
-      .sort((a, b) => {
-        const sa = this.have(game, a) - this.frontDanger(game, a) * 4;
-        const sb = this.have(game, b) - this.frontDanger(game, b) * 4;
-        return sb - sa;
-      })[0];
-    if (!rich) return null;
-    return { from: rich, to: save };
+      .filter((t) => t.id !== save.id && this.spare(game, t) > 0)
+      .sort((a, b) => this.spare(game, b) - this.spare(game, a));
+    for (const t of rich) {
+      froms.push(t);
+      got += this.have(game, t);
+      if (got >= need) break;
+    }
+    if (got < need || froms.length === 0) return false;
+    return this.commit(game, save, froms);
   }
 
-  private capture(game: Game): Move | null {
-    const greysLeft = game.territories.some(
-      (t) => t.owner === "neutral" && game.incoming(t.id, this.self) < t.health,
-    );
-    if (greysLeft && this.behind(game)) return null;
-
-    let best: { move: Move; score: number } | null = null;
-    for (const from of this.mine(game, 1)) {
-      if (this.have(game, from) <= this.keepFor(game, from)) continue;
-      for (const to of this.foes(game)) {
-        if (!this.canFlip(game, from, to)) continue;
-        const close = 70 / (dist(from.center, to.center) + 50);
-        const score = this.frontThreat(game, to) * 10 + close - this.flipCost(game, from, to) * 0.3;
-        if (!best || score > best.score) {
-          best = { move: { from, to }, score };
-        }
-      }
+  private contest(game: Game): boolean {
+    const mine = this.lands(game);
+    if (mine.length === 0) return false;
+    let best: { dest: Territory; froms: Territory[]; score: number } | null = null;
+    for (const g of this.greys(game)) {
+      const foeIn = game.incomingElse(g.id, this.self);
+      if (foeIn <= 0) continue;
+      const dSelf = this.nearest(g, mine);
+      if (dSelf > CONTEST_RANGE) continue;
+      const dFoe = this.nearest(g, this.foes(game));
+      if (dFoe + 120 < dSelf) continue;
+      const home = this.closest(mine, g);
+      if (!home) continue;
+      const need = this.need(game, g, home);
+      if (need <= 0) continue;
+      const froms = this.fund(game, g, need);
+      if (!froms) continue;
+      const score = foeIn + 240 / (dSelf + 40);
+      if (!best || score > best.score) best = { dest: g, froms, score };
     }
-    return best?.move ?? null;
+    if (!best) return false;
+    return this.commit(game, best.dest, best.froms);
+  }
+
+  private snatch(game: Game): boolean {
+    const mine = this.lands(game);
+    if (mine.length === 0) return false;
+    let best: { dest: Territory; froms: Territory[]; score: number } | null = null;
+    for (const to of this.foes(game)) {
+      const home = this.closest(mine, to);
+      if (!home) continue;
+      const d = dist(home.center, to.center);
+      if (d > SNATCH_RANGE) continue;
+      const count = this.have(game, to);
+      if (count > 2) continue;
+      const need = this.need(game, to, home);
+      const froms = this.fund(game, to, need);
+      if (!froms) continue;
+      const grey = this.bestGrey(game);
+      if (grey && d > this.nearest(grey, mine) + 40) continue;
+      const score = scoreAttack(d, count, to.health);
+      if (!best || score > best.score) best = { dest: to, froms, score };
+    }
+    if (!best) return false;
+    return this.commit(game, best.dest, best.froms);
+  }
+
+  private attack(game: Game): boolean {
+    const mine = this.lands(game);
+    if (mine.length === 0) return false;
+    let best: { dest: Territory; froms: Territory[]; score: number } | null = null;
+    for (const to of this.foes(game)) {
+      const home = this.closest(mine, to);
+      if (!home) continue;
+      const need = this.need(game, to, home);
+      const froms = this.fund(game, to, need);
+      if (!froms) continue;
+      const d = dist(home.center, to.center);
+      const count = this.have(game, to) + game.incoming(to.id, to.owner);
+      const score = scoreAttack(d, count, to.health);
+      if (!best || score > best.score) best = { dest: to, froms, score };
+    }
+    if (!best) return false;
+    return this.commit(game, best.dest, best.froms);
   }
 }

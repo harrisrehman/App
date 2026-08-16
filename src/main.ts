@@ -366,11 +366,7 @@ function startGame(bots = 1): void {
 
   const onRestart = (): void => {
     game.restart(Date.now(), game.bots);
-    for (const ai of ais) {
-      ai.wait = 1.8;
-      ai.lastTarget = -1;
-      ai.repeats = 0;
-    }
+    for (const ai of ais) ai.reset();
     shownWinner = false;
     endScreen.classList.add("hidden");
   };
