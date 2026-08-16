@@ -23,6 +23,9 @@ export const BASE_COUNT_MAX = 13;
 
 export const AI_MIN_WAIT = 0.28;
 export const AI_MAX_WAIT = 0.7;
+export const FIGHT_RADIUS = 16;
+export const POP_LIFE = 0.2;
+export const POP_CAP = 48;
 
 export const UPDATE_SOURCES = [
   {

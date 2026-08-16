@@ -6,8 +6,8 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.3.6",
-  build: 1786857443479,
+  version: "0.3.7",
+  build: 1786857937143,
 };
 
 const APPLIED_VERSION_KEY = "annex-applied-version";

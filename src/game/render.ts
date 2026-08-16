@@ -1,7 +1,7 @@
 import { COLORS } from "./config";
 import type { Camera } from "./camera";
 import type { Game } from "./engine";
-import type { Owner, Point, Soldier, Territory } from "./types";
+import type { Owner, Point, Pop, Soldier, Territory } from "./types";
 
 function fill(owner: Owner): string {
   if (owner === "player") return COLORS.player;
@@ -62,6 +62,8 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
     drawBase(ctx, t, game.selected.has(t.id));
   }
 
+  for (const p of game.pops) drawPop(ctx, p);
+
   ctx.restore();
 }
 
@@ -85,5 +87,15 @@ function drawSoldier(ctx: CanvasRenderingContext2D, s: Soldier): void {
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const scale = (9 * pop) / 40;
   drawPoly(ctx, s.poly, s.x, s.y, scale, fill(s.owner), 1);
+}
+
+function drawPop(ctx: CanvasRenderingContext2D, p: Pop): void {
+  const u = p.t;
+  ctx.globalAlpha = 1 - u;
+  ctx.fillStyle = "#f4f4f6";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 3 + u * 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
 }
 

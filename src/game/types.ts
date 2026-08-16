@@ -47,3 +47,9 @@ export type Army = {
 export type SendRatio = 0.5 | 1;
 
 export type Winner = "player" | "ai" | null;
+
+export type Pop = {
+  x: number;
+  y: number;
+  t: number;
+};

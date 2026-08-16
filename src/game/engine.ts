@@ -1,8 +1,8 @@
-import { ARMY_SPEED, SPAWN_INTERVAL, TROOP_CAP } from "./config";
+import { ARMY_SPEED, FIGHT_RADIUS, POP_CAP, POP_LIFE, SPAWN_INTERVAL, TROOP_CAP } from "./config";
 import { dist } from "./geo";
 import { createMap } from "./map";
 import { mulberry32 } from "./rng";
-import type { Army, Owner, SendRatio, Soldier, Territory, Winner } from "./types";
+import type { Army, Owner, Pop, SendRatio, Soldier, Territory, Winner } from "./types";
 
 export function applyArrival(dest: Territory, army: Army, cap = TROOP_CAP): void {
   if (dest.owner === army.owner) {
@@ -44,6 +44,7 @@ export class Game {
   territories: Territory[];
   soldiers: Soldier[] = [];
   armies: Army[] = [];
+  pops: Pop[] = [];
   selected = new Set<number>();
   sendRatio: SendRatio = 1;
   winner: Winner = null;
@@ -61,6 +62,7 @@ export class Game {
     this.territories = createMap(seed);
     this.soldiers = [];
     this.armies = [];
+    this.pops = [];
     this.selected.clear();
     this.winner = null;
     this.finger = null;
@@ -117,7 +119,10 @@ export class Game {
   }
 
   update(dt: number): void {
-    if (this.winner) return;
+    if (this.winner) {
+      this.stepPops(dt);
+      return;
+    }
 
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
@@ -132,6 +137,7 @@ export class Game {
     for (const s of this.soldiers) this.stepSoldier(s, dt);
 
     const dead = new Set<number>();
+    this.clash(dead);
     for (const s of this.soldiers) {
       if (s.state !== "march" || s.toId === null || dead.has(s.id)) continue;
       const dest = this.territories[s.toId];
@@ -140,8 +146,54 @@ export class Game {
       if (!keep) dead.add(s.id);
     }
     if (dead.size) this.soldiers = this.soldiers.filter((s) => !dead.has(s.id));
+    this.stepPops(dt);
     this.syncTroops();
     this.checkWinner();
+  }
+
+  private clash(dead: Set<number>): void {
+    const players: Soldier[] = [];
+    const foes: Soldier[] = [];
+    for (const s of this.soldiers) {
+      if (s.owner === "player") players.push(s);
+      else foes.push(s);
+    }
+    const r2 = FIGHT_RADIUS * FIGHT_RADIUS;
+    for (const a of players) {
+      if (dead.has(a.id)) continue;
+      for (const b of foes) {
+        if (dead.has(b.id)) continue;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        if (dx * dx + dy * dy > r2) continue;
+        dead.add(a.id);
+        dead.add(b.id);
+        this.addPop((a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
+        break;
+      }
+    }
+  }
+
+  private addPop(x: number, y: number): void {
+    if (this.pops.length >= POP_CAP) {
+      const oldest = this.pops[0];
+      oldest.x = x;
+      oldest.y = y;
+      oldest.t = 0;
+      this.pops.push(this.pops.shift()!);
+      return;
+    }
+    this.pops.push({ x, y, t: 0 });
+  }
+
+  private stepPops(dt: number): void {
+    if (this.pops.length === 0) return;
+    const keep: Pop[] = [];
+    for (const p of this.pops) {
+      p.t += dt / POP_LIFE;
+      if (p.t < 1) keep.push(p);
+    }
+    this.pops = keep;
   }
 
   private spawnSoldier(base: Territory): void {
