@@ -1,5 +1,5 @@
 import { REMOTE_CANDIDATES } from "./config";
-import { APP_VERSION, loadBundledVersion, type AppVersion } from "../version";
+import { APP_VERSION, type AppVersion } from "../version";
 
 export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
 
@@ -14,9 +14,19 @@ export function appliedBuild(): number {
   return Number(localStorage.getItem(APPLIED_KEY) || "0");
 }
 
+async function fetchWithTimeout(url: string, ms = 4000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { cache: "no-store", signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readVersion(base: string): Promise<AppVersion | null> {
   try {
-    const res = await fetch(`${base}version.json?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetchWithTimeout(`${base}version.json?t=${Date.now()}`);
     if (!res.ok) return null;
     return (await res.json()) as AppVersion;
   } catch {
@@ -26,10 +36,12 @@ async function readVersion(base: string): Promise<AppVersion | null> {
 
 export async function fetchRemote(): Promise<{ base: string; version: AppVersion } | null> {
   const found: { base: string; version: AppVersion }[] = [];
-  for (const base of REMOTE_CANDIDATES) {
-    const version = await readVersion(base);
-    if (version) found.push({ base, version });
-  }
+  await Promise.all(
+    REMOTE_CANDIDATES.map(async (base) => {
+      const version = await readVersion(base);
+      if (version) found.push({ base, version });
+    }),
+  );
   if (found.length === 0) return null;
   found.sort((a, b) => b.version.build - a.version.build);
   return found[0];
@@ -37,7 +49,7 @@ export async function fetchRemote(): Promise<{ base: string; version: AppVersion
 
 async function downloadGame(base: string): Promise<string | null> {
   try {
-    const res = await fetch(`${base}annex.html?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetchWithTimeout(`${base}annex.html?t=${Date.now()}`, 8000);
     if (!res.ok) return null;
     const html = await res.text();
     if (!html.includes("ANNEX")) return null;
@@ -47,14 +59,20 @@ async function downloadGame(base: string): Promise<string | null> {
   }
 }
 
-function injectHtml(html: string): void {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  document.head.replaceWith(doc.head);
-  document.body.replaceWith(doc.body);
-  for (const old of [...document.querySelectorAll("script")]) {
-    const next = document.createElement("script");
-    next.textContent = old.textContent;
-    old.replaceWith(next);
+function injectHtml(html: string): boolean {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
+    for (const s of doc.querySelectorAll("script")) s.remove();
+    document.documentElement.innerHTML = doc.documentElement.innerHTML;
+    for (const code of scripts) {
+      if (!code.trim()) continue;
+      const fn = new Function(code);
+      fn();
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -70,48 +88,21 @@ function markHtml(html: string, build: number): string {
   return html.replace("<html", `<html data-annex-applied="${build}"`);
 }
 
-function swapIn(html: string, build: number): void {
-  const tagged = markHtml(html, build);
-  persist(build, tagged);
-  injectHtml(tagged);
-}
-
 export async function applyUpdate(): Promise<UpdateState> {
   const remote = await fetchRemote();
   if (!remote) return "offline";
   const html = await downloadGame(remote.base);
   if (!html) return "offline";
-  if (remote.version.build === appliedBuild() && appliedBuild() > 0) {
-    const cached = localStorage.getItem(HTML_KEY);
-    if (cached === markHtml(html, remote.version.build)) return "latest";
+  const tagged = markHtml(html, remote.version.build);
+  if (remote.version.build === appliedBuild() && localStorage.getItem(HTML_KEY) === tagged) {
+    return "latest";
   }
-  swapIn(html, remote.version.build);
+  persist(remote.version.build, tagged);
+  if (!injectHtml(tagged)) return "offline";
   return "ready";
 }
 
 export async function autoUpdate(): Promise<boolean> {
-  if (document.documentElement.dataset.annexApplied) return false;
-  await loadBundledVersion();
-
-  const remote = await fetchRemote();
-  if (remote) {
-    if (remote.version.build > Math.max(appliedBuild(), APP_VERSION.build)) {
-      const html = await downloadGame(remote.base);
-      if (html) {
-        swapIn(html, remote.version.build);
-        return true;
-      }
-    }
-    if (remote.version.build === APP_VERSION.build) {
-      localStorage.setItem(APPLIED_KEY, String(remote.version.build));
-    }
-  }
-
-  const cached = localStorage.getItem(HTML_KEY);
-  if (cached && appliedBuild() > APP_VERSION.build) {
-    injectHtml(cached);
-    return true;
-  }
   return false;
 }
 

@@ -3,7 +3,7 @@ import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { applyUpdate, autoUpdate, localVersion, peekUpdate } from "./game/update";
+import { applyUpdate, localVersion, peekUpdate } from "./game/update";
 import { loadBundledVersion } from "./version";
 
 async function startGame(): Promise<void> {
@@ -101,6 +101,8 @@ async function startGame(): Promise<void> {
   requestAnimationFrame(loop);
 }
 
-void autoUpdate().then((swapped) => {
-  if (!swapped) return startGame();
-});
+try {
+  void startGame();
+} catch {
+  document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
+}
