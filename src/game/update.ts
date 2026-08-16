@@ -46,10 +46,25 @@ function decodeBody(data: unknown): string | null {
   return null;
 }
 
+function bust(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+}
+
+function adoptShell(doc: Document): void {
+  for (const id of ["hud", "overlay"]) {
+    const next = doc.getElementById(id);
+    const prev = document.getElementById(id);
+    if (!next) continue;
+    const copy = document.importNode(next, true);
+    if (prev) prev.replaceWith(copy);
+    else document.body.appendChild(copy);
+  }
+}
+
 async function getText(url: string, ms = 8000): Promise<string | null> {
   try {
     const res = await CapacitorHttp.get({
-      url,
+      url: bust(url),
       readTimeout: ms,
       connectTimeout: Math.min(ms, 5000),
       responseType: "text",
@@ -99,6 +114,7 @@ async function downloadGame(url: string): Promise<string | null> {
 export function runScripts(html: string): boolean {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");
+    adoptShell(doc);
     const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
     window.__annexStop?.();
     for (const code of scripts) {
@@ -138,11 +154,11 @@ export async function applyUpdate(): Promise<UpdateState> {
   if (alreadyHave(remote.version)) return "latest";
   const html = await downloadGame(remote.gameUrl);
   if (!html) return "offline";
-  rememberApplied(remote.version, html);
-  localStorage.setItem(APPLIED_KEY, String(remote.version.build));
   window.__annexJustUpdated = remote.version.version;
   window.__annexRestored = true;
   if (!runScripts(html)) return "offline";
+  rememberApplied(remote.version, html);
+  localStorage.setItem(APPLIED_KEY, String(remote.version.build));
   return "ready";
 }
 

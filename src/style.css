@@ -43,11 +43,13 @@ body {
 .top,
 .bottom {
   pointer-events: auto;
+  position: relative;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 10px;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 10px;
 }
 
 .bottom {
@@ -101,6 +103,7 @@ button {
 
 .actions {
   display: flex;
+  flex-shrink: 0;
   gap: 8px;
 }
 

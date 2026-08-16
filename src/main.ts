@@ -11,11 +11,124 @@ declare global {
     __annexStop?: () => void;
     __annexJustUpdated?: string;
     __annexRestored?: boolean;
+    __annexHudBound?: boolean;
   }
+}
+
+function makeEl<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  id?: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const el = document.createElement(tag);
+  if (id) el.id = id;
+  if (text) el.textContent = text;
+  if (tag === "button") el.setAttribute("type", "button");
+  return el;
+}
+
+function ensureHud(): void {
+  if (!document.querySelector("#game")) {
+    document.body.prepend(makeEl("canvas", "game"));
+  }
+  let hud = document.querySelector("#hud");
+  if (!hud) {
+    hud = makeEl("div", "hud");
+    document.body.appendChild(hud);
+  }
+  let top = hud.querySelector(".top");
+  if (!top) {
+    top = document.createElement("div");
+    top.className = "top";
+    hud.prepend(top);
+  }
+  if (!top.querySelector("#title")) {
+    const brand = document.createElement("div");
+    brand.className = "brand";
+    brand.append(makeEl("span", "title", "ANNEX"), makeEl("span", "version", "v"));
+    top.prepend(brand);
+  }
+  if (!top.querySelector("#version")) {
+    (top.querySelector(".brand") ?? top).appendChild(makeEl("span", "version", "v"));
+  }
+  if (!top.querySelector("#score")) {
+    const brand = top.querySelector(".brand");
+    if (brand) brand.appendChild(makeEl("span", "score", "0 · 0"));
+    else top.appendChild(makeEl("span", "score", "0 · 0"));
+  }
+  let actions = top.querySelector(".actions");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.className = "actions";
+    top.appendChild(actions);
+  }
+  if (!actions.querySelector("#wall-btn")) {
+    actions.appendChild(makeEl("button", "wall-btn", "Wall")).setAttribute("type", "button");
+  }
+  if (!actions.querySelector("#update-btn")) {
+    actions.appendChild(makeEl("button", "update-btn", "Update")).setAttribute("type", "button");
+  }
+  if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
+  if (!hud.querySelector("#hint")) hud.appendChild(makeEl("div", "hint"));
+  if (!document.querySelector("#overlay")) {
+    const overlay = makeEl("div", "overlay");
+    overlay.classList.add("hidden");
+    overlay.append(makeEl("h1", "result"), makeEl("button", "restart-btn", "Again"));
+    document.body.appendChild(overlay);
+  }
+}
+
+function showToast(text: string): void {
+  const box = document.querySelector("#toast");
+  if (!box) return;
+  box.textContent = text;
+  box.classList.add("show");
+  window.setTimeout(() => box.classList.remove("show"), 2200);
+}
+
+let updateBusy = false;
+
+async function runUpdate(): Promise<void> {
+  if (updateBusy) return;
+  updateBusy = true;
+  const btn = document.querySelector<HTMLButtonElement>("#update-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "…";
+  }
+  try {
+    const state = await applyUpdate();
+    if (state === "offline") showToast("Update failed. Try again.");
+    if (state === "latest") showToast("Already latest.");
+    if (state === "ready") showToast(`Updated to v${localVersion().version}`);
+  } catch {
+    showToast("Update failed. Try again.");
+  } finally {
+    updateBusy = false;
+    const again = document.querySelector<HTMLButtonElement>("#update-btn");
+    if (again) {
+      again.disabled = false;
+      again.textContent = "Update";
+    }
+  }
+}
+
+function bindHudClicks(): void {
+  if (window.__annexHudBound) return;
+  window.__annexHudBound = true;
+  document.addEventListener("click", (e) => {
+    const t = (e.target as HTMLElement | null)?.closest("button");
+    if (!t) return;
+    if (t.id === "update-btn") {
+      e.preventDefault();
+      void runUpdate();
+    }
+  });
 }
 
 function startGame(): void {
   window.__annexStop?.();
+  ensureHud();
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
@@ -39,7 +152,6 @@ function startGame(): void {
   const score = scoreEl;
   const update = updateEl;
   const wall = wallEl;
-  const toastBox = toastEl;
   const endScreen = overlayEl;
   const result = resultEl;
   const again = restartEl;
@@ -61,12 +173,6 @@ function startGame(): void {
     board.style.height = `${h}px`;
     draw.setTransform(dpr, 0, 0, dpr, 0, 0);
     cam = fitCamera(w, h);
-  }
-
-  function toast(text: string): void {
-    toastBox.textContent = text;
-    toastBox.classList.add("show");
-    window.setTimeout(() => toastBox.classList.remove("show"), 2200);
   }
 
   function syncHud(): void {
@@ -102,39 +208,26 @@ function startGame(): void {
       game.wallMode = false;
       game.endStroke();
       syncWall();
-      toast("Wall canceled.");
+      showToast("Wall canceled.");
       return;
     }
     const mine = [...game.selected].some((id) => game.territories[id]?.owner === "player");
     if (!mine) {
-      toast("Select a base first.");
+      showToast("Select a base first.");
       return;
     }
     const troops = [...game.selected].reduce((n, id) => n + game.garrison(id).length, 0);
     if (troops < 1) {
-      toast("No soldiers to wall.");
+      showToast("No soldiers to wall.");
       return;
     }
     game.wallMode = true;
     syncWall();
-    toast("Draw a wall line.");
-  };
-
-  const onUpdate = async (): Promise<void> => {
-    update.disabled = true;
-    update.textContent = "…";
-    const state = await applyUpdate();
-    if (!alive) return;
-    if (state === "offline") toast("Update failed. Try again.");
-    if (state === "latest") toast("Already latest.");
-    if (state === "ready") toast(`Updated to v${localVersion().version}`);
-    update.disabled = false;
-    update.textContent = "Update";
+    showToast("Draw a wall line.");
   };
 
   again.addEventListener("click", onRestart);
   wall.addEventListener("click", onWall);
-  update.addEventListener("click", onUpdate);
 
   const unbind = bindInput(board, game, () => cam);
   window.addEventListener("resize", resize);
@@ -142,7 +235,7 @@ function startGame(): void {
 
   version.textContent = `v${localVersion().version}`;
   if (window.__annexJustUpdated) {
-    toast(`Updated to v${window.__annexJustUpdated}`);
+    showToast(`Updated to v${window.__annexJustUpdated}`);
     window.__annexJustUpdated = undefined;
   }
   void loadBundledVersion().then((ver) => {
@@ -173,7 +266,6 @@ function startGame(): void {
     window.removeEventListener("resize", resize);
     again.removeEventListener("click", onRestart);
     wall.removeEventListener("click", onWall);
-    update.removeEventListener("click", onUpdate);
   };
 
   requestAnimationFrame(loop);
@@ -181,6 +273,8 @@ function startGame(): void {
 
 function boot(): void {
   try {
+    ensureHud();
+    bindHudClicks();
     dropStalePersist();
     if (restorePersisted()) return;
     startGame();
