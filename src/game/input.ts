@@ -37,20 +37,20 @@ export function bindInput(
     const p = pos(e);
     const id = hitTerritory(game, p.x, p.y);
 
-    if (game.selected !== null && id !== null && id !== game.selected) {
-      game.send(game.selected, id, 1);
-      game.selected = null;
-      game.finger = null;
-      return;
-    }
-
     if (id !== null && game.territories[id].owner === "player") {
-      game.selected = game.selected === id ? null : id;
+      if (game.selected.has(id)) game.selected.delete(id);
+      else game.selected.add(id);
       game.finger = null;
       return;
     }
 
-    game.selected = null;
+    if (id !== null && game.selected.size > 0) {
+      game.sendSelected(id);
+      game.finger = null;
+      return;
+    }
+
+    game.selected.clear();
     game.finger = null;
   };
 

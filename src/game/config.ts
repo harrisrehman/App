@@ -13,7 +13,7 @@ export const COLORS = {
 } as const;
 
 export const TROOP_CAP = 20;
-export const ARMY_SPEED = 220;
+export const ARMY_SPEED = 110;
 export const SPAWN_INTERVAL = 5;
 export const START_TROOPS = 0;
 export const NEUTRAL_TROOPS = 0;

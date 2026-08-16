@@ -9,6 +9,21 @@ function fill(owner: Owner): string {
   return COLORS.neutral;
 }
 
+function pathPoly(
+  ctx: CanvasRenderingContext2D,
+  poly: Point[],
+  cx: number,
+  cy: number,
+  scale: number,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(cx + poly[0].x * scale, cy + poly[0].y * scale);
+  for (let i = 1; i < poly.length; i++) {
+    ctx.lineTo(cx + poly[i].x * scale, cy + poly[i].y * scale);
+  }
+  ctx.closePath();
+}
+
 function drawPoly(
   ctx: CanvasRenderingContext2D,
   poly: Point[],
@@ -19,12 +34,7 @@ function drawPoly(
   alpha: number,
 ): void {
   if (poly.length === 0) return;
-  ctx.beginPath();
-  ctx.moveTo(cx + poly[0].x * scale, cy + poly[0].y * scale);
-  for (let i = 1; i < poly.length; i++) {
-    ctx.lineTo(cx + poly[i].x * scale, cy + poly[i].y * scale);
-  }
-  ctx.closePath();
+  pathPoly(ctx, poly, cx, cy, scale);
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
   ctx.fill();
@@ -49,7 +59,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
   }
 
   for (const t of game.territories) {
-    drawBase(ctx, t, game.selected === t.id);
+    drawBase(ctx, t, game.selected.has(t.id));
   }
 
   ctx.restore();
@@ -57,8 +67,14 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
-  const scale = (selected ? 38 : 34) / Math.max(t.radius, 1);
+  const scale = 34 / Math.max(t.radius, 1);
   drawPoly(ctx, t.localPoly, t.center.x, t.center.y, scale, color, 1);
+  if (selected) {
+    pathPoly(ctx, t.localPoly, t.center.x, t.center.y, scale);
+    ctx.strokeStyle = COLORS.line;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+  }
   ctx.fillStyle = COLORS.bg;
   ctx.font = "700 24px ui-sans-serif, system-ui, sans-serif";
   ctx.textAlign = "center";

@@ -24,13 +24,12 @@ function easeOutBack(t: number): number {
   return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
 }
 
-function slotPos(base: Territory, slot: number, count: number, ring: number): { x: number; y: number } {
-  const n = Math.max(count, 1);
-  const angle = (slot / n) * Math.PI * 2 - Math.PI / 2;
-  const extra = slot % 2 === 0 ? 0 : 10;
+function around(base: Territory, rng: () => number, minR: number, maxR: number): { x: number; y: number } {
+  const angle = rng() * Math.PI * 2;
+  const ring = minR + rng() * (maxR - minR);
   return {
-    x: base.center.x + Math.cos(angle) * (ring + extra),
-    y: base.center.y + Math.sin(angle) * (ring + extra),
+    x: base.center.x + Math.cos(angle) * ring,
+    y: base.center.y + Math.sin(angle) * ring,
   };
 }
 
@@ -38,7 +37,7 @@ export class Game {
   territories: Territory[];
   soldiers: Soldier[] = [];
   armies: Army[] = [];
-  selected: number | null = null;
+  selected = new Set<number>();
   sendRatio: SendRatio = 1;
   winner: Winner = null;
   finger: { x: number; y: number } | null = null;
@@ -54,7 +53,7 @@ export class Game {
     this.territories = createMap(seed);
     this.soldiers = [];
     this.armies = [];
-    this.selected = null;
+    this.selected.clear();
     this.winner = null;
     this.finger = null;
     nextSoldierId = 1;
@@ -92,6 +91,15 @@ export class Game {
     return true;
   }
 
+  sendSelected(toId: number): boolean {
+    let sent = false;
+    for (const fromId of [...this.selected]) {
+      if (this.send(fromId, toId, 1)) sent = true;
+    }
+    this.selected.clear();
+    return sent;
+  }
+
   update(dt: number): void {
     if (this.winner) return;
 
@@ -116,18 +124,14 @@ export class Game {
       if (!keep) dead.add(s.id);
     }
     if (dead.size) this.soldiers = this.soldiers.filter((s) => !dead.has(s.id));
-    this.reseatSlots();
     this.syncTroops();
     this.checkWinner();
   }
 
-  private spawnSoldier(base: Territory, slot?: number, count?: number): void {
+  private spawnSoldier(base: Territory): void {
     if (base.owner === "neutral") return;
-    const garrison = this.garrison(base.id);
-    const n = count ?? garrison.length + 1;
-    const i = slot ?? garrison.length;
-    const rest = slotPos(base, i, n, base.radius + 28);
-    const edge = slotPos(base, i, n, base.radius * 0.72);
+    const edge = around(base, this.rng, 18, 26);
+    const rest = around(base, this.rng, 36, 78);
     this.soldiers.push({
       id: nextSoldierId++,
       owner: base.owner,
@@ -136,7 +140,7 @@ export class Game {
       y: edge.y,
       state: "eject",
       toId: null,
-      slot: i,
+      slot: 0,
       ejectT: 0,
       fromX: edge.x,
       fromY: edge.y,
@@ -147,8 +151,8 @@ export class Game {
   }
 
   private startEject(s: Soldier, base: Territory): void {
-    const rest = slotPos(base, s.slot, Math.max(this.garrison(base.id).length, 1), base.radius + 28);
-    const edge = slotPos(base, s.slot, Math.max(this.garrison(base.id).length, 1), base.radius * 0.72);
+    const edge = around(base, this.rng, 18, 26);
+    const rest = around(base, this.rng, 36, 78);
     s.homeId = base.id;
     s.toId = null;
     s.state = "eject";
@@ -163,9 +167,8 @@ export class Game {
   }
 
   private stepSoldier(s: Soldier, dt: number): void {
-    const home = this.territories[s.homeId];
     if (s.state === "eject") {
-      s.ejectT = Math.min(1, s.ejectT + dt / 0.42);
+      s.ejectT = Math.min(1, s.ejectT + dt / 0.84);
       const k = easeOutBack(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
@@ -184,16 +187,6 @@ export class Game {
     }
 
     s.state = "idle";
-    const target = slotPos(home, s.slot, Math.max(this.garrison(home.id).length, 1), home.radius + 28);
-    const d = dist({ x: s.x, y: s.y }, target);
-    if (d < 1.2) {
-      s.x = target.x;
-      s.y = target.y;
-      return;
-    }
-    const step = 260 * dt;
-    s.x += ((target.x - s.x) / d) * Math.min(step, d);
-    s.y += ((target.y - s.y) / d) * Math.min(step, d);
   }
 
   private arrive(s: Soldier, dest: Territory, dead: Set<number>): boolean {
@@ -220,21 +213,6 @@ export class Game {
     dest.spawnAcc = 0;
     this.startEject(s, dest);
     return true;
-  }
-
-  private reseatSlots(): void {
-    const groups = new Map<number, Soldier[]>();
-    for (const s of this.soldiers) {
-      if (s.state === "march") continue;
-      const list = groups.get(s.homeId) ?? [];
-      list.push(s);
-      groups.set(s.homeId, list);
-    }
-    for (const list of groups.values()) {
-      list.forEach((s, i) => {
-        s.slot = i;
-      });
-    }
   }
 
   private syncTroops(): void {
