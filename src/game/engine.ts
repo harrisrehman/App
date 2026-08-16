@@ -258,6 +258,8 @@ export class Game {
       fromY: path.from.y,
       toX: path.to.x,
       toY: path.to.y,
+      restX: path.to.x,
+      restY: path.to.y,
       poly: base.localPoly.map((p) => ({ x: p.x, y: p.y })),
     });
   }
@@ -274,7 +276,14 @@ export class Game {
     s.fromY = path.from.y;
     s.toX = path.to.x;
     s.toY = path.to.y;
+    s.restX = path.to.x;
+    s.restY = path.to.y;
     s.poly = base.localPoly.map((p) => ({ x: p.x, y: p.y }));
+  }
+
+  private sendHome(s: Soldier): void {
+    s.toId = null;
+    s.state = "return";
   }
 
   private stepSoldier(s: Soldier, dt: number): void {
@@ -283,7 +292,25 @@ export class Game {
       const k = easeOutBack(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
-      if (s.ejectT >= 1) s.state = "idle";
+      if (s.ejectT >= 1) {
+        s.x = s.restX;
+        s.y = s.restY;
+        s.state = "idle";
+      }
+      return;
+    }
+
+    if (s.state === "return") {
+      const d = dist({ x: s.x, y: s.y }, { x: s.restX, y: s.restY });
+      const step = ARMY_SPEED * dt;
+      if (d <= step) {
+        s.x = s.restX;
+        s.y = s.restY;
+        s.state = "idle";
+        return;
+      }
+      s.x += ((s.restX - s.x) / d) * step;
+      s.y += ((s.restY - s.y) / d) * step;
       return;
     }
 
@@ -365,7 +392,7 @@ export class Game {
       for (const s of this.soldiers) {
         if (s.homeId !== t.id || s.state === "march") continue;
         if (underAttack) s.state = "defend";
-        else if (s.state === "defend") this.startEject(s, t);
+        else if (s.state === "defend") this.sendHome(s);
       }
     }
   }

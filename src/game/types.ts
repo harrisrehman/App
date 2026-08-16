@@ -2,7 +2,7 @@ export type Owner = "player" | "ai" | "neutral";
 
 export type Point = { x: number; y: number };
 
-export type SoldierState = "eject" | "idle" | "gather" | "defend" | "march";
+export type SoldierState = "eject" | "idle" | "gather" | "defend" | "return" | "march";
 
 export type Territory = {
   id: number;
@@ -31,6 +31,8 @@ export type Soldier = {
   fromY: number;
   toX: number;
   toY: number;
+  restX: number;
+  restY: number;
   poly: Point[];
 };
 

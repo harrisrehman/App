@@ -41,4 +41,22 @@ const empty = { owner: "ai", troops: 0, health: 10 };
 takeBase(empty, "player");
 assert(empty.owner === "player" && empty.troops === 0 && empty.health === 10, "no free spawn failed");
 
+function walkHome(s, speed = 10) {
+  const dx = s.restX - s.x;
+  const dy = s.restY - s.y;
+  const d = Math.hypot(dx, dy);
+  if (d <= speed) {
+    s.x = s.restX;
+    s.y = s.restY;
+    s.state = "idle";
+    return;
+  }
+  s.x += (dx / d) * speed;
+  s.y += (dy / d) * speed;
+}
+
+const home = { x: 80, y: 20, restX: 10, restY: 10, state: "return" };
+walkHome(home, 100);
+assert(home.x === 10 && home.y === 10 && home.state === "idle", "return home failed");
+
 console.log("engine tests passed");
