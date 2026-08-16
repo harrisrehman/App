@@ -227,5 +227,43 @@ assert(isClosedLasso(box), "lasso close failed");
 assert(pointInPoly(40, 40, box), "lasso inside failed");
 assert(!pointInPoly(120, 40, box), "lasso outside failed");
 
+function scatterRest(base, taken, rng, gap = 18) {
+  const inner = 48;
+  const area = (taken.length + 1) * gap * gap;
+  let best = { x: base.x + inner, y: base.y };
+  let bestD = -1;
+  for (let grow = 0; grow < 8; grow++) {
+    const outer = Math.max(inner + 12, Math.sqrt(inner * inner + area / Math.PI)) + grow * gap;
+    for (let i = 0; i < 28; i++) {
+      const a = rng() * Math.PI * 2;
+      const r = Math.sqrt(inner * inner + rng() * Math.max(0, outer * outer - inner * inner));
+      const p = { x: base.x + Math.cos(a) * r, y: base.y + Math.sin(a) * r };
+      let minD = 9999;
+      for (const t of taken) minD = Math.min(minD, dist(p, t));
+      if (minD >= gap) return p;
+      if (minD > bestD) {
+        bestD = minD;
+        best = p;
+      }
+    }
+  }
+  return best;
+}
+
+let scatterRng = 7;
+function srand() {
+  scatterRng = (scatterRng * 1664525 + 1013904223) >>> 0;
+  return scatterRng / 4294967296;
+}
+const cloud = [];
+for (let i = 0; i < 24; i++) cloud.push(scatterRest({ x: 0, y: 0 }, cloud, srand));
+for (let i = 0; i < cloud.length; i++) {
+  for (let j = i + 1; j < cloud.length; j++) {
+    assert(dist(cloud[i], cloud[j]) >= 17.5, "scattered soldiers overlap");
+  }
+}
+const xs = cloud.map((p) => p.x);
+assert(Math.max(...xs) - Math.min(...xs) > 20, "scatter still a line");
+
 console.log("engine tests passed");
 

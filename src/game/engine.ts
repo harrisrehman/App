@@ -39,34 +39,51 @@ function easeOutBack(t: number): number {
   return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
 }
 
-function restRadius(base: Territory, ring: number): number {
-  const rim = Math.max(base.radius, 22);
-  const inner = Math.min(ringRadius(base.radius) - 6, rim + 12);
-  return inner + ring * SOLDIER_GAP;
+function spinPoly(poly: Point[], angle: number): Point[] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return poly.map((p) => ({ x: p.x * c - p.y * s, y: p.x * s + p.y * c }));
 }
 
-function ejectPath(base: Territory, slot: number): {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-} {
+function scatterRest(base: Territory, taken: Point[], rng: () => number): Point {
   const rim = Math.max(base.radius, 22);
-  const startR = rim * 0.88;
-  let ring = 0;
-  let idx = Math.max(0, slot);
-  let restR = restRadius(base, 0);
-  let cap = Math.max(1, Math.floor((Math.PI * 2 * restR) / SOLDIER_GAP));
-  while (idx >= cap && ring < 12) {
-    idx -= cap;
-    ring += 1;
-    restR = restRadius(base, ring);
-    cap = Math.max(1, Math.floor((Math.PI * 2 * restR) / SOLDIER_GAP));
+  const inner = Math.min(ringRadius(base.radius) - 4, rim + 8);
+  const area = (taken.length + 1) * SOLDIER_GAP * SOLDIER_GAP;
+  const inner2 = inner * inner;
+  let best = { x: base.center.x + inner, y: base.center.y };
+  let bestD = -1;
+  for (let grow = 0; grow < 8; grow++) {
+    const outer = Math.max(inner + 12, Math.sqrt(inner2 + area / Math.PI)) + grow * SOLDIER_GAP;
+    const outer2 = outer * outer;
+    for (let i = 0; i < 28; i++) {
+      const a = rng() * Math.PI * 2;
+      const r = Math.sqrt(inner2 + rng() * Math.max(0, outer2 - inner2));
+      const p = { x: base.center.x + Math.cos(a) * r, y: base.center.y + Math.sin(a) * r };
+      let minD = 9999;
+      for (const t of taken) minD = Math.min(minD, dist(p, t));
+      if (minD >= SOLDIER_GAP) return p;
+      if (minD > bestD) {
+        bestD = minD;
+        best = p;
+      }
+    }
   }
-  const angle = (idx / cap) * Math.PI * 2 + ring * 0.35;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
+  return best;
+}
+
+function ejectPath(
+  base: Territory,
+  taken: Point[],
+  rng: () => number,
+): { from: Point; to: Point } {
+  const to = scatterRest(base, taken, rng);
+  const dx = to.x - base.center.x;
+  const dy = to.y - base.center.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const rim = Math.max(base.radius, 22) * 0.88;
   return {
-    from: { x: base.center.x + cos * startR, y: base.center.y + sin * startR },
-    to: { x: base.center.x + cos * restR, y: base.center.y + sin * restR },
+    from: { x: base.center.x + (dx / d) * rim, y: base.center.y + (dy / d) * rim },
+    to,
   };
 }
 
@@ -307,17 +324,19 @@ export class Game {
     this.pops = keep;
   }
 
-  private homeCount(id: number): number {
-    let n = 0;
+  private restTaken(homeId: number, skipId?: number): Point[] {
+    const out: Point[] = [];
     for (const s of this.soldiers) {
-      if (s.homeId === id && s.state !== "march") n += 1;
+      if (s.homeId !== homeId || s.state === "march") continue;
+      if (skipId !== undefined && s.id === skipId) continue;
+      out.push({ x: s.restX, y: s.restY });
     }
-    return n;
+    return out;
   }
 
   private spawnSoldier(base: Territory): void {
     if (base.owner === "neutral") return;
-    const path = ejectPath(base, this.homeCount(base.id));
+    const path = ejectPath(base, this.restTaken(base.id), this.rng);
     this.soldiers.push({
       id: nextSoldierId++,
       owner: base.owner,
@@ -334,12 +353,12 @@ export class Game {
       toY: path.to.y,
       restX: path.to.x,
       restY: path.to.y,
-      poly: base.localPoly.map((p) => ({ x: p.x, y: p.y })),
+      poly: spinPoly(base.localPoly, this.rng() * Math.PI * 2),
     });
   }
 
   private startEject(s: Soldier, base: Territory): void {
-    const path = ejectPath(base, this.homeCount(base.id));
+    const path = ejectPath(base, this.restTaken(base.id, s.id), this.rng);
     s.homeId = base.id;
     s.toId = null;
     s.state = "eject";
@@ -352,7 +371,7 @@ export class Game {
     s.toY = path.to.y;
     s.restX = path.to.x;
     s.restY = path.to.y;
-    s.poly = base.localPoly.map((p) => ({ x: p.x, y: p.y }));
+    s.poly = spinPoly(base.localPoly, this.rng() * Math.PI * 2);
   }
 
   private sendHome(s: Soldier): void {
@@ -409,11 +428,15 @@ export class Game {
 
     if (s.state === "march" && s.toId !== null) {
       const dest = this.territories[s.toId];
-      const d = dist({ x: s.x, y: s.y }, dest.center);
+      const aim = {
+        x: dest.center.x + Math.sin(s.id * 12.9898) * 16,
+        y: dest.center.y + Math.cos(s.id * 78.233) * 16,
+      };
+      const d = dist({ x: s.x, y: s.y }, aim);
       if (d < 1) return;
       const step = ARMY_SPEED * dt;
-      s.x += ((dest.center.x - s.x) / d) * step;
-      s.y += ((dest.center.y - s.y) / d) * step;
+      s.x += ((aim.x - s.x) / d) * step;
+      s.y += ((aim.y - s.y) / d) * step;
       return;
     }
 
