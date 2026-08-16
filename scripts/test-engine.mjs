@@ -334,6 +334,8 @@ assert(!pathHits(slash, { x: 40, y: 30 }, 16), "far soldier selected");
 const thruEnemy = [{ x: 0, y: 0 }, { x: 200, y: 0 }];
 assert(pathHits(thruEnemy, { x: 100, y: 0 }, 30 + 16), "wall thru enemy base");
 assert(!pathHits(thruEnemy, { x: 100, y: 80 }, 20 + 16), "wall past enemy base");
+assert(pathHits(thruEnemy, { x: 100, y: 60 }, 72), "enemy in wall sense");
+assert(!pathHits(thruEnemy, { x: 100, y: 180 }, 72), "far enemy outside wall leash");
 
 const box = [
   { x: 0, y: 0 },

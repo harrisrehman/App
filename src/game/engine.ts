@@ -7,7 +7,7 @@ import {
   START_TROOPS,
   SPAWN_INTERVAL,
   WALL_BASE_PAD,
-  WALL_CHASE,
+  WALL_LEASH,
   WALL_SENSE,
   ringRadius,
   rules,
@@ -528,7 +528,21 @@ export class Game {
           target = f;
         }
       }
-      if (!target || best < 1) return;
+      if (!target) {
+        if (s.wallId != null) this.sendHome(s);
+        return;
+      }
+      if (s.wallId != null) {
+        const wall = this.walls.find((w) => w.id === s.wallId);
+        if (wall) {
+          const ranks = this.wallRanks(wall, this.wallCrew(wall).length);
+          if (!this.nearWall(wall, target, WALL_LEASH, ranks)) {
+            this.sendHome(s);
+            return;
+          }
+        }
+      }
+      if (best < 1) return;
       const step = ARMY_SPEED * dt;
       s.x += ((target.x - s.x) / best) * step;
       s.y += ((target.y - s.y) / best) * step;
@@ -615,17 +629,16 @@ export class Game {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return [];
     const ranks = this.wallRanks(wall, crew.length);
-    const chasing = crew.some((s) => s.state === "defend");
-    const pad = chasing ? WALL_CHASE : WALL_SENSE;
     const found: Soldier[] = [];
     for (const s of this.soldiers) {
       if (s.owner === wall.owner) continue;
-      if (this.nearWall(wall, s, pad, ranks)) {
+      if (this.nearWall(wall, s, WALL_SENSE, ranks)) {
         found.push(s);
         continue;
       }
-      if (!chasing) continue;
+      if (!this.nearWall(wall, s, WALL_LEASH, ranks)) continue;
       for (const w of crew) {
+        if (w.state !== "defend") continue;
         if (dist(s, w) <= FIGHT_RADIUS * 2) {
           found.push(s);
           break;
