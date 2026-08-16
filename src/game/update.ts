@@ -2,6 +2,7 @@ import { CapacitorHttp } from "@capacitor/core";
 import { UPDATE_SOURCES } from "./config";
 import {
   APP_VERSION,
+  BUNDLED_VERSION,
   isNewer,
   readPersistedUpdate,
   rememberApplied,
@@ -125,7 +126,7 @@ function alreadyHave(remote: AppVersion): boolean {
 export function restorePersisted(): boolean {
   if (window.__annexRestored) return false;
   const saved = readPersistedUpdate();
-  if (!saved || !isNewer(saved.version, APP_VERSION)) return false;
+  if (!saved || !isNewer(saved.version, BUNDLED_VERSION)) return false;
   window.__annexRestored = true;
   rememberApplied(saved.version);
   return runScripts(saved.html);

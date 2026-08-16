@@ -6,8 +6,14 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.4.4",
-  build: 1786860532573,
+  version: "0.4.5",
+  build: 1786860741041,
+};
+
+export const BUNDLED_VERSION: AppVersion = {
+  name: APP_VERSION.name,
+  version: APP_VERSION.version,
+  build: APP_VERSION.build,
 };
 
 const APPLIED_VERSION_KEY = "annex-applied-version";
@@ -77,9 +83,11 @@ export function readPersistedUpdate(): { version: AppVersion; html: string } | n
 export function dropStalePersist(): void {
   const saved = readPersistedUpdate();
   if (!saved) return;
-  if (isNewer(APP_VERSION, saved.version)) {
+  if (isNewer(BUNDLED_VERSION, saved.version)) {
     try {
       localStorage.removeItem(APPLIED_HTML_KEY);
+      localStorage.removeItem(APPLIED_VERSION_KEY);
+      localStorage.removeItem(APPLIED_BUILD_KEY);
     } catch {
       /* ignore */
     }
