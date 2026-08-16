@@ -73,7 +73,7 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   if (selected) {
     pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
     ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
   }
   ctx.fillStyle = COLORS.bg;
