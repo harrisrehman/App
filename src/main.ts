@@ -142,7 +142,6 @@ function makeDevPanel(id: string): HTMLDivElement {
   const rows: [string, keyof Rules, number][] = [
     ["Base health", "baseHealth", 1],
     ["Soldier health", "soldierHealth", 1],
-    ["Spawn sec", "spawnSec", 0.5],
   ];
   for (const [label, key, step] of rows) {
     const row = document.createElement("div");

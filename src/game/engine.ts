@@ -5,6 +5,7 @@ import {
   POP_LIFE,
   SOLDIER_GAP,
   START_TROOPS,
+  SPAWN_INTERVAL,
   ringRadius,
   rules,
 } from "./config";
@@ -263,8 +264,8 @@ export class Game {
     for (const t of this.territories) {
       if (t.owner === "neutral") continue;
       t.spawnAcc += dt;
-      if (t.spawnAcc >= rules.spawnSec) {
-        t.spawnAcc -= rules.spawnSec;
+      if (t.spawnAcc >= SPAWN_INTERVAL) {
+        t.spawnAcc -= SPAWN_INTERVAL;
         this.spawnSoldier(t);
       }
     }

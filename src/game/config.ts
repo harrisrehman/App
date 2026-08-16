@@ -24,7 +24,6 @@ export const SOLDIER_HEALTH = 1;
 export type Rules = {
   baseHealth: number;
   soldierHealth: number;
-  spawnSec: number;
 };
 
 const RULES_KEY = "annex-dev-rules";
@@ -32,7 +31,6 @@ const RULES_KEY = "annex-dev-rules";
 export const rules: Rules = {
   baseHealth: BASE_HEALTH,
   soldierHealth: SOLDIER_HEALTH,
-  spawnSec: SPAWN_INTERVAL,
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -46,7 +44,6 @@ export function loadRules(): Rules {
       const data = JSON.parse(raw) as Partial<Rules>;
       if (typeof data.baseHealth === "number") rules.baseHealth = clamp(data.baseHealth, 1, 200);
       if (typeof data.soldierHealth === "number") rules.soldierHealth = clamp(data.soldierHealth, 1, 50);
-      if (typeof data.spawnSec === "number") rules.spawnSec = clamp(data.spawnSec, 0.2, 10);
     }
   } catch {
     /* keep defaults */
@@ -63,7 +60,6 @@ export function saveRules(): void {
 }
 
 export function nudgeRule(key: keyof Rules, delta: number): number {
-  if (key === "spawnSec") rules.spawnSec = clamp(Math.round((rules.spawnSec + delta) * 10) / 10, 0.2, 10);
   if (key === "baseHealth") rules.baseHealth = clamp(rules.baseHealth + delta, 1, 200);
   if (key === "soldierHealth") rules.soldierHealth = clamp(rules.soldierHealth + delta, 1, 50);
   saveRules();

@@ -1,4 +1,4 @@
-import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, rules } from "./config";
+import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, SPAWN_INTERVAL, rules } from "./config";
 import { dist } from "./geo";
 import { randRange } from "./rng";
 import type { Game } from "./engine";
@@ -93,7 +93,7 @@ export class Commander {
     const selfIn = game.incoming(dest.id, this.self);
     const foeIn = game.incomingElse(dest.id, this.self);
     const travel = dist(from.center, dest.center) / ARMY_SPEED;
-      const growth = dest.owner !== "neutral" && dest.owner !== this.self ? travel / rules.spawnSec : 0;
+      const growth = dest.owner !== "neutral" && dest.owner !== this.self ? travel / SPAWN_INTERVAL : 0;
     return Math.max(1, Math.ceil(dest.health + dest.troops + foeIn + growth - selfIn));
   }
 
