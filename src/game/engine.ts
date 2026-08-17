@@ -22,7 +22,6 @@ import {
 import {
   behindSign,
   closePath,
-  densifyPath,
   dist,
   isClosedLasso,
   nearPoly,
@@ -37,6 +36,7 @@ import { mulberry32 } from "./rng";
 import {
   isBot,
   type Army,
+  type Difficulty,
   type Faction,
   type Owner,
   type Point,
@@ -148,10 +148,12 @@ export class Game {
   clock = 0;
   sendFilter: SendFilter = "all";
   filterTap = 0;
+  difficulty: Difficulty = "medium";
   rng: () => number;
 
-  constructor(seed = Date.now(), bots = 1) {
+  constructor(seed = Date.now(), bots = 1, difficulty: Difficulty = "medium") {
     this.bots = Math.max(1, Math.min(4, bots));
+    this.difficulty = difficulty;
     this.rng = mulberry32(seed);
     this.territories = createMap(seed, this.bots);
     this.seedOwned();
@@ -362,21 +364,24 @@ export class Game {
     return false;
   }
 
+  convertGunner(id: number, owner: Faction): boolean {
+    if (this.winner) return false;
+    const t = this.territories[id];
+    if (!t || t.owner !== owner) return false;
+    const pool = this.freeGarrison(id).filter((s) => s.state !== "march");
+    if (pool.length < DEFENSE_COST) return false;
+    const ids = new Set(pool.slice(0, DEFENSE_COST).map((s) => s.id));
+    this.soldiers = this.soldiers.filter((s) => !ids.has(s.id));
+    this.spawnGunner(t);
+    this.syncTroops();
+    return true;
+  }
+
   buyDefense(): number {
-    if (this.winner) return 0;
     let made = 0;
     for (const id of [...this.selected]) {
-      const t = this.territories[id];
-      if (!t || t.owner !== "player") continue;
-      const pool = this.freeGarrison(id).filter((s) => s.state !== "march");
-      if (pool.length < DEFENSE_COST) continue;
-      const take = pool.slice(0, DEFENSE_COST);
-      const ids = new Set(take.map((s) => s.id));
-      this.soldiers = this.soldiers.filter((s) => !ids.has(s.id));
-      this.spawnGunner(t);
-      made += 1;
+      if (this.convertGunner(id, "player")) made += 1;
     }
-    this.syncTroops();
     return made;
   }
 
@@ -513,26 +518,24 @@ export class Game {
   formWall(path: Point[]): boolean {
     if (this.winner) return false;
     if (pathLength(path) < 28) return false;
-    if (this.pathHitsEnemy(path)) {
-      this.notice = "You can't make walls through enemy bases.";
-      return false;
-    }
     const pool = this.wallPool();
     if (pool.length < 1) return false;
     const from = {
       x: pool.reduce((n, s) => n + s.x, 0) / pool.length,
       y: pool.reduce((n, s) => n + s.y, 0) / pool.length,
     };
+    const block = (p: Point) => this.hitsFootprint(p);
+    const spots = wallSpots(path, pool.length, from, SOLDIER_GAP, block);
+    if (spots.length < 1) return false;
     const wall: Wall = {
       id: nextWallId++,
       owner: "player",
       path: path.map((p) => ({ x: p.x, y: p.y })),
       from,
-      spots: [],
+      spots,
     };
     this.walls.push(wall);
     for (const s of pool) s.wallId = wall.id;
-    wall.spots = wallSpots(wall.path, pool.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
     for (const s of pool) {
       s.toId = null;
       s.state = "return";
@@ -1130,21 +1133,11 @@ export class Game {
     return s.state === "idle" || s.state === "defend";
   }
 
-  private pathHitsEnemy(path: Point[]): boolean {
+  private hitsFootprint(p: Point): boolean {
     for (const t of this.territories) {
-      if (t.owner === "neutral" || t.owner === "player") continue;
-      if (pathHits(path, t.center, t.radius + WALL_BASE_PAD)) return true;
-      for (const p of densifyPath(path, 6)) {
-        if (nearPoly(p, t.poly, WALL_BASE_PAD)) return true;
-      }
-    }
-    return false;
-  }
-
-  private hitsBase(p: Point): boolean {
-    for (const t of this.territories) {
-      if (dist(p, t.center) <= t.radius + WALL_BASE_PAD) return true;
-      if (nearPoly(p, t.poly, WALL_BASE_PAD)) return true;
+      const r = perimeterRadius(t) + WALL_BASE_PAD;
+      if (dist(p, t.center) <= r) return true;
+      if (nearPoly(p, t.poly, r - t.radius)) return true;
     }
     return false;
   }
@@ -1167,7 +1160,7 @@ export class Game {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return;
     if (wall.spots.length === 0) {
-      wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+      wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsFootprint(p));
     }
     const used = new Set<number>();
     for (const s of crew) {
@@ -1198,7 +1191,7 @@ export class Game {
   private packWall(wall: Wall): void {
     const crew = this.wallCrew(wall);
     if (crew.length === 0) return;
-    wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsBase(p));
+    wall.spots = wallSpots(wall.path, crew.length, wall.from, SOLDIER_GAP, (p) => this.hitsFootprint(p));
     const used = new Set<number>();
     for (const s of crew) {
       const i = this.nearestSlot(wall.spots, used, { x: s.x, y: s.y });

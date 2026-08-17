@@ -1,11 +1,10 @@
 import { clampCamera, fitCamera, type Camera } from "./game/camera";
-import type { SendFilter } from "./game/types";
+import type { Difficulty, SendFilter } from "./game/types";
 import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { nudgeRule, rules, type Rules } from "./game/config";
 import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
@@ -114,7 +113,7 @@ function ensureHud(): void {
     name.textContent = "Gunner";
     const cost = document.createElement("span");
     cost.className = "shop-cost";
-    cost.textContent = "4";
+    cost.textContent = "6";
     btn.append(name, cost);
     shop.appendChild(btn);
   }
@@ -165,47 +164,29 @@ function ensureHud(): void {
       picks.appendChild(b);
     }
     bots.append(picks, makeEl("button", "menu-back", "Back"));
-    if (!home.querySelector("#menu-dev-btn")) home.appendChild(makeEl("button", "menu-dev-btn", "Dev"));
     menu.append(home, bots);
     document.body.appendChild(menu);
   }
   const menu = document.querySelector("#menu");
-  if (menu && !menu.querySelector("#menu-dev-btn")) {
-    (menu.querySelector("#menu-home") ?? menu).appendChild(makeEl("button", "menu-dev-btn", "Dev"));
-  }
-  if (menu && !menu.querySelector("#menu-dev")) menu.appendChild(makeDevPanel("menu-dev"));
-  syncDevPanel();
-}
-
-function makeDevPanel(id: string): HTMLDivElement {
-  const panel = makeEl("div", id);
-  panel.classList.add("hidden");
-  const rows: [string, keyof Rules, number][] = [
-    ["Base health", "baseHealth", 1],
-    ["Soldier health", "soldierHealth", 1],
-  ];
-  for (const [label, key, step] of rows) {
-    const row = document.createElement("div");
-    row.className = "dev-row";
-    const minus = makeEl("button", undefined, "-");
-    minus.dataset.rule = key;
-    minus.dataset.delta = String(-step);
-    const plus = makeEl("button", undefined, "+");
-    plus.dataset.rule = key;
-    plus.dataset.delta = String(step);
-    const val = document.createElement("span");
-    val.dataset.ruleValue = key;
-    val.textContent = String(rules[key]);
-    row.append(makeEl("span", undefined, label), minus, val, plus);
-    panel.appendChild(row);
-  }
-  return panel;
-}
-
-function syncDevPanel(): void {
-  for (const el of document.querySelectorAll<HTMLElement>("[data-rule-value]")) {
-    const key = el.dataset.ruleValue as keyof Rules | undefined;
-    if (key && key in rules) el.textContent = String(rules[key]);
+  document.querySelector("#menu-dev-btn")?.remove();
+  document.querySelector("#menu-dev")?.remove();
+  if (menu && !menu.querySelector("#menu-diff")) {
+    const diff = makeEl("div", "menu-diff");
+    diff.classList.add("hidden");
+    diff.appendChild(makeEl("p", undefined, "Difficulty"));
+    const picks = document.createElement("div");
+    picks.className = "bot-picks";
+    for (const [id, label] of [
+      ["easy", "Easy"],
+      ["medium", "Medium"],
+      ["hard", "Hard"],
+    ] as const) {
+      const b = makeEl("button", undefined, label);
+      b.dataset.diff = id;
+      picks.appendChild(b);
+    }
+    diff.append(picks, makeEl("button", "menu-diff-back", "Back"));
+    menu.appendChild(diff);
   }
 }
 
@@ -218,11 +199,6 @@ function stripPlayDev(): void {
   const update = stack.querySelector("#update-btn");
   if (parent && update) parent.appendChild(update);
   stack.remove();
-}
-
-function toggleDev(): void {
-  document.querySelector("#menu-dev")?.classList.toggle("hidden");
-  syncDevPanel();
 }
 
 function showError(text: string): void {
@@ -246,6 +222,7 @@ function showToast(text: string): void {
 }
 
 let updateBusy = false;
+let pendingBots = 1;
 
 async function runUpdate(): Promise<void> {
   if (updateBusy) return;
@@ -292,6 +269,12 @@ function onHudClick(e: Event): void {
     showMenuHome();
     return;
   }
+  if (t.id === "menu-diff-back") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showBotPick();
+    return;
+  }
   if (t.id === "menu-btn") {
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -304,18 +287,11 @@ function onHudClick(e: Event): void {
     hideError();
     return;
   }
-  if (t.id === "menu-dev-btn") {
+  const diff = t.dataset.diff;
+  if (diff === "easy" || diff === "medium" || diff === "hard") {
     e.preventDefault();
     e.stopImmediatePropagation();
-    toggleDev();
-    return;
-  }
-  if (t.dataset.rule) {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    nudgeRule(t.dataset.rule as keyof Rules, Number(t.dataset.delta || 0));
-    syncDevPanel();
-    window.__annexGame?.applyRules();
+    startMatch(pendingBots, diff);
     return;
   }
   const filterKey = t.dataset.filter || t.dataset.count;
@@ -334,7 +310,8 @@ function onHudClick(e: Event): void {
   if (bots >= 1 && bots <= 4) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    startMatch(bots);
+    pendingBots = bots;
+    showDiffPick();
   }
 }
 
@@ -425,19 +402,26 @@ function showMenu(): void {
 function showMenuHome(): void {
   document.querySelector("#menu-home")?.classList.remove("hidden");
   document.querySelector("#menu-bots")?.classList.add("hidden");
+  document.querySelector("#menu-diff")?.classList.add("hidden");
 }
 
 function showBotPick(): void {
   document.querySelector("#menu-home")?.classList.add("hidden");
   document.querySelector("#menu-bots")?.classList.remove("hidden");
-  document.querySelector("#menu-dev")?.classList.add("hidden");
+  document.querySelector("#menu-diff")?.classList.add("hidden");
 }
 
-function startMatch(bots: number): void {
-  startGame(bots);
+function showDiffPick(): void {
+  document.querySelector("#menu-home")?.classList.add("hidden");
+  document.querySelector("#menu-bots")?.classList.add("hidden");
+  document.querySelector("#menu-diff")?.classList.remove("hidden");
 }
 
-function startGame(bots = 1): void {
+function startMatch(bots: number, difficulty: Difficulty): void {
+  startGame(bots, difficulty);
+}
+
+function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   window.__annexStop?.();
   ensureHud();
 
@@ -462,7 +446,6 @@ function startGame(bots = 1): void {
   document.body.classList.add("playing");
   document.body.classList.remove("menu");
   document.querySelector("#menu")?.classList.add("hidden");
-  document.querySelector("#menu-dev")?.classList.add("hidden");
   stripPlayDev();
 
   const board = boardEl;
@@ -475,7 +458,7 @@ function startGame(bots = 1): void {
   const again = restartEl;
   const version = versionEl;
 
-  const game = new Game(Date.now(), bots);
+  const game = new Game(Date.now(), bots, difficulty);
   window.__annexGame = game;
   const ais = BOTS.slice(0, game.bots).map((id) => new Commander(id));
   const cam: Camera = fitCamera(1, 1);
@@ -557,7 +540,7 @@ function startGame(bots = 1): void {
     if (made > 0) {
       showToast(made === 1 ? "Gunner ready." : `${made} gunners ready.`);
     } else {
-      showToast("Select a base with 4 soldiers.");
+      showToast("Select a base with 6 soldiers.");
     }
     syncHud();
   };

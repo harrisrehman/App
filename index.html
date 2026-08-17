@@ -25,25 +25,10 @@
     <canvas id="game"></canvas>
     <div id="menu">
       <h1>ANNEX</h1>
-      <p id="menu-ver">v0.5.42</p>
+      <p id="menu-ver">v0.5.43</p>
       <div id="menu-home">
         <button id="start-btn" type="button">Start</button>
         <button id="menu-update-btn" type="button">Update</button>
-        <button id="menu-dev-btn" type="button">Dev</button>
-      </div>
-      <div id="menu-dev" class="hidden">
-        <div class="dev-row">
-          <span>Base health</span>
-          <button type="button" data-rule="baseHealth" data-delta="-1">-</button>
-          <span data-rule-value="baseHealth">10</span>
-          <button type="button" data-rule="baseHealth" data-delta="1">+</button>
-        </div>
-        <div class="dev-row">
-          <span>Soldier health</span>
-          <button type="button" data-rule="soldierHealth" data-delta="-1">-</button>
-          <span data-rule-value="soldierHealth">1</span>
-          <button type="button" data-rule="soldierHealth" data-delta="1">+</button>
-        </div>
       </div>
       <div id="menu-bots" class="hidden">
         <p>How many bots?</p>
@@ -55,12 +40,21 @@
         </div>
         <button id="menu-back" type="button">Back</button>
       </div>
+      <div id="menu-diff" class="hidden">
+        <p>Difficulty</p>
+        <div class="bot-picks">
+          <button type="button" data-diff="easy">Easy</button>
+          <button type="button" data-diff="medium">Medium</button>
+          <button type="button" data-diff="hard">Hard</button>
+        </div>
+        <button id="menu-diff-back" type="button">Back</button>
+      </div>
     </div>
     <div id="hud">
       <div class="top">
         <div class="brand">
           <span id="title">ANNEX</span>
-          <span id="version">v0.5.42</span>
+          <span id="version">v0.5.43</span>
         </div>
         <div class="actions">
           <button id="wall-btn" type="button">Wall</button>
@@ -85,7 +79,7 @@
       <nav id="shop" class="bottom">
         <button id="defense-btn" type="button" disabled>
           <span class="shop-name">Gunner</span>
-          <span class="shop-cost">4</span>
+          <span class="shop-cost">6</span>
         </button>
       </nav>
     </div>

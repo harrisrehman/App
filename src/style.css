@@ -332,6 +332,7 @@ button {
 #error.hidden,
 #menu-home.hidden,
 #menu-bots.hidden,
+#menu-diff.hidden,
 #menu.hidden,
 #menu-dev.hidden {
   display: none;

@@ -1,4 +1,4 @@
-import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, SPAWN_INTERVAL } from "./config";
+import { AI_MAX_WAIT, AI_MIN_WAIT, ARMY_SPEED, DEFENSE_COST, SPAWN_INTERVAL } from "./config";
 import { dist } from "./geo";
 import { randRange } from "./rng";
 import type { Game } from "./engine";
@@ -40,12 +40,20 @@ export class Commander {
     if (game.winner) return;
     this.age += dt;
     if (this.defend(game)) {
-      this.wait = randRange(game.rng, 0.55, 0.95);
+      const [a, b] = game.difficulty === "hard" ? [0.35, 0.6] : game.difficulty === "easy" ? [0.9, 1.4] : [0.55, 0.95];
+      this.wait = randRange(game.rng, a, b);
       return;
     }
     this.wait -= dt;
     if (this.wait > 0) return;
-    this.wait = randRange(game.rng, AI_MIN_WAIT, AI_MAX_WAIT);
+    const [lo, hi] =
+      game.difficulty === "hard"
+        ? [0.45, 0.9]
+        : game.difficulty === "easy"
+          ? [1.8, 3.2]
+          : [AI_MIN_WAIT, AI_MAX_WAIT];
+    this.wait = randRange(game.rng, lo, hi);
+    this.arm(game);
     this.plan(game);
   }
 
@@ -105,7 +113,7 @@ export class Commander {
   private spare(game: Game, t: Territory): number {
     if (t.owner !== this.self) return 0;
     if (this.threatened(game, t)) return 0;
-    return this.have(game, t);
+    return game.freeGarrison(t.id).length;
   }
 
   private fund(game: Game, dest: Territory, need: number): Territory[] | null {
@@ -119,15 +127,15 @@ export class Commander {
     for (const t of ranked) {
       if (dist(t.center, dest.center) > near + PULL_SPAN) break;
       picked.push(t);
-      got += this.have(game, t);
+      got += this.spare(game, t);
       if (got >= need) return picked;
     }
     return null;
   }
 
   private launch(game: Game, from: Territory, to: Territory): boolean {
-    if (this.have(game, from) < 1) return false;
-    if (!game.send(from.id, to.id)) return false;
+    if (this.spare(game, from) < 1) return false;
+    if (!game.send(from.id, to.id, "troop")) return false;
     if (to.id === this.lastTarget) this.repeats += 1;
     else this.repeats = 0;
     this.lastTarget = to.id;
@@ -157,6 +165,23 @@ export class Commander {
       if (!best || score > best.score) best = { t: g, score };
     }
     return best?.t ?? null;
+  }
+
+  private arm(game: Game): void {
+    const keep = game.difficulty === "easy" ? 10 : game.difficulty === "hard" ? 2 : 5;
+    const cap = game.difficulty === "easy" ? 1 : game.difficulty === "hard" ? 2 : 1;
+    const maxGuns = game.difficulty === "easy" ? 1 : game.difficulty === "hard" ? 8 : 3;
+    let made = 0;
+    const lands = this.lands(game)
+      .filter((t) => !this.threatened(game, t))
+      .sort((a, b) => game.freeGarrison(b.id).length - game.freeGarrison(a.id).length);
+    for (const t of lands) {
+      if (made >= cap) break;
+      const guns = game.garrison(t.id).filter((s) => s.kind === "gunner").length;
+      if (guns >= maxGuns) continue;
+      if (game.freeGarrison(t.id).length < DEFENSE_COST + keep) continue;
+      if (game.convertGunner(t.id, this.self)) made += 1;
+    }
   }
 
   private plan(game: Game): void {
@@ -206,7 +231,7 @@ export class Commander {
       .sort((a, b) => this.spare(game, b) - this.spare(game, a));
     for (const t of rich) {
       froms.push(t);
-      got += this.have(game, t);
+      got += this.spare(game, t);
       if (got >= need) break;
     }
     if (got < need || froms.length === 0) return false;

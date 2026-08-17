@@ -32,10 +32,10 @@ export function clampCamera(cam: Camera): void {
   cam.scale = Math.max(min, Math.min(min * ZOOM_MAX, cam.scale));
   const worldW = WORLD_W * cam.scale;
   const worldH = WORLD_H * cam.scale;
-  if (worldW <= cam.width) cam.ox = (cam.width - worldW) / 2;
-  else cam.ox = Math.max(cam.width - worldW, Math.min(0, cam.ox));
-  if (worldH <= cam.height) cam.oy = (cam.height - worldH) / 2;
-  else cam.oy = Math.max(cam.height - worldH, Math.min(0, cam.oy));
+  const padX = cam.width / 2;
+  const padY = cam.height / 2;
+  cam.ox = Math.max(cam.width - worldW - padX, Math.min(padX, cam.ox));
+  cam.oy = Math.max(cam.height - worldH - padY, Math.min(padY, cam.oy));
 }
 
 export function pinchCamera(

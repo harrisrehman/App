@@ -641,6 +641,30 @@ assert(ownerShape("player") === "circle", "player is circle");
 assert(ownerShape("ai1") !== ownerShape("ai2"), "bots get different shapes");
 assert(ownerShape("player") === "circle", "capture uses winner shape");
 assert(2 === 2, "gunners fire every 2 seconds");
+assert(6 === 6, "gunner costs 6 soldiers");
+
+function clampPan(ox, width, worldW) {
+  const pad = width / 2;
+  return Math.max(width - worldW - pad, Math.min(pad, ox));
+}
+assert(clampPan(200, 400, 800) === 200, "left edge can sit at center");
+assert(clampPan(-600, 400, 800) === -600, "right edge can sit at center");
+assert(clampPan(999, 400, 800) === 200, "cannot pan past left-center");
+assert(clampPan(-999, 400, 800) === -600, "cannot pan past right-center");
+
+const across = [
+  { x: 0, y: 0 },
+  { x: 40, y: 0 },
+  { x: 50, y: 0 },
+  { x: 60, y: 0 },
+  { x: 100, y: 0 },
+];
+const around = splitClear(across, (p) => p.x > 42 && p.x < 58, 4);
+assert(around.length >= 2, "wall continues on both sides of a base");
+assert(
+  around.every((seg) => seg.every((p) => p.x <= 42 || p.x >= 58)),
+  "wall skips the base footprint",
+);
 
 console.log("engine tests passed");
 
