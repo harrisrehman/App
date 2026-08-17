@@ -5,6 +5,7 @@ import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
+import { bindTheme, syncMuteButton, themeToMatch, themeToMenu, toggleThemeMute } from "./game/audio";
 import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
@@ -188,6 +189,50 @@ function ensureHud(): void {
     diff.append(picks, makeEl("button", "menu-diff-back", "Back"));
     menu.appendChild(diff);
   }
+  dressMenu();
+}
+
+function dressMenu(): void {
+  const menu = document.querySelector("#menu");
+  if (!menu) return;
+  if (!menu.querySelector(".menu-stars")) {
+    const stars = document.createElement("div");
+    stars.className = "menu-stars";
+    stars.setAttribute("aria-hidden", "true");
+    menu.prepend(stars);
+  }
+  let frame = menu.querySelector(".menu-frame");
+  if (!frame) {
+    frame = document.createElement("div");
+    frame.className = "menu-frame";
+    const move = [...menu.children].filter(
+      (el) => !el.classList.contains("menu-stars") && el.id !== "menu-mute",
+    );
+    for (const kid of move) frame.appendChild(kid);
+    menu.appendChild(frame);
+  }
+  if (!frame.querySelector(".menu-kicker")) {
+    const kicker = document.createElement("p");
+    kicker.className = "menu-kicker";
+    kicker.textContent = "Swords · Horses · Kingdoms";
+    const title = frame.querySelector("h1");
+    if (title) title.before(kicker);
+    else frame.prepend(kicker);
+  }
+  if (!frame.querySelector(".menu-tag")) {
+    const tag = document.createElement("p");
+    tag.className = "menu-tag";
+    tag.textContent = "A golden age of conquest";
+    const title = frame.querySelector("h1");
+    const ver = frame.querySelector("#menu-ver");
+    if (title) title.after(tag);
+    else if (ver) ver.before(tag);
+    else frame.prepend(tag);
+  }
+  if (!menu.querySelector("#menu-mute")) {
+    menu.appendChild(makeEl("button", "menu-mute", "Sound on"));
+  }
+  syncMuteButton();
 }
 
 function stripPlayDev(): void {
@@ -255,6 +300,12 @@ function onHudClick(e: Event): void {
     e.preventDefault();
     e.stopImmediatePropagation();
     void runUpdate();
+    return;
+  }
+  if (t.id === "menu-mute") {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    toggleThemeMute();
     return;
   }
   if (t.id === "start-btn") {
@@ -397,6 +448,7 @@ function showMenu(): void {
   document.querySelector("#menu")?.classList.remove("hidden");
   document.querySelector("#overlay")?.classList.add("hidden");
   showMenuHome();
+  themeToMenu();
 }
 
 function showMenuHome(): void {
@@ -446,6 +498,7 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   document.body.classList.add("playing");
   document.body.classList.remove("menu");
   document.querySelector("#menu")?.classList.add("hidden");
+  themeToMatch();
   stripPlayDev();
 
   const board = boardEl;
@@ -602,6 +655,7 @@ function boot(): void {
   try {
     ensureHud();
     bindHudClicks();
+    bindTheme();
     dropStalePersist();
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;

@@ -2,10 +2,10 @@ export const WORLD_W = 1000;
 export const WORLD_H = 1600;
 
 export const COLORS = {
-  bg: "#0e0e10",
-  panel: "#17171b",
-  text: "#f2f2f4",
-  muted: "#8a8a92",
+  bg: "#120c08",
+  panel: "#1c140e",
+  text: "#f4ead4",
+  muted: "#b5a27a",
   player: "#4a9eff",
   ai: "#ff5a4a",
   ai1: "#ff5a4a",

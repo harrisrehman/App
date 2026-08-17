@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
         WebSettings settings = webView.getSettings();
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setJavaScriptEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
         webView.clearCache(true);
         webView.setWebViewClient(new BridgeWebViewClient(getBridge()) {
             @Override

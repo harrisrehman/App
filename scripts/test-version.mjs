@@ -1,3 +1,5 @@
+import { readFileSync, statSync } from "node:fs";
+
 function cmpVer(a, b) {
   const pa = a.split(".").map((n) => Number(n) || 0);
   const pb = b.split(".").map((n) => Number(n) || 0);
@@ -34,5 +36,13 @@ assert(!shouldRestore(savedSame, bundled), "skip same version");
 assert(!shouldRestore(savedOlder, bundled), "never restore older");
 assert(!isNewer(savedOlder, bundled), "older is not newer");
 assert(isNewer(bundled, savedOlder), "bundled beats 0.3.1");
+
+const theme = statSync("src/assets/theme.ogg");
+assert(theme.size > 10000, "theme audio missing");
+const magic = readFileSync("src/assets/theme.ogg").subarray(0, 4).toString("ascii");
+assert(magic === "OggS", "theme is not ogg");
+const css = readFileSync("src/style.css", "utf8");
+assert(css.includes(".menu-frame"), "menu frame missing");
+assert(css.includes("--gold:"), "gold theme missing");
 
 console.log("version tests passed");

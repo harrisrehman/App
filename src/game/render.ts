@@ -122,15 +122,15 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   const barX = t.center.x - barW / 2;
   const barY = t.center.y - 14;
   const ratio = Math.max(0, Math.min(1, t.health / rules.baseHealth));
-  ctx.fillStyle = "#0e0e10";
+  ctx.fillStyle = COLORS.bg;
   ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-  ctx.fillStyle = "#2a2a30";
+  ctx.fillStyle = "#3a2a18";
   ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = color;
   ctx.fillRect(barX, barY, barW * ratio, barH);
   if (t.owner === "player" || t.owner === "neutral") {
     ctx.fillStyle = COLORS.bg;
-    ctx.font = "700 16px ui-sans-serif, system-ui, sans-serif";
+    ctx.font = "700 16px Cinzel Deco, Palatino Linotype, serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(Math.floor(t.troops)), t.center.x, t.center.y + 8);

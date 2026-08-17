@@ -32,6 +32,10 @@ if (scripts.length && html.includes("</body>")) {
   html = html.replace("</body>", `${scripts.join("\n")}\n  </body>`);
 }
 
+html = html.replaceAll("url(../fonts/", "url(./fonts/");
+html = html.replaceAll("url('../fonts/", "url('./fonts/");
+html = html.replaceAll('url("../fonts/', 'url("./fonts/');
+
 writeFileSync("dist/annex.html", html);
 writeFileSync("dist/index.html", html);
 console.log(`wrote dist/annex.html and dist/index.html (${html.length} bytes)`);
