@@ -412,10 +412,6 @@ function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
   }
   btn.setAttribute("aria-label", "Soldiers");
   btn.replaceChildren();
-  const dot = document.createElement("span");
-  dot.className = "unit-dot";
-  dot.setAttribute("aria-hidden", "true");
-  btn.append(dot);
 }
 
 function paintGunnerFilter(btn: HTMLButtonElement): void {
