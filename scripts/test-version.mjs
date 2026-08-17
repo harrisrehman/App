@@ -47,5 +47,7 @@ const css = readFileSync("src/style.css", "utf8");
 assert(css.includes(".menu-frame"), "menu frame missing");
 assert(css.includes("--gold:"), "gold theme missing");
 assert(css.includes("/menu/city.jpg"), "menu city missing");
+assert(css.includes("max-width: 92px"), "filter width missing");
+assert(css.includes("bottom: 0"), "filters not bottom aligned");
 
 console.log("version tests passed");

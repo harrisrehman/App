@@ -424,11 +424,21 @@ function ensureFilterCounts(): void {
       btn.replaceWith(row);
       row.appendChild(btn);
     }
-    if (row.querySelector(`[data-count="${key}"]`)) continue;
-    const count = makeEl("button", undefined, "0");
+    if (row.querySelector(`[data-count="${key}"]`)) {
+      const old = row.querySelector(`[data-count="${key}"]`);
+      if (old && old.tagName === "BUTTON") {
+        const span = document.createElement("span");
+        span.className = "filter-count";
+        span.dataset.count = key;
+        span.textContent = old.textContent || "0";
+        old.replaceWith(span);
+      }
+      continue;
+    }
+    const count = document.createElement("span");
     count.className = "filter-count";
     count.dataset.count = key;
-    count.tabIndex = -1;
+    count.textContent = "0";
     row.appendChild(count);
   }
 }
@@ -437,7 +447,7 @@ function syncFilterHud(game: Game): void {
   const filters = document.querySelector("#filters");
   filters?.setAttribute("data-mode", game.sendFilter);
   for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters button")) {
-    const key = btn.dataset.filter || btn.dataset.count;
+    const key = btn.dataset.filter;
     const on = key === game.sendFilter;
     btn.classList.toggle("on", on);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
