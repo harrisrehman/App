@@ -400,15 +400,20 @@ function onHudClick(e: Event): void {
 }
 
 function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
-  btn.replaceChildren();
   if (kind === "gunner") {
     paintGunnerFilter(btn);
     return;
   }
   btn.classList.remove("filter-gunner");
-  btn.setAttribute("aria-label", kind === "all" ? "All" : "Soldiers");
+  if (kind === "all") {
+    btn.setAttribute("aria-label", "All");
+    btn.textContent = "All";
+    return;
+  }
+  btn.setAttribute("aria-label", "Soldiers");
+  btn.replaceChildren();
   const dot = document.createElement("span");
-  dot.className = kind === "all" ? "unit-dot all" : "unit-dot";
+  dot.className = "unit-dot";
   dot.setAttribute("aria-hidden", "true");
   btn.append(dot);
 }

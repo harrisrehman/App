@@ -48,6 +48,7 @@ assert(css.includes(".menu-frame"), "menu frame missing");
 assert(css.includes("--gold:"), "gold theme missing");
 assert(css.includes("/menu/city.jpg"), "menu city missing");
 assert(css.includes("max-width: 40px"), "filter width missing");
+assert(css.includes("white-space: nowrap"), "all label missing");
 assert(css.includes("bottom: 0"), "filters not bottom aligned");
 
 console.log("version tests passed");
