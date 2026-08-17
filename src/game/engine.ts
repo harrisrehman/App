@@ -148,7 +148,6 @@ export class Game {
   finger: { x: number; y: number } | null = null;
   clock = 0;
   sendFilter: SendFilter = "all";
-  hudLock = 0;
   rng: () => number;
 
   constructor(seed = Date.now(), bots = 1) {
@@ -178,7 +177,6 @@ export class Game {
     this.finger = null;
     this.clock = 0;
     this.sendFilter = "all";
-    this.hudLock = 0;
     nextSoldierId = 1;
     nextWallId = 1;
     this.seedOwned();
@@ -213,14 +211,6 @@ export class Game {
     this.sendFilter = filter;
   }
 
-  lockHud(): void {
-    this.hudLock = performance.now() + 450;
-  }
-
-  hudLocked(): boolean {
-    return performance.now() < this.hudLock;
-  }
-
   selectBase(id: number): boolean {
     const t = this.territories[id];
     if (!t || t.owner !== "player") {
@@ -233,10 +223,44 @@ export class Game {
     return true;
   }
 
-  applySendFilter(filter: SendFilter): void {
+  applySendFilter(filter: SendFilter): number {
     this.setSendFilter(filter);
-    this.lockHud();
-    this.clearSelection();
+    const one = this.selected.size === 1 ? [...this.selected][0] : null;
+    if (one != null && this.sendPool(one).length > 0) {
+      this.picked.clear();
+      this.selected.clear();
+      this.selected.add(one);
+      return 1;
+    }
+    this.selectByFilter();
+    return this.selected.size + this.picked.size;
+  }
+
+  tapTarget(id: number | null): boolean {
+    if (id === null) {
+      this.clearSelection();
+      return false;
+    }
+    const dest = this.territories[id];
+    if (!dest) return false;
+    if (dest.owner === "player" && this.sendFilter !== "all") {
+      if (this.selected.size !== 1 || this.selected.has(id)) {
+        return this.selectBase(id);
+      }
+    }
+    if (this.picked.size > 0 || [...this.selected].some((from) => from !== id)) {
+      if (this.sendSelected(id)) return true;
+      this.notice =
+        this.sendFilter === "gunner"
+          ? "No gunners to send."
+          : this.sendFilter === "troop"
+            ? "No soldiers to send."
+            : "Nothing to send.";
+      return false;
+    }
+    if (this.selectBase(id)) return true;
+    this.notice = "Tap your base first.";
+    return false;
   }
 
   selectByFilter(): void {
@@ -373,7 +397,8 @@ export class Game {
     }
     for (const t of this.territories) {
       if (t.owner !== "player") continue;
-      if (hit(t.center, t.radius * 0.55)) this.selected.add(t.id);
+      if (!hit(t.center, t.radius * 0.55)) continue;
+      if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
     }
   }
 
@@ -438,7 +463,6 @@ export class Game {
       if (this.sendSoldier(sid, toId)) sent = true;
     }
     this.pruneWalls();
-    this.clearSelection();
     return sent;
   }
 

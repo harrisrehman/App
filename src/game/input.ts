@@ -3,7 +3,7 @@ import type { Camera } from "./camera";
 import { pinchCamera, toWorld } from "./camera";
 import type { Game } from "./engine";
 
-const DRAG = 16;
+const DRAG = 28;
 
 export function hitTerritory(game: Game, x: number, y: number): number | null {
   let best: { id: number; d: number } | null = null;
@@ -26,6 +26,32 @@ function pair(e: TouchEvent, rect: DOMRect): { x: number; y: number; dist: numbe
   };
 }
 
+function clientPoint(e: TouchEvent | MouseEvent): { x: number; y: number } | null {
+  const p = "touches" in e ? e.changedTouches[0] ?? e.touches[0] : e;
+  if (!p) return null;
+  return { x: p.clientX, y: p.clientY };
+}
+
+function overHud(clientX: number, clientY: number): boolean {
+  const hit = document.elementFromPoint(clientX, clientY);
+  if (hit?.closest("#filters, #shop, .top, #error")) return true;
+  const el = document.querySelector("#filters");
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+}
+
+function snapPick(game: Game): { selected: number[]; picked: number[] } {
+  return { selected: [...game.selected], picked: [...game.picked] };
+}
+
+function restorePick(game: Game, snap: { selected: number[]; picked: number[] }): void {
+  game.selected.clear();
+  for (const id of snap.selected) game.selected.add(id);
+  game.picked.clear();
+  for (const id of snap.picked) game.picked.add(id);
+}
+
 export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): () => void {
   const pos = (e: TouchEvent | MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
@@ -36,9 +62,11 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
   let lastTouch = 0;
   let dragged = false;
   let picking = false;
+  let lassoed = false;
   let pinching = false;
   let pinch: { x: number; y: number; dist: number } | null = null;
   let start: { x: number; y: number } | null = null;
+  let held = { selected: [] as number[], picked: [] as number[] };
 
   const startPinch = (e: TouchEvent): void => {
     pinching = true;
@@ -47,6 +75,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
     start = null;
     dragged = false;
     picking = false;
+    lassoed = false;
     pinch = pair(e, canvas.getBoundingClientRect());
   };
 
@@ -58,11 +87,15 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
         return;
       }
     }
-    if (game.winner || pinching || game.hudLocked()) return;
+    const finger = clientPoint(e);
+    if (finger && overHud(finger.x, finger.y)) return;
+    if (game.winner || pinching) return;
     const p = pos(e);
     start = p;
     dragged = false;
     picking = false;
+    lassoed = false;
+    held = snapPick(game);
     game.beginStroke(p);
   };
 
@@ -83,25 +116,14 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
     game.extendStroke(p);
     if (dist(p, start) > DRAG) dragged = true;
     if (game.wallMode || !dragged) return;
-    if (!picking) {
-      picking = true;
-      game.clearSelection();
-    }
+    if (!picking) picking = true;
     game.selectFromStroke(game.stroke);
-  };
-
-  const tap = (id: number | null): void => {
-    game.finger = null;
-    if (id === null) {
-      game.clearSelection();
-      return;
+    if (game.selected.size === 0 && game.picked.size === 0) {
+      restorePick(game, held);
+      lassoed = false;
+    } else {
+      lassoed = true;
     }
-    if (game.picked.size > 0 || [...game.selected].some((from) => from !== id)) {
-      game.sendSelected(id);
-      return;
-    }
-    if (game.selectBase(id)) return;
-    game.notice = "Tap your base first.";
   };
 
   const up = (e: TouchEvent | MouseEvent): void => {
@@ -115,11 +137,21 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
         }
         return;
       }
-    } else if (Date.now() - lastTouch < 600 || game.hudLocked()) {
+    } else if (Date.now() - lastTouch < 600) {
       game.endStroke();
       start = null;
       dragged = false;
       picking = false;
+      lassoed = false;
+      return;
+    }
+    const finger = clientPoint(e);
+    if (finger && overHud(finger.x, finger.y)) {
+      game.endStroke();
+      start = null;
+      dragged = false;
+      picking = false;
+      lassoed = false;
       return;
     }
     const p = start ? pos(e) : null;
@@ -130,6 +162,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
       dragged = false;
       picking = false;
       game.formWall(path);
+      lassoed = false;
       return;
     }
     game.endStroke();
@@ -137,13 +170,15 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
     if (game.winner) {
       dragged = false;
       picking = false;
+      lassoed = false;
       return;
     }
     if (!p) return;
-    if (dragged) game.selectFromStroke(game.stroke);
-    else tap(hitTerritory(game, p.x, p.y));
+    if (dragged && lassoed) game.selectFromStroke(game.stroke);
+    else game.tapTarget(hitTerritory(game, p.x, p.y));
     dragged = false;
     picking = false;
+    lassoed = false;
   };
 
   const cancel = (): void => {
@@ -151,6 +186,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
     start = null;
     dragged = false;
     picking = false;
+    lassoed = false;
     pinching = false;
     pinch = null;
   };

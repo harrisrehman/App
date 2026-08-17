@@ -580,14 +580,38 @@ function barrelTip(x, y, dx, dy, len = 12) {
 const tip = barrelTip(0, 0, 10, 0, 18);
 assert(tip.x === 18 && tip.y === 0, "shot starts at barrel tip");
 
-function tapOwnBase(selected, id) {
-  if (selected.some((from) => from !== id)) return "send";
-  return "select";
+function tapTarget(selected, destOwner, destId, filter) {
+  if (destOwner === "player" && filter !== "all") {
+    if (selected.length !== 1 || selected.includes(destId)) return "select";
+  }
+  if (selected.some((from) => from !== destId)) return "send";
+  if (destOwner === "player") return "select";
+  return "block";
 }
-assert(tapOwnBase([0], 0) === "select", "tap own selected base keeps it");
-assert(tapOwnBase([0], 3) === "send", "tap other base sends");
+assert(tapTarget([0], "player", 0, "all") === "select", "tap own selected base keeps it");
+assert(tapTarget([0], "player", 3, "all") === "send", "tap other base sends");
+assert(tapTarget([0, 1], "player", 0, "troop") === "select", "soldier mode tap own narrows");
+assert(tapTarget([0, 1], "ai1", 4, "troop") === "send", "soldier mode tap dest sends");
+assert(tapTarget([0], "ai1", 4, "gunner") === "send", "gunner mode tap dest sends");
 assert(matchesFilter("gunner", "troop") === false, "soldiers mode skips gunners");
 assert(matchesFilter("troop", "troop") === true, "soldiers mode keeps troops");
+
+function applySendFilter(selected, bases, filter) {
+  const pool = (id) =>
+    (bases.find((b) => b.id === id)?.units ?? []).filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
+  const one = selected.length === 1 ? selected[0] : null;
+  if (one != null && pool(one).length > 0) return [one];
+  return bases.filter((b) => pool(b.id).length > 0).map((b) => b.id);
+}
+const yards = [
+  { id: 0, units: [{ kind: "troop", wallId: null }, { kind: "gunner", wallId: null }] },
+  { id: 1, units: [{ kind: "gunner", wallId: null }] },
+  { id: 2, units: [{ kind: "troop", wallId: null }] },
+];
+assert(applySendFilter([], yards, "troop").join() === "0,2", "soldiers button picks troop bases");
+assert(applySendFilter([], yards, "gunner").join() === "0,1", "gunner button picks gunner bases");
+assert(applySendFilter([1], yards, "troop").join() === "0,2", "empty troop base falls back");
+assert(applySendFilter([0], yards, "troop").join() === "0", "keeps one troop base");
 
 function ownerShape(owner) {
   if (owner === "player") return "circle";

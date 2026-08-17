@@ -72,7 +72,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Tap All, Gunners, or Soldiers. Then your base, then a target.");
+    const hint = makeEl("div", "hint", "Tap All, Gunners, or Soldiers. Then tap a target.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -322,11 +322,13 @@ function onHudClick(e: Event): void {
     if (!game || game.winner) return;
     const filter = filterKey as SendFilter;
     if (filter !== "all" && filter !== "gunner" && filter !== "troop") return;
-    game.applySendFilter(filter);
+    const n = game.applySendFilter(filter);
     syncFilterHud(game);
-    if (filter === "gunner") showToast("Gunners. Tap your base, then a target.");
-    else if (filter === "troop") showToast("Soldiers. Tap your base, then a target.");
-    else showToast("All. Tap your base, then a target.");
+    if (filter === "gunner" && n === 0) showToast("No gunners yet.");
+    else if (filter === "troop" && n === 0) showToast("No soldiers yet.");
+    else if (filter === "gunner") showToast("Gunners selected. Tap a target.");
+    else if (filter === "troop") showToast("Soldiers selected. Tap a target.");
+    else showToast("All selected. Tap a target.");
     return;
   }
   const bots = Number(t.dataset.bots || 0);
@@ -580,7 +582,10 @@ function startGame(bots = 1): void {
     last = now;
     game.update(dt);
     const note = game.pullNotice();
-    if (note) showError(note);
+    if (note) {
+      if (note.startsWith("You can't")) showError(note);
+      else showToast(note);
+    }
     for (const ai of ais) ai.tick(game, dt);
     render(draw, game, cam);
     syncHud();
