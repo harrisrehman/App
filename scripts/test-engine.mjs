@@ -580,37 +580,41 @@ function barrelTip(x, y, dx, dy, len = 12) {
 const tip = barrelTip(0, 0, 10, 0, 18);
 assert(tip.x === 18 && tip.y === 0, "shot starts at barrel tip");
 
-function tapTarget(picked, selected, destOwner, destId) {
-  const hasSend = picked > 0 || selected.some((from) => from !== destId);
-  if (hasSend) return "send";
-  if (destOwner === "player") return "select";
+function tapTarget(homes, destOwner, destId) {
+  const none = homes.length === 0;
+  const onlyHere = homes.length === 1 && homes[0] === destId;
+  if (destOwner === "player" && (none || onlyHere)) return "select";
+  if (homes.length > 0) return "send";
   return "block";
 }
-assert(tapTarget(0, [0], "player", 0) === "select", "tap own selected base keeps it");
-assert(tapTarget(0, [0], "player", 3) === "send", "tap other base sends");
-assert(tapTarget(2, [0, 1], "player", 0) === "send", "picked gunners send to own base");
-assert(tapTarget(2, [0, 1], "ai1", 4) === "send", "picked units send to dest");
-assert(tapTarget(1, [0], "ai1", 4) === "send", "gunner mode tap dest sends");
+assert(tapTarget([], "player", 0) === "select", "tool tap own base selects");
+assert(tapTarget([0], "player", 0) === "select", "tap same base keeps the group");
+assert(tapTarget([0], "player", 3) === "send", "tap other own base sends");
+assert(tapTarget([0, 1], "ai1", 4) === "send", "tap dest sends the group");
+assert(tapTarget([0], "ai1", 4) === "send", "gunner tool tap dest sends");
+assert(tapTarget([], "ai1", 4) === "block", "tool with no group does not send");
 assert(matchesFilter("gunner", "troop") === false, "soldiers mode skips gunners");
 assert(matchesFilter("troop", "troop") === true, "soldiers mode keeps troops");
 
-function filterSelection(selected, bases, filter) {
+function armTool(selected, bases, filter) {
   const pool = (id) =>
     (bases.find((b) => b.id === id)?.units ?? []).filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
-  const homes = selected.filter((id) => pool(id).length > 0);
-  if (homes.length > 0) return homes;
-  return bases.filter((b) => pool(b.id).length > 0).map((b) => b.id);
+  return selected.filter((id) => pool(id).length > 0);
+}
+function strokePick(units, filter) {
+  return units.filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
 }
 const yards = [
   { id: 0, units: [{ kind: "troop", wallId: null }, { kind: "gunner", wallId: null }] },
   { id: 1, units: [{ kind: "gunner", wallId: null }] },
   { id: 2, units: [{ kind: "troop", wallId: null }] },
 ];
-assert(filterSelection([], yards, "troop").join() === "0,2", "soldiers button picks troop bases");
-assert(filterSelection([], yards, "gunner").join() === "0,1", "gunner button picks gunner bases");
-assert(filterSelection([1], yards, "troop").join() === "0,2", "empty troop base falls back");
-assert(filterSelection([0], yards, "troop").join() === "0", "keeps one troop base");
-assert(filterSelection([0, 2], yards, "gunner").join() === "0", "gunner button keeps only gunners in the group");
+assert(armTool([], yards, "gunner").join() === "", "gunner tool waits for a group");
+assert(armTool([], yards, "troop").join() === "", "soldier tool waits for a group");
+assert(armTool([0, 2], yards, "gunner").join() === "0", "gunner tool keeps gunners in the group");
+assert(armTool([0], yards, "troop").join() === "0", "soldier tool keeps troops in the group");
+assert(strokePick(yards[0].units, "gunner").every((s) => s.kind === "gunner"), "lasso in gunner tool picks gunners only");
+assert(strokePick(yards[0].units, "troop").every((s) => s.kind === "troop"), "lasso in soldier tool picks troops only");
 assert(filterPool(yards[0].units, "gunner").length === 1, "group send keeps one gunner");
 
 function ownerShape(owner) {

@@ -261,8 +261,38 @@ export class Game {
     this.setSendFilter(filter);
     const keep = this.unitsAtSelection(filter);
     if (keep.length > 0) return this.pickUnits(keep);
-    this.selectByFilter();
-    return this.picked.size + this.selected.size;
+    this.clearSelection();
+    let n = 0;
+    for (const s of this.soldiers) {
+      if (s.owner !== "player" || s.state === "march") continue;
+      if (filter === "all" || this.matchingFree(s, filter)) n += 1;
+    }
+    return n;
+  }
+
+  sourceHomes(): number[] {
+    if (this.picked.size > 0) {
+      const homes = new Set<number>();
+      for (const id of this.picked) {
+        const s = this.soldiers.find((x) => x.id === id);
+        if (s) homes.add(s.homeId);
+      }
+      return [...homes];
+    }
+    return [...this.selected];
+  }
+
+  pickNear(x: number, y: number): boolean {
+    const hit: Soldier[] = [];
+    for (const s of this.soldiers) {
+      if (s.owner !== "player" || s.state === "march") continue;
+      if (!this.matchesFilter(s)) continue;
+      const r = s.kind === "gunner" ? 28 : 20;
+      if (dist({ x, y }, { x: s.x, y: s.y }) <= r) hit.push(s);
+    }
+    if (hit.length === 0) return false;
+    this.pickUnits(hit);
+    return true;
   }
 
   tapTarget(id: number | null): boolean {
@@ -272,8 +302,13 @@ export class Game {
     }
     const dest = this.territories[id];
     if (!dest) return false;
-    const hasSend = this.picked.size > 0 || [...this.selected].some((from) => from !== id);
-    if (hasSend) {
+    const homes = this.sourceHomes();
+    const none = homes.length === 0;
+    const onlyHere = homes.length === 1 && homes[0] === id;
+    if (dest.owner === "player" && (none || onlyHere)) {
+      return this.selectBase(id);
+    }
+    if (this.picked.size > 0 || homes.some((from) => from !== id)) {
       if (this.sendSelected(id)) return true;
       this.notice =
         this.sendFilter === "gunner"
@@ -284,7 +319,7 @@ export class Game {
       return false;
     }
     if (this.selectBase(id)) return true;
-    this.notice = "Tap your base first.";
+    this.notice = "Circle your units first.";
     return false;
   }
 

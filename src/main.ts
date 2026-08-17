@@ -72,7 +72,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Tap Gunners or Soldiers, circle a group, then tap a target.");
+    const hint = makeEl("div", "hint", "Tap Gunners or Soldiers. Circle a group. Tap a target.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -326,9 +326,9 @@ function onHudClick(e: Event): void {
     syncFilterHud(game);
     if (filter === "gunner" && n === 0) showToast("No gunners yet.");
     else if (filter === "troop" && n === 0) showToast("No soldiers yet.");
-    else if (filter === "gunner") showToast("Gunners selected. Tap a target.");
-    else if (filter === "troop") showToast("Soldiers selected. Tap a target.");
-    else showToast("All selected. Tap a target.");
+    else if (filter === "gunner") showToast("Gunner tool. Circle a group, then a target.");
+    else if (filter === "troop") showToast("Soldier tool. Circle a group, then a target.");
+    else showToast("All tool. Circle a group, then a target.");
     return;
   }
   const bots = Number(t.dataset.bots || 0);

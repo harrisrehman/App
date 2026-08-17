@@ -174,8 +174,16 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
       return;
     }
     if (!p) return;
-    if (dragged && lassoed) game.selectFromStroke(game.stroke);
-    else game.tapTarget(hitTerritory(game, p.x, p.y));
+    if (dragged && lassoed) {
+      game.selectFromStroke(game.stroke);
+    } else if (dragged && game.sendFilter !== "all") {
+      game.notice =
+        game.sendFilter === "gunner" ? "No gunners in that group." : "No soldiers in that group.";
+    } else {
+      const id = hitTerritory(game, p.x, p.y);
+      if (id !== null) game.tapTarget(id);
+      else if (!game.pickNear(p.x, p.y)) game.tapTarget(null);
+    }
     dragged = false;
     picking = false;
     lassoed = false;
