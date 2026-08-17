@@ -17,9 +17,11 @@ export type Point = { x: number; y: number };
 export type SoldierState = "eject" | "idle" | "gather" | "defend" | "return" | "march";
 export type SoldierKind = "troop" | "gunner";
 export type SendFilter = "all" | "gunner" | "troop";
+export type BaseShape = "circle" | "triangle" | "square" | "diamond" | "pentagon" | "hexagon";
 
 export type Territory = {
   id: number;
+  shape: BaseShape;
   poly: Point[];
   localPoly: Point[];
   center: Point;

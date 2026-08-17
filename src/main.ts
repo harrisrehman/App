@@ -72,7 +72,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Use All, Gunners, or Soldiers. Pinch to zoom.");
+    const hint = makeEl("div", "hint", "Tap All, Gunners, or Soldiers. Then your base, then a target.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -324,9 +324,9 @@ function onHudClick(e: Event): void {
     if (filter !== "all" && filter !== "gunner" && filter !== "troop") return;
     game.applySendFilter(filter);
     syncFilterHud(game);
-    if (filter === "gunner") showToast("Tap a base to send gunners.");
-    else if (filter === "troop") showToast("Tap a base to send soldiers.");
-    else showToast("Tap a base to send all.");
+    if (filter === "gunner") showToast("Gunners. Tap your base, then a target.");
+    else if (filter === "troop") showToast("Soldiers. Tap your base, then a target.");
+    else showToast("All. Tap your base, then a target.");
     return;
   }
   const bots = Number(t.dataset.bots || 0);
@@ -366,13 +366,12 @@ function ensureFilterCounts(): void {
     count.className = "filter-count";
     count.dataset.count = key;
     count.tabIndex = -1;
-    count.dataset.filter = key;
     row.appendChild(count);
   }
 }
 
 function syncFilterHud(game: Game): void {
-  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]")) {
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]:not(.filter-count)")) {
     btn.classList.toggle("on", btn.dataset.filter === game.sendFilter);
   }
   const gunners = document.querySelector<HTMLElement>("[data-count='gunner']");

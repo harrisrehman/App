@@ -12,17 +12,44 @@ import {
   ringRadius,
   rules,
 } from "./config";
-import { centroid, dist } from "./geo";
-import { mulberry32, randInt, randRange } from "./rng";
-import { BOTS, type BotId, type Point, type Territory } from "./types";
+import { dist } from "./geo";
+import { mulberry32, randInt } from "./rng";
+import { BOTS, type BaseShape, type BotId, type Owner, type Point, type Territory } from "./types";
 
 const PAD = 96;
 const MIN_GAP = BASE_GAP;
 const GAP_FLOOR = 2 * ringRadius(BASE_RADIUS * 0.95) + RING_GAP;
 
-type ShapeKind = "pent" | "hex" | "hept" | "tri" | "kite" | "blob";
+export function ownerShape(owner: Owner): BaseShape {
+  if (owner === "player") return "circle";
+  if (owner === "ai1") return "triangle";
+  if (owner === "ai2") return "square";
+  if (owner === "ai3") return "diamond";
+  if (owner === "ai4") return "pentagon";
+  return "hexagon";
+}
 
-const SHAPES: ShapeKind[] = ["pent", "hex", "hept", "tri", "kite", "blob"];
+function regular(n: number, r: number, twist: number): Point[] {
+  return Array.from({ length: n }, (_, i) => {
+    const a = twist + (i / n) * Math.PI * 2;
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+  });
+}
+
+export function shapePoly(shape: BaseShape, radius: number): Point[] {
+  if (shape === "circle") return regular(24, radius, 0);
+  if (shape === "triangle") return regular(3, radius * 1.12, -Math.PI / 2);
+  if (shape === "square") return regular(4, radius * 1.05, Math.PI / 4);
+  if (shape === "diamond") return regular(4, radius * 1.12, 0);
+  if (shape === "pentagon") return regular(5, radius * 1.08, -Math.PI / 2);
+  return regular(6, radius, Math.PI / 6);
+}
+
+export function applyShape(t: Territory, shape: BaseShape = ownerShape(t.owner)): void {
+  t.shape = shape;
+  t.localPoly = shapePoly(shape, t.radius);
+  t.poly = t.localPoly.map((p) => ({ x: t.center.x + p.x, y: t.center.y + p.y }));
+}
 
 function inBounds(): { x0: number; y0: number; w: number; h: number } {
   return { x0: PAD, y0: PAD, w: WORLD_W - PAD * 2, h: WORLD_H - PAD * 2 };
@@ -85,49 +112,6 @@ function placeCenters(rng: () => number, n: number): Point[] {
   return packed.length >= 2 ? packed : tryPlace(rng, Math.max(2, n), GAP_FLOOR);
 }
 
-function ring(cx: number, cy: number, radii: number[], twist: number): Point[] {
-  const n = radii.length;
-  return radii.map((r, i) => {
-    const a = twist + (i / n) * Math.PI * 2;
-    return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
-  });
-}
-
-function makeShape(kind: ShapeKind, c: Point, rng: () => number): Point[] {
-  const r = BASE_RADIUS;
-  if (kind === "pent") {
-    return ring(c.x, c.y, [r, r * 0.86, r * 1.04, r * 0.9, r * 0.98], rng() * 0.8);
-  }
-  if (kind === "hex") {
-    return ring(
-      c.x,
-      c.y,
-      [r, r * 0.92, r, r * 0.94, r * 1.02, r * 0.9],
-      Math.PI / 6 + rng() * 0.4,
-    );
-  }
-  if (kind === "hept") {
-    const radii = Array.from({ length: 7 }, (_, i) => r * (0.84 + ((i * 3) % 5) * 0.04));
-    return ring(c.x, c.y, radii, rng() * Math.PI);
-  }
-  if (kind === "tri") {
-    return ring(c.x, c.y, [r * 1.12, r * 0.62, r * 1.08, r * 0.64, r * 1.1, r * 0.6], rng() * 1.2);
-  }
-  if (kind === "kite") {
-    return [
-      { x: c.x, y: c.y - r * 1.15 },
-      { x: c.x + r * 0.78, y: c.y - r * 0.1 },
-      { x: c.x, y: c.y + r * 0.95 },
-      { x: c.x - r * 0.78, y: c.y - r * 0.1 },
-    ];
-  }
-  const radii = Array.from({ length: 8 }, () => r * randRange(rng, 0.78, 1.12));
-  return ring(c.x, c.y, radii, rng() * Math.PI * 2);
-}
-
-function meanRadius(center: Point, poly: Point[]): number {
-  return poly.reduce((s, p) => s + dist(center, p), 0) / poly.length;
-}
 
 function clampCenter(t: Territory, extra: number): void {
   const { x0, y0, w, h } = inBounds();
@@ -212,27 +196,23 @@ export function createMap(seed = 20260815, bots = 1): Territory[] {
   const rng = mulberry32(seed);
   const n = randInt(rng, BASE_COUNT_MIN, BASE_COUNT_MAX);
   const centers = placeCenters(rng, n);
-  const kinds = [...SHAPES];
-  for (let i = kinds.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
-  }
 
   const territories: Territory[] = centers.map((c, id) => {
-    const poly = makeShape(kinds[id % kinds.length], c, rng);
-    const center = centroid(poly);
-    return {
+    const t: Territory = {
       id,
-      poly,
-      localPoly: poly.map((p) => ({ x: p.x - center.x, y: p.y - center.y })),
-      center,
-      radius: meanRadius(center, poly),
+      shape: "hexagon",
+      poly: [],
+      localPoly: [],
+      center: { x: c.x, y: c.y },
+      radius: BASE_RADIUS,
       owner: "neutral",
       troops: NEUTRAL_TROOPS,
       health: rules.baseHealth,
       spawnAcc: 0,
       neighbors: [],
     };
+    applyShape(t);
+    return t;
   });
 
   separateBases(territories);
@@ -244,12 +224,14 @@ export function createMap(seed = 20260815, bots = 1): Territory[] {
   territories[playerId].owner = "player";
   territories[playerId].troops = START_TROOPS;
   territories[playerId].health = rules.baseHealth;
+  applyShape(territories[playerId]);
   for (let i = 1; i < starts.length; i++) {
     const bot: BotId = BOTS[i - 1] ?? "ai1";
     const id = starts[i];
     territories[id].owner = bot;
     territories[id].troops = START_TROOPS;
     territories[id].health = rules.baseHealth;
+    applyShape(territories[id]);
   }
 
   return territories;

@@ -113,9 +113,10 @@ body {
   letter-spacing: 0.05em;
 }
 
-#filters button.on {
+#filters button.on:not(.filter-count) {
+  background: var(--player);
   border-color: var(--player);
-  color: var(--player);
+  color: #0e0e10;
 }
 
 #filters button.filter-icon {

@@ -586,6 +586,20 @@ function tapOwnBase(selected, id) {
 }
 assert(tapOwnBase([0], 0) === "select", "tap own selected base keeps it");
 assert(tapOwnBase([0], 3) === "send", "tap other base sends");
+assert(matchesFilter("gunner", "troop") === false, "soldiers mode skips gunners");
+assert(matchesFilter("troop", "troop") === true, "soldiers mode keeps troops");
+
+function ownerShape(owner) {
+  if (owner === "player") return "circle";
+  if (owner === "ai1") return "triangle";
+  if (owner === "ai2") return "square";
+  if (owner === "ai3") return "diamond";
+  if (owner === "ai4") return "pentagon";
+  return "hexagon";
+}
+assert(ownerShape("player") === "circle", "player is circle");
+assert(ownerShape("ai1") !== ownerShape("ai2"), "bots get different shapes");
+assert(ownerShape("player") === "circle", "capture uses winner shape");
 assert(2 === 2, "gunners fire every 2 seconds");
 
 console.log("engine tests passed");

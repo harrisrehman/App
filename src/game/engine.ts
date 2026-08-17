@@ -33,7 +33,7 @@ import {
   pointInPoly,
   wallSpots,
 } from "./geo";
-import { createMap } from "./map";
+import { applyShape, createMap, ownerShape } from "./map";
 import { mulberry32 } from "./rng";
 import {
   isBot,
@@ -236,8 +236,7 @@ export class Game {
   applySendFilter(filter: SendFilter): void {
     this.setSendFilter(filter);
     this.lockHud();
-    if (this.selected.size > 0 || this.picked.size > 0) return;
-    this.selectByFilter();
+    this.clearSelection();
   }
 
   selectByFilter(): void {
@@ -246,10 +245,10 @@ export class Game {
       if (t.owner !== "player") continue;
       if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
     }
-    if (this.sendFilter === "gunner") return;
+    if (this.sendFilter !== "all") return;
     for (const s of this.soldiers) {
       if (s.owner !== "player" || s.wallId == null || s.state === "march") continue;
-      if (this.matchesFilter(s)) this.picked.add(s.id);
+      this.picked.add(s.id);
     }
   }
 
@@ -958,6 +957,7 @@ export class Game {
     dest.spawnAcc = 0;
     dest.health = rules.baseHealth;
     dest.troops = 0;
+    applyShape(dest, ownerShape(owner));
     for (const s of this.soldiers) {
       if (s.homeId === dest.id && s.state !== "march") dead.add(s.id);
     }

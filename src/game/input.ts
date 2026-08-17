@@ -100,7 +100,8 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
       game.sendSelected(id);
       return;
     }
-    game.selectBase(id);
+    if (game.selectBase(id)) return;
+    game.notice = "Tap your base first.";
   };
 
   const up = (e: TouchEvent | MouseEvent): void => {

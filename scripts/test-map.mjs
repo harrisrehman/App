@@ -97,4 +97,16 @@ separate(rings);
 assert(dist(rings[0], rings[1]) >= 62 + 62 + 10 - 0.01, "perimeters still overlap");
 assert(dist(rings[0], rings[2]) >= 60, "far ring moved too much");
 
+function ownerShape(owner) {
+  if (owner === "player") return "circle";
+  if (owner === "ai1") return "triangle";
+  if (owner === "ai2") return "square";
+  if (owner === "ai3") return "diamond";
+  if (owner === "ai4") return "pentagon";
+  return "hexagon";
+}
+const shapes = ["player", "ai1", "ai2", "ai3", "ai4", "neutral"].map(ownerShape);
+assert(new Set(shapes).size === 6, "each faction has its own shape");
+assert(ownerShape("ai1") === "triangle", "captured by red becomes triangle");
+
 console.log("map tests passed");

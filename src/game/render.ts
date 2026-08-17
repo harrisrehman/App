@@ -79,9 +79,20 @@ function soldierPicked(game: Game, s: Soldier): boolean {
   return game.selected.has(s.homeId);
 }
 
+function drawBaseShape(ctx: CanvasRenderingContext2D, t: Territory, color: string): void {
+  if (t.shape === "circle") {
+    ctx.beginPath();
+    ctx.arc(t.center.x, t.center.y, t.radius, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    return;
+  }
+  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, 1, color, 1);
+}
+
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
   const color = fill(t.owner);
-  drawPoly(ctx, t.localPoly, t.center.x, t.center.y, 1, color, 1);
+  drawBaseShape(ctx, t, color);
   const spin = (performance.now() / 1000) * RING_SPIN;
   const dir = t.id % 2 === 0 ? 1 : -1;
   ctx.save();
@@ -95,9 +106,14 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   ctx.stroke();
   ctx.restore();
   if (selected) {
-    pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
     ctx.strokeStyle = COLORS.line;
     ctx.lineWidth = 2;
+    if (t.shape === "circle") {
+      ctx.beginPath();
+      ctx.arc(t.center.x, t.center.y, t.radius, 0, Math.PI * 2);
+    } else {
+      pathPoly(ctx, t.localPoly, t.center.x, t.center.y, 1);
+    }
     ctx.stroke();
   }
   const barW = 36;
