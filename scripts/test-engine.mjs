@@ -580,27 +580,25 @@ function barrelTip(x, y, dx, dy, len = 12) {
 const tip = barrelTip(0, 0, 10, 0, 18);
 assert(tip.x === 18 && tip.y === 0, "shot starts at barrel tip");
 
-function tapTarget(selected, destOwner, destId, filter) {
-  if (destOwner === "player" && filter !== "all") {
-    if (selected.length !== 1 || selected.includes(destId)) return "select";
-  }
-  if (selected.some((from) => from !== destId)) return "send";
+function tapTarget(picked, selected, destOwner, destId) {
+  const hasSend = picked > 0 || selected.some((from) => from !== destId);
+  if (hasSend) return "send";
   if (destOwner === "player") return "select";
   return "block";
 }
-assert(tapTarget([0], "player", 0, "all") === "select", "tap own selected base keeps it");
-assert(tapTarget([0], "player", 3, "all") === "send", "tap other base sends");
-assert(tapTarget([0, 1], "player", 0, "troop") === "select", "soldier mode tap own narrows");
-assert(tapTarget([0, 1], "ai1", 4, "troop") === "send", "soldier mode tap dest sends");
-assert(tapTarget([0], "ai1", 4, "gunner") === "send", "gunner mode tap dest sends");
+assert(tapTarget(0, [0], "player", 0) === "select", "tap own selected base keeps it");
+assert(tapTarget(0, [0], "player", 3) === "send", "tap other base sends");
+assert(tapTarget(2, [0, 1], "player", 0) === "send", "picked gunners send to own base");
+assert(tapTarget(2, [0, 1], "ai1", 4) === "send", "picked units send to dest");
+assert(tapTarget(1, [0], "ai1", 4) === "send", "gunner mode tap dest sends");
 assert(matchesFilter("gunner", "troop") === false, "soldiers mode skips gunners");
 assert(matchesFilter("troop", "troop") === true, "soldiers mode keeps troops");
 
-function applySendFilter(selected, bases, filter) {
+function filterSelection(selected, bases, filter) {
   const pool = (id) =>
     (bases.find((b) => b.id === id)?.units ?? []).filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
-  const one = selected.length === 1 ? selected[0] : null;
-  if (one != null && pool(one).length > 0) return [one];
+  const homes = selected.filter((id) => pool(id).length > 0);
+  if (homes.length > 0) return homes;
   return bases.filter((b) => pool(b.id).length > 0).map((b) => b.id);
 }
 const yards = [
@@ -608,10 +606,12 @@ const yards = [
   { id: 1, units: [{ kind: "gunner", wallId: null }] },
   { id: 2, units: [{ kind: "troop", wallId: null }] },
 ];
-assert(applySendFilter([], yards, "troop").join() === "0,2", "soldiers button picks troop bases");
-assert(applySendFilter([], yards, "gunner").join() === "0,1", "gunner button picks gunner bases");
-assert(applySendFilter([1], yards, "troop").join() === "0,2", "empty troop base falls back");
-assert(applySendFilter([0], yards, "troop").join() === "0", "keeps one troop base");
+assert(filterSelection([], yards, "troop").join() === "0,2", "soldiers button picks troop bases");
+assert(filterSelection([], yards, "gunner").join() === "0,1", "gunner button picks gunner bases");
+assert(filterSelection([1], yards, "troop").join() === "0,2", "empty troop base falls back");
+assert(filterSelection([0], yards, "troop").join() === "0", "keeps one troop base");
+assert(filterSelection([0, 2], yards, "gunner").join() === "0", "gunner button keeps only gunners in the group");
+assert(filterPool(yards[0].units, "gunner").length === 1, "group send keeps one gunner");
 
 function ownerShape(owner) {
   if (owner === "player") return "circle";

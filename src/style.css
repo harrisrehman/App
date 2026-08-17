@@ -119,18 +119,32 @@ body {
   color: #0e0e10;
 }
 
-#filters button.filter-icon {
-  min-width: 44px;
-  width: 44px;
-  height: 44px;
-  padding: 6px;
+#filters button.filter-gunner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-#filters button.filter-icon svg {
+.gunner-glyph {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.gunner-body {
   display: block;
-  width: 28px;
-  height: 28px;
-  fill: currentColor;
+  width: 8px;
+  height: 10px;
+  background: currentColor;
+  border-radius: 2px 1px 1px 2px;
+}
+
+.gunner-barrel {
+  display: block;
+  width: 7px;
+  height: 3px;
+  background: currentColor;
 }
 
 .filter-count {

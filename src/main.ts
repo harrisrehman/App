@@ -72,7 +72,7 @@ function ensureHud(): void {
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Tap All, Gunners, or Soldiers. Then tap a target.");
+    const hint = makeEl("div", "hint", "Tap Gunners or Soldiers, circle a group, then tap a target.");
     hud.appendChild(hint);
   }
   let shop = hud.querySelector("#shop");
@@ -92,7 +92,7 @@ function ensureHud(): void {
       ["troop", "Soldiers"],
     ];
     for (const [id, label] of items) {
-      const btn = makeEl("button", undefined, id === "gunner" ? "" : label);
+      const btn = makeEl("button", undefined, label);
       btn.dataset.filter = id;
       if (id === "all") btn.classList.add("on");
       if (id === "gunner") paintGunnerFilter(btn);
@@ -339,15 +339,21 @@ function onHudClick(e: Event): void {
   }
 }
 
-const GUNNER_ICON =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="7,4 15,7.5 15,16.5 7,20 3,12"/><rect x="14.5" y="10" width="8.2" height="4" rx="0.5"/></svg>';
-
 function paintGunnerFilter(btn: HTMLButtonElement): void {
-  btn.classList.add("filter-icon");
+  btn.classList.add("filter-gunner");
   btn.setAttribute("aria-label", "Gunners");
-  if (btn.querySelector("svg")) return;
-  btn.textContent = "";
-  btn.insertAdjacentHTML("afterbegin", GUNNER_ICON);
+  btn.replaceChildren();
+  const glyph = document.createElement("span");
+  glyph.className = "gunner-glyph";
+  glyph.setAttribute("aria-hidden", "true");
+  const body = document.createElement("span");
+  body.className = "gunner-body";
+  const barrel = document.createElement("span");
+  barrel.className = "gunner-barrel";
+  glyph.append(body, barrel);
+  const label = document.createElement("span");
+  label.textContent = "Gunners";
+  btn.append(glyph, label);
 }
 
 function ensureFilterCounts(): void {

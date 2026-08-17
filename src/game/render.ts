@@ -75,7 +75,8 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
 function soldierPicked(game: Game, s: Soldier): boolean {
   if (!game.matchesFilter(s)) return false;
-  if (s.wallId != null) return game.picked.has(s.id);
+  if (game.picked.has(s.id)) return true;
+  if (s.wallId != null || game.sendFilter !== "all") return false;
   return game.selected.has(s.homeId);
 }
 

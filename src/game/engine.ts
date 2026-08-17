@@ -220,20 +220,49 @@ export class Game {
     this.picked.clear();
     this.selected.clear();
     this.selected.add(id);
+    if (this.sendFilter !== "all") {
+      for (const s of this.sendPool(id)) this.picked.add(s.id);
+    }
     return true;
+  }
+
+  matchingFree(s: Soldier, filter: SendFilter = this.sendFilter): boolean {
+    return s.owner === "player" && s.state !== "march" && s.wallId == null && this.matchesFilter(s, filter);
+  }
+
+  pickUnits(units: Soldier[]): number {
+    this.clearSelection();
+    for (const s of units) {
+      this.picked.add(s.id);
+      this.selected.add(s.homeId);
+    }
+    return this.picked.size;
+  }
+
+  unitsAtSelection(filter: SendFilter = this.sendFilter): Soldier[] {
+    const seen = new Set<number>();
+    const out: Soldier[] = [];
+    const add = (s: Soldier | undefined): void => {
+      if (!s || seen.has(s.id) || s.state === "march" || s.owner !== "player") return;
+      if (!this.matchesFilter(s, filter)) return;
+      if (s.wallId != null && filter === "gunner") return;
+      if (s.wallId != null && filter === "troop" && !this.picked.has(s.id)) return;
+      seen.add(s.id);
+      out.push(s);
+    };
+    for (const id of this.selected) {
+      for (const s of this.sendPool(id, filter)) add(s);
+    }
+    for (const id of this.picked) add(this.soldiers.find((x) => x.id === id));
+    return out;
   }
 
   applySendFilter(filter: SendFilter): number {
     this.setSendFilter(filter);
-    const one = this.selected.size === 1 ? [...this.selected][0] : null;
-    if (one != null && this.sendPool(one).length > 0) {
-      this.picked.clear();
-      this.selected.clear();
-      this.selected.add(one);
-      return 1;
-    }
+    const keep = this.unitsAtSelection(filter);
+    if (keep.length > 0) return this.pickUnits(keep);
     this.selectByFilter();
-    return this.selected.size + this.picked.size;
+    return this.picked.size + this.selected.size;
   }
 
   tapTarget(id: number | null): boolean {
@@ -243,12 +272,8 @@ export class Game {
     }
     const dest = this.territories[id];
     if (!dest) return false;
-    if (dest.owner === "player" && this.sendFilter !== "all") {
-      if (this.selected.size !== 1 || this.selected.has(id)) {
-        return this.selectBase(id);
-      }
-    }
-    if (this.picked.size > 0 || [...this.selected].some((from) => from !== id)) {
+    const hasSend = this.picked.size > 0 || [...this.selected].some((from) => from !== id);
+    if (hasSend) {
       if (this.sendSelected(id)) return true;
       this.notice =
         this.sendFilter === "gunner"
@@ -265,14 +290,21 @@ export class Game {
 
   selectByFilter(): void {
     this.clearSelection();
-    for (const t of this.territories) {
-      if (t.owner !== "player") continue;
-      if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
+    if (this.sendFilter === "all") {
+      for (const t of this.territories) {
+        if (t.owner !== "player") continue;
+        if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
+      }
+      for (const s of this.soldiers) {
+        if (s.owner !== "player" || s.wallId == null || s.state === "march") continue;
+        this.picked.add(s.id);
+      }
+      return;
     }
-    if (this.sendFilter !== "all") return;
     for (const s of this.soldiers) {
-      if (s.owner !== "player" || s.wallId == null || s.state === "march") continue;
+      if (!this.matchingFree(s)) continue;
       this.picked.add(s.id);
+      this.selected.add(s.homeId);
     }
   }
 
@@ -392,13 +424,25 @@ export class Game {
       if (s.owner !== "player") continue;
       if (!this.matchesFilter(s)) continue;
       if (!hit({ x: s.x, y: s.y }, 16)) continue;
-      if (s.wallId != null) this.picked.add(s.id);
-      else this.selected.add(s.homeId);
+      if (s.wallId != null) {
+        this.picked.add(s.id);
+        continue;
+      }
+      if (this.sendFilter !== "all") {
+        this.picked.add(s.id);
+        this.selected.add(s.homeId);
+      } else {
+        this.selected.add(s.homeId);
+      }
     }
     for (const t of this.territories) {
       if (t.owner !== "player") continue;
       if (!hit(t.center, t.radius * 0.55)) continue;
-      if (this.sendPool(t.id).length > 0) this.selected.add(t.id);
+      const pool = this.sendPool(t.id);
+      if (pool.length === 0) continue;
+      this.selected.add(t.id);
+      if (this.sendFilter === "all") continue;
+      for (const s of pool) this.picked.add(s.id);
     }
   }
 
@@ -456,11 +500,18 @@ export class Game {
 
   sendSelected(toId: number): boolean {
     let sent = false;
-    for (const fromId of [...this.selected]) {
-      if (this.send(fromId, toId, this.sendFilter)) sent = true;
-    }
-    for (const sid of [...this.picked]) {
-      if (this.sendSoldier(sid, toId)) sent = true;
+    if (this.picked.size > 0) {
+      for (const sid of [...this.picked]) {
+        if (this.sendSoldier(sid, toId)) sent = true;
+      }
+      for (const sid of [...this.picked]) {
+        const s = this.soldiers.find((x) => x.id === sid);
+        if (!s || s.state === "march") this.picked.delete(sid);
+      }
+    } else {
+      for (const fromId of [...this.selected]) {
+        if (this.send(fromId, toId, this.sendFilter)) sent = true;
+      }
     }
     this.pruneWalls();
     return sent;
