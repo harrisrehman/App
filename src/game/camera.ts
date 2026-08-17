@@ -12,7 +12,7 @@ export type Camera = {
 };
 
 export function minScale(width: number, height: number): number {
-  return Math.min(width / WORLD_W, height / WORLD_H);
+  return Math.max(width / WORLD_W, height / WORLD_H);
 }
 
 export function fitCamera(width: number, height: number): Camera {
@@ -32,10 +32,8 @@ export function clampCamera(cam: Camera): void {
   cam.scale = Math.max(min, Math.min(min * ZOOM_MAX, cam.scale));
   const worldW = WORLD_W * cam.scale;
   const worldH = WORLD_H * cam.scale;
-  const padX = cam.width / 2;
-  const padY = cam.height / 2;
-  cam.ox = Math.max(cam.width - worldW - padX, Math.min(padX, cam.ox));
-  cam.oy = Math.max(cam.height - worldH - padY, Math.min(padY, cam.oy));
+  cam.ox = Math.max(cam.width - worldW, Math.min(0, cam.ox));
+  cam.oy = Math.max(cam.height - worldH, Math.min(0, cam.oy));
 }
 
 export function pinchCamera(

@@ -16,7 +16,6 @@ import { dist } from "./geo";
 import { mulberry32, randInt } from "./rng";
 import { BOTS, type BaseShape, type BotId, type Owner, type Point, type Territory } from "./types";
 
-const PAD = 96;
 const MIN_GAP = BASE_GAP;
 const GAP_FLOOR = 2 * ringRadius(BASE_RADIUS * 0.95) + RING_GAP;
 
@@ -52,7 +51,7 @@ export function applyShape(t: Territory, shape: BaseShape = ownerShape(t.owner))
 }
 
 function inBounds(): { x0: number; y0: number; w: number; h: number } {
-  return { x0: PAD, y0: PAD, w: WORLD_W - PAD * 2, h: WORLD_H - PAD * 2 };
+  return { x0: 0, y0: 0, w: WORLD_W, h: WORLD_H };
 }
 
 function randPoint(rng: () => number, x0: number, y0: number, w: number, h: number): Point {
