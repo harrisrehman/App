@@ -71,10 +71,7 @@ function ensureHud(): void {
   }
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
-  if (!hud.querySelector("#hint")) {
-    const hint = makeEl("div", "hint", "Tap Gunners or Soldiers. Circle a group. Tap a target.");
-    hud.appendChild(hint);
-  }
+  document.querySelector("#hint")?.remove();
   let shop = hud.querySelector("#shop");
   if (!shop) {
     shop = document.createElement("nav");
@@ -82,33 +79,15 @@ function ensureHud(): void {
     shop.className = "bottom";
     hud.appendChild(shop);
   }
-  let filters = document.querySelector("#filters");
+  let filters = document.querySelector<HTMLElement>("#filters");
   if (!filters) {
-    filters = document.createElement("nav");
-    filters.id = "filters";
-    filters.className = "side";
-    const items: [SendFilter, string][] = [
-      ["all", "All"],
-      ["gunner", "Gunners"],
-      ["troop", "Soldiers"],
-    ];
-    for (const [id, label] of items) {
-      const btn = makeEl("button");
-      btn.dataset.filter = id;
-      btn.setAttribute("aria-label", label);
-      if (id === "all") btn.classList.add("on");
-      paintFilterIcon(btn, id);
-      filters.appendChild(btn);
-    }
+    filters = buildFilters();
+    hud.appendChild(filters);
+  } else {
+    rebuildFilters(filters);
   }
-  hud.appendChild(filters);
   for (const extra of document.querySelectorAll("#filters")) {
     if (extra !== filters) extra.remove();
-  }
-  ensureFilterCounts();
-  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]")) {
-    const key = btn.dataset.filter;
-    if (key === "all" || key === "gunner" || key === "troop") paintFilterIcon(btn, key);
   }
   if (!shop.querySelector("#defense-btn")) {
     const btn = makeEl("button", "defense-btn");
@@ -399,7 +378,73 @@ function onHudClick(e: Event): void {
   }
 }
 
+function makeFilterCount(key: "gunner" | "troop"): HTMLSpanElement {
+  const count = document.createElement("span");
+  count.className = "filter-count";
+  count.dataset.count = key;
+  count.textContent = "0";
+  return count;
+}
+
+function buildFilters(): HTMLElement {
+  const filters = document.createElement("nav");
+  filters.id = "filters";
+  filters.className = "side";
+
+  const allRow = document.createElement("div");
+  allRow.className = "filter-row";
+  const allBtn = makeEl("button");
+  allBtn.className = "filter-btn on";
+  allBtn.dataset.filter = "all";
+  paintFilterIcon(allBtn, "all");
+  allRow.appendChild(allBtn);
+  filters.appendChild(allRow);
+
+  for (const key of ["gunner", "troop"] as const) {
+    const row = document.createElement("div");
+    row.className = "filter-row";
+    const btn = makeEl("button");
+    btn.className = "filter-btn";
+    btn.dataset.filter = key;
+    paintFilterIcon(btn, key);
+    row.append(btn, makeFilterCount(key));
+    filters.appendChild(row);
+  }
+  return filters;
+}
+
+function rebuildFilters(filters: HTMLElement): void {
+  const gunnerCount = filters.querySelector(`[data-count="gunner"]`);
+  const troopCount = filters.querySelector(`[data-count="troop"]`);
+  filters.className = "side";
+  filters.replaceChildren();
+
+  const allRow = document.createElement("div");
+  allRow.className = "filter-row";
+  const allBtn = makeEl("button");
+  allBtn.className = "filter-btn";
+  allBtn.dataset.filter = "all";
+  paintFilterIcon(allBtn, "all");
+  allRow.appendChild(allBtn);
+  filters.appendChild(allRow);
+
+  for (const [key, saved] of [
+    ["gunner", gunnerCount],
+    ["troop", troopCount],
+  ] as const) {
+    const row = document.createElement("div");
+    row.className = "filter-row";
+    const btn = makeEl("button");
+    btn.className = "filter-btn";
+    btn.dataset.filter = key;
+    paintFilterIcon(btn, key);
+    row.append(btn, saved ?? makeFilterCount(key));
+    filters.appendChild(row);
+  }
+}
+
 function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
+  btn.classList.add("filter-btn");
   if (kind === "gunner") {
     paintGunnerFilter(btn);
     return;
@@ -412,6 +457,10 @@ function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
   }
   btn.setAttribute("aria-label", "Soldiers");
   btn.replaceChildren();
+  const dot = document.createElement("span");
+  dot.className = "soldier-dot";
+  dot.setAttribute("aria-hidden", "true");
+  btn.append(dot);
 }
 
 function paintGunnerFilter(btn: HTMLButtonElement): void {
@@ -427,38 +476,6 @@ function paintGunnerFilter(btn: HTMLButtonElement): void {
   barrel.className = "gunner-barrel";
   glyph.append(body, barrel);
   btn.append(glyph);
-}
-
-function ensureFilterCounts(): void {
-  const filters = document.querySelector("#filters");
-  if (!filters) return;
-  for (const key of ["gunner", "troop"] as const) {
-    const btn = filters.querySelector<HTMLButtonElement>(`[data-filter="${key}"]`);
-    if (!btn) continue;
-    let row = btn.closest(".filter-row");
-    if (!row) {
-      row = document.createElement("div");
-      row.className = "filter-row";
-      btn.replaceWith(row);
-      row.appendChild(btn);
-    }
-    if (row.querySelector(`[data-count="${key}"]`)) {
-      const old = row.querySelector(`[data-count="${key}"]`);
-      if (old && old.tagName === "BUTTON") {
-        const span = document.createElement("span");
-        span.className = "filter-count";
-        span.dataset.count = key;
-        span.textContent = old.textContent || "0";
-        old.replaceWith(span);
-      }
-      continue;
-    }
-    const count = document.createElement("span");
-    count.className = "filter-count";
-    count.dataset.count = key;
-    count.textContent = "0";
-    row.appendChild(count);
-  }
 }
 
 function syncFilterHud(game: Game): void {
@@ -545,7 +562,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   const resultEl = document.querySelector("#result");
   const restartEl = document.querySelector<HTMLButtonElement>("#restart-btn");
   const versionEl = document.querySelector("#version");
-  const hint = document.querySelector("#hint");
 
   if (!boardEl || !drawEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     showMenu();
@@ -605,10 +621,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     defense.disabled = !game.canBuyDefense();
     syncFilterHud(game);
   }
-
-  const hintTimer = window.setTimeout(() => {
-    hint?.classList.add("gone");
-  }, 4500);
 
   const onRestart = (): void => {
     game.restart(Date.now(), game.bots);
@@ -698,7 +710,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   window.__annexStop = () => {
     alive = false;
     if (window.__annexGame === game) window.__annexGame = undefined;
-    window.clearTimeout(hintTimer);
     unbind();
     window.removeEventListener("resize", resize);
     again.removeEventListener("click", onRestart);

@@ -131,76 +131,58 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: auto;
 }
 
-#filters button {
-  min-width: 0 !important;
-  align-self: flex-start;
-}
-
-#filters button[data-filter="all"],
-#filters button[data-filter="gunner"],
-#filters button[data-filter="troop"] {
-  width: 32px !important;
-  min-width: 32px !important;
-  max-width: 32px !important;
-  height: 32px !important;
+#filters .filter-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
   box-sizing: border-box;
   border-radius: 8px;
   padding: 0 !important;
   margin: 0;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
+  letter-spacing: 0 !important;
+  line-height: 1;
   overflow: hidden;
 }
 
-#filters button[data-filter="all"] {
+#filters .filter-btn[data-filter="all"] {
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 9px !important;
+  font-size: 10px !important;
   font-weight: 800;
-  letter-spacing: 0 !important;
-  line-height: 1;
   white-space: nowrap;
 }
 
-#filters button[data-filter="gunner"],
-#filters button[data-filter="troop"] {
+#filters .filter-btn.filter-gunner {
   overflow: visible;
-  font-size: 0;
-  color: transparent;
 }
 
-#filters button[data-filter="troop"]::before {
-  content: "";
+.soldier-dot {
   display: block;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: #4a9eff;
-  box-shadow: 0 0 0 2px #4a9eff;
   flex: 0 0 auto;
 }
 
-#filters button.on {
+#filters .filter-btn.on {
   background: var(--player) !important;
   border-color: #ffffff !important;
   color: #0e0e10 !important;
-  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.55);
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.55);
 }
 
-#filters button.on[data-filter="all"] {
-  color: #0e0e10 !important;
-}
-
-#filters button.on[data-filter="troop"]::before {
+#filters .filter-btn.on .soldier-dot,
+#filters .filter-btn.on .gunner-body,
+#filters .filter-btn.on .gunner-barrel {
   background: #0e0e10;
-  box-shadow: 0 0 0 2px #0e0e10;
-}
-
-#filters button.filter-gunner {
-  height: 32px;
-  padding: 0 !important;
 }
 
 .gunner-glyph {
@@ -226,8 +208,8 @@ body {
   border-radius: 0 2px 2px 0;
 }
 
-#filters button.on .gunner-body,
-#filters button.on .gunner-barrel {
+#filters .filter-btn.on .gunner-body,
+#filters .filter-btn.on .gunner-barrel {
   background: #0e0e10;
 }
 
