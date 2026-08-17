@@ -138,19 +138,26 @@ body {
   align-self: flex-start;
 }
 
-#filters button[data-filter="all"] {
-  width: auto !important;
-  min-width: 0 !important;
+#filters button[data-filter="all"],
+#filters button[data-filter="gunner"],
+#filters button[data-filter="troop"] {
+  width: 32px !important;
+  min-width: 32px !important;
   max-width: 32px !important;
-  height: 32px;
+  height: 32px !important;
   box-sizing: border-box;
   border-radius: 8px;
-  padding: 0 3px !important;
-  display: inline-flex;
+  padding: 0 !important;
+  margin: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+#filters button[data-filter="all"] {
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 10px !important;
+  font-size: 9px !important;
   font-weight: 800;
   letter-spacing: 0 !important;
   line-height: 1;
@@ -159,16 +166,6 @@ body {
 
 #filters button[data-filter="gunner"],
 #filters button[data-filter="troop"] {
-  width: 32px !important;
-  max-width: 32px !important;
-  min-width: 32px !important;
-  height: 32px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  padding: 0 !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: visible;
   font-size: 0;
   color: transparent;
