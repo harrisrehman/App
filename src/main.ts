@@ -93,10 +93,11 @@ function ensureHud(): void {
       ["troop", "Soldiers"],
     ];
     for (const [id, label] of items) {
-      const btn = makeEl("button", undefined, label);
+      const btn = makeEl("button");
       btn.dataset.filter = id;
+      btn.setAttribute("aria-label", label);
       if (id === "all") btn.classList.add("on");
-      if (id === "gunner") paintGunnerFilter(btn);
+      paintFilterIcon(btn, id);
       filters.appendChild(btn);
     }
   }
@@ -105,8 +106,10 @@ function ensureHud(): void {
     if (extra !== filters) extra.remove();
   }
   ensureFilterCounts();
-  const gunnerBtn = document.querySelector<HTMLButtonElement>("#filters [data-filter='gunner']");
-  if (gunnerBtn) paintGunnerFilter(gunnerBtn);
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]")) {
+    const key = btn.dataset.filter;
+    if (key === "all" || key === "gunner" || key === "troop") paintFilterIcon(btn, key);
+  }
   if (!shop.querySelector("#defense-btn")) {
     const btn = makeEl("button", "defense-btn");
     const name = document.createElement("span");
@@ -394,6 +397,20 @@ function onHudClick(e: Event): void {
     pendingBots = bots;
     showDiffPick();
   }
+}
+
+function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
+  btn.replaceChildren();
+  if (kind === "gunner") {
+    paintGunnerFilter(btn);
+    return;
+  }
+  btn.classList.remove("filter-gunner");
+  btn.setAttribute("aria-label", kind === "all" ? "All" : "Soldiers");
+  const dot = document.createElement("span");
+  dot.className = kind === "all" ? "unit-dot all" : "unit-dot";
+  dot.setAttribute("aria-hidden", "true");
+  btn.append(dot);
 }
 
 function paintGunnerFilter(btn: HTMLButtonElement): void {
