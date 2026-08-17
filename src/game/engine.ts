@@ -148,6 +148,7 @@ export class Game {
   finger: { x: number; y: number } | null = null;
   clock = 0;
   sendFilter: SendFilter = "all";
+  filterTap = 0;
   rng: () => number;
 
   constructor(seed = Date.now(), bots = 1) {
@@ -177,6 +178,7 @@ export class Game {
     this.finger = null;
     this.clock = 0;
     this.sendFilter = "all";
+    this.filterTap = 0;
     nextSoldierId = 1;
     nextWallId = 1;
     this.seedOwned();
@@ -258,15 +260,24 @@ export class Game {
   }
 
   applySendFilter(filter: SendFilter): number {
+    const now = Date.now();
+    const repeat = now - this.filterTap < 300;
+    this.filterTap = now;
     this.setSendFilter(filter);
     const keep = this.unitsAtSelection(filter);
-    if (keep.length > 0) return this.pickUnits(keep);
-    this.clearSelection();
+    if (keep.length > 0) this.pickUnits(keep);
+    else this.clearSelection();
     let n = 0;
     for (const s of this.soldiers) {
       if (s.owner !== "player" || s.state === "march") continue;
       if (filter === "all" || this.matchingFree(s, filter)) n += 1;
     }
+    if (repeat) return n;
+    if (filter === "gunner" && n === 0) this.notice = "No gunners yet.";
+    else if (filter === "troop" && n === 0) this.notice = "No soldiers yet.";
+    else if (filter === "gunner") this.notice = "Gunner tool on. Circle a group.";
+    else if (filter === "troop") this.notice = "Soldier tool on. Circle a group.";
+    else this.notice = "All tool on. Circle a group.";
     return n;
   }
 
@@ -534,19 +545,20 @@ export class Game {
   }
 
   sendSelected(toId: number): boolean {
+    const units = this.unitsAtSelection(this.sendFilter);
     let sent = false;
-    if (this.picked.size > 0) {
-      for (const sid of [...this.picked]) {
-        if (this.sendSoldier(sid, toId)) sent = true;
-      }
-      for (const sid of [...this.picked]) {
-        const s = this.soldiers.find((x) => x.id === sid);
-        if (!s || s.state === "march") this.picked.delete(sid);
+    if (units.length > 0) {
+      for (const s of units) {
+        if (this.sendSoldier(s.id, toId)) sent = true;
       }
     } else {
       for (const fromId of [...this.selected]) {
         if (this.send(fromId, toId, this.sendFilter)) sent = true;
       }
+    }
+    for (const sid of [...this.picked]) {
+      const s = this.soldiers.find((x) => x.id === sid);
+      if (!s || s.state === "march") this.picked.delete(sid);
     }
     this.pruneWalls();
     return sent;

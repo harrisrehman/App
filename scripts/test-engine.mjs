@@ -617,6 +617,18 @@ assert(strokePick(yards[0].units, "gunner").every((s) => s.kind === "gunner"), "
 assert(strokePick(yards[0].units, "troop").every((s) => s.kind === "troop"), "lasso in soldier tool picks troops only");
 assert(filterPool(yards[0].units, "gunner").length === 1, "group send keeps one gunner");
 
+function sendWithTool(units, filter) {
+  return units.filter((s) => s.wallId == null && matchesFilter(s.kind, filter));
+}
+const circled = [
+  { kind: "troop", wallId: null },
+  { kind: "troop", wallId: null },
+  { kind: "gunner", wallId: null },
+];
+assert(sendWithTool(circled, "gunner").length === 1, "gunner tool send skips troops");
+assert(sendWithTool(circled, "troop").length === 2, "soldier tool send skips gunners");
+assert(sendWithTool(circled, "all").length === 3, "all tool send keeps the group");
+
 function ownerShape(owner) {
   if (owner === "player") return "circle";
   if (owner === "ai1") return "triangle";

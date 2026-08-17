@@ -2,6 +2,7 @@ import { dist } from "./geo";
 import type { Camera } from "./camera";
 import { pinchCamera, toWorld } from "./camera";
 import type { Game } from "./engine";
+import type { SendFilter } from "./types";
 
 const DRAG = 28;
 
@@ -32,13 +33,28 @@ function clientPoint(e: TouchEvent | MouseEvent): { x: number; y: number } | nul
   return { x: p.clientX, y: p.clientY };
 }
 
+function inRect(x: number, y: number, r: DOMRect): boolean {
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+function filterAtPoint(clientX: number, clientY: number): SendFilter | null {
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters button")) {
+    const key = btn.dataset.filter || btn.dataset.count;
+    if (key !== "all" && key !== "gunner" && key !== "troop") continue;
+    if (inRect(clientX, clientY, btn.getBoundingClientRect())) return key;
+  }
+  return null;
+}
+
 function overHud(clientX: number, clientY: number): boolean {
+  if (filterAtPoint(clientX, clientY)) return true;
   const hit = document.elementFromPoint(clientX, clientY);
   if (hit?.closest("#filters, #shop, .top, #error")) return true;
-  const el = document.querySelector("#filters");
-  if (!el) return false;
-  const r = el.getBoundingClientRect();
-  return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  const shop = document.querySelector("#shop");
+  const top = document.querySelector(".top");
+  if (shop && inRect(clientX, clientY, shop.getBoundingClientRect())) return true;
+  if (top && inRect(clientX, clientY, top.getBoundingClientRect())) return true;
+  return false;
 }
 
 function snapPick(game: Game): { selected: number[]; picked: number[] } {
@@ -88,7 +104,14 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
       }
     }
     const finger = clientPoint(e);
-    if (finger && overHud(finger.x, finger.y)) return;
+    if (finger) {
+      const mode = filterAtPoint(finger.x, finger.y);
+      if (mode) {
+        game.applySendFilter(mode);
+        return;
+      }
+      if (overHud(finger.x, finger.y)) return;
+    }
     if (game.winner || pinching) return;
     const p = pos(e);
     start = p;

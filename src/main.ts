@@ -98,8 +98,10 @@ function ensureHud(): void {
       if (id === "gunner") paintGunnerFilter(btn);
       filters.appendChild(btn);
     }
-    hud.appendChild(filters);
+    document.body.appendChild(filters);
   }
+  const filtersEl = document.querySelector("#filters");
+  if (filtersEl && filtersEl.parentElement !== document.body) document.body.appendChild(filtersEl);
   ensureFilterCounts();
   const gunnerBtn = document.querySelector<HTMLButtonElement>("#filters [data-filter='gunner']");
   if (gunnerBtn) paintGunnerFilter(gunnerBtn);
@@ -322,13 +324,8 @@ function onHudClick(e: Event): void {
     if (!game || game.winner) return;
     const filter = filterKey as SendFilter;
     if (filter !== "all" && filter !== "gunner" && filter !== "troop") return;
-    const n = game.applySendFilter(filter);
+    game.applySendFilter(filter);
     syncFilterHud(game);
-    if (filter === "gunner" && n === 0) showToast("No gunners yet.");
-    else if (filter === "troop" && n === 0) showToast("No soldiers yet.");
-    else if (filter === "gunner") showToast("Gunner tool. Circle a group, then a target.");
-    else if (filter === "troop") showToast("Soldier tool. Circle a group, then a target.");
-    else showToast("All tool. Circle a group, then a target.");
     return;
   }
   const bots = Number(t.dataset.bots || 0);
@@ -379,8 +376,13 @@ function ensureFilterCounts(): void {
 }
 
 function syncFilterHud(game: Game): void {
-  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters [data-filter]:not(.filter-count)")) {
-    btn.classList.toggle("on", btn.dataset.filter === game.sendFilter);
+  const filters = document.querySelector("#filters");
+  filters?.setAttribute("data-mode", game.sendFilter);
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("#filters button")) {
+    const key = btn.dataset.filter || btn.dataset.count;
+    const on = key === game.sendFilter;
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
   }
   const gunners = document.querySelector<HTMLElement>("[data-count='gunner']");
   const troops = document.querySelector<HTMLElement>("[data-count='troop']");
@@ -392,6 +394,13 @@ function bindHudClicks(): void {
   window.__annexOnHudClick = onHudClick;
   if (window.__annexHudBound) return;
   window.__annexHudBound = true;
+  const onFilter = (e: Event): void => {
+    const btn = (e.target as HTMLElement | null)?.closest("button");
+    if (!btn?.dataset.filter && !btn?.dataset.count) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.__annexOnHudClick?.(e);
+  };
   document.addEventListener(
     "click",
     (e) => {
@@ -399,16 +408,9 @@ function bindHudClicks(): void {
     },
     true,
   );
-  document.addEventListener(
-    "touchend",
-    (e) => {
-      const btn = (e.target as HTMLElement | null)?.closest("button");
-      if (!btn?.dataset.filter && !btn?.dataset.count) return;
-      e.preventDefault();
-      window.__annexOnHudClick?.(e);
-    },
-    { capture: true, passive: false },
-  );
+  document.addEventListener("pointerdown", onFilter, true);
+  document.addEventListener("touchstart", onFilter, { capture: true, passive: false });
+  document.addEventListener("touchend", onFilter, { capture: true, passive: false });
 }
 
 function showMenu(): void {
