@@ -35,6 +35,9 @@ if (scripts.length && html.includes("</body>")) {
 html = html.replaceAll("url(../fonts/", "url(./fonts/");
 html = html.replaceAll("url('../fonts/", "url('./fonts/");
 html = html.replaceAll('url("../fonts/', 'url("./fonts/');
+html = html.replaceAll("url(../menu/", "url(./menu/");
+html = html.replaceAll("url('../menu/", "url('./menu/");
+html = html.replaceAll('url("../menu/', 'url("./menu/');
 
 writeFileSync("dist/annex.html", html);
 writeFileSync("dist/index.html", html);

@@ -41,8 +41,11 @@ const theme = statSync("src/assets/theme.ogg");
 assert(theme.size > 10000, "theme audio missing");
 const magic = readFileSync("src/assets/theme.ogg").subarray(0, 4).toString("ascii");
 assert(magic === "OggS", "theme is not ogg");
+const city = statSync("public/menu/city.jpg");
+assert(city.size > 10000, "menu city missing");
 const css = readFileSync("src/style.css", "utf8");
 assert(css.includes(".menu-frame"), "menu frame missing");
 assert(css.includes("--gold:"), "gold theme missing");
+assert(css.includes("/menu/city.jpg"), "menu city missing");
 
 console.log("version tests passed");

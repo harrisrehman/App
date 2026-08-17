@@ -195,6 +195,12 @@ function ensureHud(): void {
 function dressMenu(): void {
   const menu = document.querySelector("#menu");
   if (!menu) return;
+  if (!menu.querySelector(".menu-veil")) {
+    const veil = document.createElement("div");
+    veil.className = "menu-veil";
+    veil.setAttribute("aria-hidden", "true");
+    menu.prepend(veil);
+  }
   if (!menu.querySelector(".menu-stars")) {
     const stars = document.createElement("div");
     stars.className = "menu-stars";
@@ -206,23 +212,37 @@ function dressMenu(): void {
     frame = document.createElement("div");
     frame.className = "menu-frame";
     const move = [...menu.children].filter(
-      (el) => !el.classList.contains("menu-stars") && el.id !== "menu-mute",
+      (el) =>
+        !el.classList.contains("menu-stars") &&
+        !el.classList.contains("menu-veil") &&
+        el.id !== "menu-mute",
     );
     for (const kid of move) frame.appendChild(kid);
     menu.appendChild(frame);
   }
+  if (!frame.querySelector(".menu-mark")) {
+    const mark = document.createElement("div");
+    mark.className = "menu-mark";
+    mark.setAttribute("aria-hidden", "true");
+    const title = frame.querySelector("h1");
+    if (title) title.before(mark);
+    else frame.prepend(mark);
+  }
+  paintMenuMark(frame.querySelector(".menu-mark"));
   if (!frame.querySelector(".menu-kicker")) {
     const kicker = document.createElement("p");
     kicker.className = "menu-kicker";
     kicker.textContent = "Swords · Horses · Kingdoms";
     const title = frame.querySelector("h1");
+    const mark = frame.querySelector(".menu-mark");
     if (title) title.before(kicker);
+    else if (mark) mark.after(kicker);
     else frame.prepend(kicker);
   }
-  if (!frame.querySelector(".menu-tag")) {
-    const tag = document.createElement("p");
-    tag.className = "menu-tag";
-    tag.textContent = "A golden age of conquest";
+  const tag = frame.querySelector(".menu-tag") ?? document.createElement("p");
+  tag.className = "menu-tag";
+  tag.textContent = "Rise. Build. Conquer.";
+  if (!tag.parentElement) {
     const title = frame.querySelector("h1");
     const ver = frame.querySelector("#menu-ver");
     if (title) title.after(tag);
@@ -233,6 +253,16 @@ function dressMenu(): void {
     menu.appendChild(makeEl("button", "menu-mute", "Sound on"));
   }
   syncMuteButton();
+}
+
+function paintMenuMark(el: Element | null): void {
+  if (!el) return;
+  el.innerHTML = `<svg viewBox="0 0 80 80" fill="none">
+    <circle cx="40" cy="40" r="37" stroke="#c5a15a" stroke-width="2"/>
+    <circle cx="40" cy="40" r="31" fill="#f6ead0" stroke="#8a6a2f" stroke-width="1.4"/>
+    <path d="M48 18a14 14 0 1 0 0 22 11 11 0 1 1 0-22z" fill="#3b2416"/>
+    <path d="M40 34 42.4 41.2 50 42.2 42.4 43.6 40 51 37.6 43.6 30 42.2 37.6 41.2Z" fill="#c5a15a"/>
+  </svg>`;
 }
 
 function stripPlayDev(): void {

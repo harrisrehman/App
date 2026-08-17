@@ -5,6 +5,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: Cinzel;
+  src: url("/fonts/Cinzel-SemiBold.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --bg: #120c08;
@@ -12,9 +19,10 @@
   --muted: #b5a27a;
   --panel: #1c140e;
   --line: #8a6a2f;
-  --gold: #d4af37;
+  --gold: #c5a15a;
   --gold-soft: #e8d48a;
-  --ink: #1a100c;
+  --ink: #3b2416;
+  --parchment: #f6ead0;
   --player: #4a9eff;
 }
 
@@ -394,26 +402,34 @@ button {
   bottom: 0;
   left: 0;
   z-index: 40;
-  background:
-    radial-gradient(ellipse at 50% 28%, rgba(212, 175, 55, 0.16), transparent 52%),
-    linear-gradient(180deg, #1a120c 0%, #120c08 48%, #0b0906 100%);
+  background: #c9a56a url("/menu/city.jpg") center / cover no-repeat;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 14px;
   pointer-events: auto;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
   overflow: hidden;
+  color: var(--ink);
+  font-family: Cinzel, Palatino Linotype, Palatino, serif;
+}
+
+.menu-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(246, 234, 208, 0.58) 0%, rgba(246, 234, 208, 0.12) 36%, rgba(40, 24, 12, 0.28) 100%);
 }
 
 .menu-stars {
   position: absolute;
   inset: -20%;
   pointer-events: none;
-  opacity: 0.28;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><g fill='none' stroke='%23d4af37' stroke-width='1.2'><path d='M48 10 L52 38 L80 42 L52 46 L48 74 L44 46 L16 42 L44 38 Z'/><rect x='34' y='34' width='28' height='28' transform='rotate(45 48 48)'/></g></svg>");
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><g fill='none' stroke='%238a6a2f' stroke-width='1.1'><path d='M48 10 L52 38 L80 42 L52 46 L48 74 L44 46 L16 42 L44 38 Z'/><rect x='34' y='34' width='28' height='28' transform='rotate(45 48 48)'/></g></svg>");
   background-size: 96px 96px;
   animation: menu-drift 70s linear infinite;
 }
@@ -426,15 +442,16 @@ button {
 .menu-frame {
   position: relative;
   z-index: 1;
-  width: min(360px, calc(100% - 32px));
-  padding: 34px 24px 26px;
+  width: min(340px, calc(100% - 36px));
+  padding: 22px 18px 20px;
   text-align: center;
-  background: rgba(18, 12, 8, 0.72);
-  border: 1px solid var(--gold);
+  background:
+    linear-gradient(180deg, rgba(251, 243, 222, 0.92), rgba(232, 213, 168, 0.88));
+  border: 2px solid var(--gold);
   box-shadow:
-    0 0 0 6px #120c08,
-    0 0 0 8px #8a6a2f,
-    inset 0 0 48px rgba(212, 175, 55, 0.08);
+    inset 0 0 0 1px #fff6d8,
+    inset 0 0 0 5px rgba(184, 140, 50, 0.28),
+    0 10px 28px rgba(40, 24, 12, 0.28);
 }
 
 .menu-frame::before,
@@ -442,42 +459,69 @@ button {
   content: "";
   position: absolute;
   left: 50%;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: var(--gold);
   transform: translateX(-50%) rotate(45deg);
+  box-shadow: 0 0 0 2px #fff6d8;
 }
 
 .menu-frame::before { top: -8px; }
 .menu-frame::after { bottom: -8px; }
 
+.menu-mark {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 8px;
+  color: var(--ink);
+}
+
+.menu-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .menu-kicker,
 .menu-tag {
   margin: 0;
-  color: var(--gold-soft);
-  letter-spacing: 0.22em;
+  color: var(--ink);
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 10px;
+  font-family: Cinzel, Palatino Linotype, Palatino, serif;
 }
 
 .menu-tag {
   margin: 8px 0 0;
-  letter-spacing: 0.14em;
-  color: var(--muted);
+  letter-spacing: 0.22em;
+  opacity: 0.78;
+}
+
+.menu-tag::before,
+.menu-tag::after {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  margin: 0 8px;
+  vertical-align: middle;
+  background: var(--gold);
 }
 
 #menu h1 {
-  margin: 10px 0 0;
-  letter-spacing: 0.28em;
-  font-size: 44px;
-  font-family: "Cinzel Deco", Palatino Linotype, Palatino, serif;
-  color: var(--gold-soft);
-  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+  margin: 4px 0 0;
+  letter-spacing: 0.18em;
+  font-size: 40px;
+  font-family: "Cinzel Deco", Cinzel, Palatino Linotype, Palatino, serif;
+  color: var(--ink);
+  text-shadow: 0 1px 0 #fff6d8;
 }
 
 #menu-ver {
-  margin: 10px 0 18px;
-  color: var(--muted);
+  margin: 8px 0 16px;
+  color: #6a4e32;
+  font-size: 12px;
 }
 
 #menu-home,
@@ -485,49 +529,70 @@ button {
 #menu-diff {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+}
+
+#menu p {
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: 0.08em;
 }
 
 #menu-home button,
 #menu-back,
-#menu-diff-back {
-  min-width: 180px;
-  padding: 14px 22px;
+#menu-diff-back,
+.bot-picks button {
+  min-width: 0;
+  width: 100%;
+  padding: 12px 16px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
+  font-family: Cinzel, Palatino Linotype, Palatino, serif;
+  font-size: 13px;
+  color: var(--ink);
+  background: linear-gradient(180deg, #fbf6e6, #ead7b0);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 1px #fff6d8,
+    0 2px 0 #8a6a2f;
+}
+
+.bot-picks {
+  display: flex;
+  gap: 8px;
+}
+
+.bot-picks button {
+  min-width: 0;
+  flex: 1;
+  padding: 12px 0;
 }
 
 #start-btn {
-  background: linear-gradient(180deg, #e0c36a, #b68a22);
-  border-color: var(--gold-soft);
+  background: linear-gradient(180deg, #f3e2b3, #d7b56a);
+  border-color: #b68a22;
   color: var(--ink);
 }
 
 #menu-mute {
   position: absolute;
   z-index: 2;
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  min-width: 140px;
-  background: transparent;
-  border-color: var(--line);
-  color: var(--muted);
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  min-width: 148px;
+  background: linear-gradient(180deg, #fbf6e6, #ead7b0);
+  border: 2px solid var(--gold);
+  color: var(--ink);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 11px;
+  font-family: Cinzel, Palatino Linotype, Palatino, serif;
 }
 
 #menu-mute.muted {
-  color: #8a6a2f;
-}
-
-.bot-picks {
-  display: flex;
-  gap: 10px;
-}
-
-.bot-picks button {
-  min-width: 56px;
+  opacity: 0.7;
 }
 
 .end-actions {
@@ -552,6 +617,6 @@ body.playing #filters {
   margin: 0;
   font-size: 42px;
   letter-spacing: 0.12em;
-  font-family: "Cinzel Deco", Palatino Linotype, Palatino, serif;
+  font-family: "Cinzel Deco", Cinzel, Palatino Linotype, Palatino, serif;
   color: var(--gold-soft);
 }
