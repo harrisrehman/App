@@ -524,11 +524,11 @@ const aims = assignGunnerAims(
 assert(new Set(aims).size === 3, "gunners split unique targets");
 assert(aims[0] === 10 && aims[1] === 11 && aims[2] === 12, "nearest unique first");
 
-function shouldRetreat(d, close = 40) {
-  return d <= close;
+function shouldRetreat(_d, _close = 40) {
+  return false;
 }
 assert(!shouldRetreat(80), "hold the ring at range");
-assert(shouldRetreat(40), "retreat only when close");
+assert(!shouldRetreat(40), "gunners stay on the ring");
 
 function orbitSpot(i, n, clock, R, orbit = 0.26) {
   const ang = clock * orbit + (i / n) * Math.PI * 2;

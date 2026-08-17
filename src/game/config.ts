@@ -16,7 +16,7 @@ export const COLORS = {
   line: "#ffffff",
 } as const;
 
-export const ARMY_SPEED = 62;
+export const ARMY_SPEED = 47;
 export const SPAWN_INTERVAL = 5;
 export const BASE_HEALTH = 10;
 export const SOLDIER_HEALTH = 1;
@@ -95,7 +95,6 @@ export const DEFENSE_FIRE = 2;
 export const DEFENSE_SHOT_SPEED = 520;
 export const DEFENSE_HIT = 18;
 export const GUNNER_ORBIT = 0.26;
-export const GUNNER_CLOSE = 40;
 export const GUNNER_STEER = 12;
 export const GUNNER_BARREL = 18;
 export const GUNNER_BARREL_W = 5.4;

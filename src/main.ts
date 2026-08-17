@@ -350,9 +350,7 @@ function paintGunnerFilter(btn: HTMLButtonElement): void {
   const barrel = document.createElement("span");
   barrel.className = "gunner-barrel";
   glyph.append(body, barrel);
-  const label = document.createElement("span");
-  label.textContent = "Gunners";
-  btn.append(glyph, label);
+  btn.append(glyph);
 }
 
 function ensureFilterCounts(): void {

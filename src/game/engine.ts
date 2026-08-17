@@ -11,7 +11,6 @@ import {
   DEFENSE_HIT,
   DEFENSE_SHOT_SPEED,
   GUNNER_BARREL,
-  GUNNER_CLOSE,
   GUNNER_ORBIT,
   GUNNER_STEER,
   WALL_BASE_PAD,
@@ -828,23 +827,6 @@ export class Game {
     };
   }
 
-  private clampInRing(s: Soldier, home: Territory): void {
-    const R = perimeterRadius(home);
-    const d = dist(s, home.center);
-    const inner = Math.max(home.radius * 0.72, 18);
-    if (d < 0.001) {
-      s.x = home.center.x + inner;
-      s.y = home.center.y;
-      return;
-    }
-    let rad = d;
-    if (d > R) rad = R;
-    else if (d < inner) rad = inner;
-    else return;
-    s.x = home.center.x + ((s.x - home.center.x) / d) * rad;
-    s.y = home.center.y + ((s.y - home.center.y) / d) * rad;
-  }
-
   private soldierVel(s: Soldier): Point {
     if (s.state === "march" && s.toId !== null) {
       const dest = this.territories[s.toId];
@@ -896,28 +878,17 @@ export class Game {
     const home = this.territories[s.homeId];
     if (!home || home.owner !== s.owner) return;
     const foe = s.aimId != null ? this.soldiers.find((o) => o.id === s.aimId) ?? null : null;
-    const close = foe != null && dist(s, foe) <= GUNNER_CLOSE;
     const step = ARMY_SPEED * dt;
-    if (close && foe) {
-      const dx = s.x - foe.x;
-      const dy = s.y - foe.y;
-      const d = Math.hypot(dx, dy) || 1;
-      s.x += (dx / d) * step;
-      s.y += (dy / d) * step;
-      s.state = "defend";
-      this.clampInRing(s, home);
+    const spot = this.orbitSpot(s, home);
+    const d = dist(s, spot);
+    if (d <= step) {
+      s.x = spot.x;
+      s.y = spot.y;
     } else {
-      const spot = this.orbitSpot(s, home);
-      const d = dist(s, spot);
-      if (d <= step) {
-        s.x = spot.x;
-        s.y = spot.y;
-      } else {
-        s.x += ((spot.x - s.x) / d) * step;
-        s.y += ((spot.y - s.y) / d) * step;
-      }
-      s.state = foe ? "defend" : "idle";
+      s.x += ((spot.x - s.x) / d) * step;
+      s.y += ((spot.y - s.y) / d) * step;
     }
+    s.state = foe ? "defend" : "idle";
     if (foe) {
       const aim = this.aimPoint(s, foe);
       this.faceToward(s, aim.x, aim.y);
