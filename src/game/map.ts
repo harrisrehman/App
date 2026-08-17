@@ -14,7 +14,7 @@ import {
 } from "./config";
 import { dist } from "./geo";
 import { mulberry32, randInt } from "./rng";
-import { BOTS, type BaseShape, type BotId, type Owner, type Point, type Territory } from "./types";
+import { BOTS, type BaseShape, type BotId, type Difficulty, type Owner, type Point, type Territory } from "./types";
 
 const MIN_GAP = BASE_GAP;
 const GAP_FLOOR = 2 * ringRadius(BASE_RADIUS * 0.95) + RING_GAP;
@@ -191,9 +191,16 @@ function pickStarts(centers: Point[], rng: () => number, count: number): number[
   return picked;
 }
 
-export function createMap(seed = 20260815, bots = 1): Territory[] {
+function baseCountRange(difficulty: Difficulty): { min: number; max: number } {
+  if (difficulty === "easy") return { min: 8, max: 10 };
+  if (difficulty === "hard") return { min: 16, max: 20 };
+  return { min: BASE_COUNT_MIN, max: BASE_COUNT_MAX };
+}
+
+export function createMap(seed = 20260815, bots = 1, difficulty: Difficulty = "medium"): Territory[] {
   const rng = mulberry32(seed);
-  const n = randInt(rng, BASE_COUNT_MIN, BASE_COUNT_MAX);
+  const { min, max } = baseCountRange(difficulty);
+  const n = randInt(rng, min, max);
   const centers = placeCenters(rng, n);
 
   const territories: Territory[] = centers.map((c, id) => {

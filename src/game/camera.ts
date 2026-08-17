@@ -12,7 +12,7 @@ export type Camera = {
 };
 
 export function minScale(width: number, height: number): number {
-  return Math.max(width / WORLD_W, height / WORLD_H);
+  return Math.min(width / WORLD_W, height / WORLD_H);
 }
 
 export function fitCamera(width: number, height: number): Camera {

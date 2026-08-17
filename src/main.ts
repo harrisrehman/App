@@ -591,6 +591,7 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   const cam: Camera = fitCamera(1, 1);
   let shownWinner = false;
   let alive = true;
+  let snapFullMap = true;
 
   function resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -604,10 +605,11 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     const next = fitCamera(w, h);
     cam.width = next.width;
     cam.height = next.height;
-    if (cam.scale <= 0.001) {
+    if (snapFullMap) {
       cam.scale = next.scale;
       cam.ox = next.ox;
       cam.oy = next.oy;
+      snapFullMap = false;
     }
     clampCamera(cam);
   }
@@ -628,6 +630,8 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     shownWinner = false;
     endScreen.classList.add("hidden");
     hideError();
+    snapFullMap = true;
+    resize();
   };
 
   const syncWall = (): void => {

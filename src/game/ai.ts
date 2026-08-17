@@ -40,7 +40,12 @@ export class Commander {
     if (game.winner) return;
     this.age += dt;
     if (this.defend(game)) {
-      const [a, b] = game.difficulty === "hard" ? [0.35, 0.6] : game.difficulty === "easy" ? [0.9, 1.4] : [0.55, 0.95];
+      const [a, b] =
+        game.difficulty === "hard"
+          ? [0.35, 0.6]
+          : game.difficulty === "easy"
+            ? [1.4, 2.4]
+            : [0.55, 0.95];
       this.wait = randRange(game.rng, a, b);
       return;
     }
@@ -50,9 +55,14 @@ export class Commander {
       game.difficulty === "hard"
         ? [0.45, 0.9]
         : game.difficulty === "easy"
-          ? [1.8, 3.2]
+          ? [3.5, 6.2]
           : [AI_MIN_WAIT, AI_MAX_WAIT];
     this.wait = randRange(game.rng, lo, hi);
+    if (game.difficulty === "easy") {
+      this.arm(game);
+      this.easyPlan(game);
+      return;
+    }
     this.arm(game);
     this.plan(game);
   }
@@ -121,6 +131,11 @@ export class Commander {
       .filter((t) => this.spare(game, t) > 0)
       .sort((a, b) => dist(a.center, dest.center) - dist(b.center, dest.center));
     if (ranked.length === 0) return null;
+    if (game.difficulty === "easy") {
+      const from = ranked[0];
+      if (this.spare(game, from) < need) return null;
+      return [from];
+    }
     const picked: Territory[] = [];
     let got = 0;
     const near = dist(ranked[0].center, dest.center);
@@ -143,7 +158,8 @@ export class Commander {
   }
 
   private commit(game: Game, dest: Territory, froms: Territory[]): boolean {
-    if (dest.id === this.lastTarget && this.repeats >= 3) return false;
+    const repeatCap = game.difficulty === "easy" ? 1 : 3;
+    if (dest.id === this.lastTarget && this.repeats >= repeatCap) return false;
     let sent = false;
     for (const from of froms) {
       if (this.launch(game, from, dest)) sent = true;
@@ -168,9 +184,9 @@ export class Commander {
   }
 
   private arm(game: Game): void {
-    const keep = game.difficulty === "easy" ? 10 : game.difficulty === "hard" ? 2 : 5;
-    const cap = game.difficulty === "easy" ? 1 : game.difficulty === "hard" ? 2 : 1;
-    const maxGuns = game.difficulty === "easy" ? 1 : game.difficulty === "hard" ? 8 : 3;
+    const keep = game.difficulty === "easy" ? 12 : game.difficulty === "hard" ? 2 : 5;
+    const cap = game.difficulty === "easy" ? 0 : game.difficulty === "hard" ? 2 : 1;
+    const maxGuns = game.difficulty === "easy" ? 0 : game.difficulty === "hard" ? 8 : 3;
     let made = 0;
     const lands = this.lands(game)
       .filter((t) => !this.threatened(game, t))
@@ -181,6 +197,29 @@ export class Commander {
       if (guns >= maxGuns) continue;
       if (game.freeGarrison(t.id).length < DEFENSE_COST + keep) continue;
       if (game.convertGunner(t.id, this.self)) made += 1;
+    }
+  }
+
+  private easyPlan(game: Game): void {
+    if (game.rng() < 0.45) return;
+    const grey = this.bestGrey(game);
+    if (grey && game.rng() < 0.75) {
+      const home = this.closest(this.lands(game), grey);
+      if (home && dist(home.center, grey.center) < 420) {
+        if (this.launch(game, home, grey)) return;
+      }
+    }
+    const mine = this.lands(game);
+    if (mine.length === 0) return;
+    const foes = [...this.foes(game)].sort(
+      (a, b) => dist(a.center, mine[0].center) - dist(b.center, mine[0].center),
+    );
+    for (const to of foes) {
+      const home = this.closest(mine, to);
+      if (!home) continue;
+      if (dist(home.center, to.center) > 380) continue;
+      if (this.have(game, to) > 4) continue;
+      if (this.launch(game, home, to)) return;
     }
   }
 
@@ -239,6 +278,7 @@ export class Commander {
   }
 
   private contest(game: Game): boolean {
+    if (game.difficulty === "easy") return false;
     const mine = this.lands(game);
     if (mine.length === 0) return false;
     let best: { dest: Territory; froms: Territory[]; score: number } | null = null;
@@ -263,6 +303,7 @@ export class Commander {
   }
 
   private snatch(game: Game): boolean {
+    if (game.difficulty === "easy") return false;
     const mine = this.lands(game);
     if (mine.length === 0) return false;
     let best: { dest: Territory; froms: Territory[]; score: number } | null = null;

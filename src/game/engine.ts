@@ -155,14 +155,14 @@ export class Game {
     this.bots = Math.max(1, Math.min(4, bots));
     this.difficulty = difficulty;
     this.rng = mulberry32(seed);
-    this.territories = createMap(seed, this.bots);
+    this.territories = createMap(seed, this.bots, this.difficulty);
     this.seedOwned();
   }
 
   restart(seed = Date.now(), bots = this.bots): void {
     this.bots = Math.max(1, Math.min(4, bots));
     this.rng = mulberry32(seed);
-    this.territories = createMap(seed, this.bots);
+    this.territories = createMap(seed, this.bots, this.difficulty);
     this.soldiers = [];
     this.shots = [];
     this.armies = [];
