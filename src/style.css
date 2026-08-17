@@ -88,7 +88,7 @@ body {
 .side,
 #filters {
   pointer-events: auto;
-  position: fixed;
+  position: absolute;
   left: 0;
   top: 50%;
   transform: translateY(-52%);
@@ -433,13 +433,16 @@ button {
 }
 
 body.menu #game,
-body.menu #hud,
-body.menu #filters {
+body.menu #hud {
   display: none;
 }
 
 body.playing #menu {
   display: none;
+}
+
+body.playing #filters {
+  display: flex !important;
 }
 
 #result {

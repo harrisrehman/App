@@ -82,8 +82,9 @@ function ensureHud(): void {
     shop.className = "bottom";
     hud.appendChild(shop);
   }
-  if (!hud.querySelector("#filters")) {
-    const filters = document.createElement("nav");
+  let filters = document.querySelector("#filters");
+  if (!filters) {
+    filters = document.createElement("nav");
     filters.id = "filters";
     filters.className = "side";
     const items: [SendFilter, string][] = [
@@ -98,10 +99,11 @@ function ensureHud(): void {
       if (id === "gunner") paintGunnerFilter(btn);
       filters.appendChild(btn);
     }
-    document.body.appendChild(filters);
   }
-  const filtersEl = document.querySelector("#filters");
-  if (filtersEl && filtersEl.parentElement !== document.body) document.body.appendChild(filtersEl);
+  hud.appendChild(filters);
+  for (const extra of document.querySelectorAll("#filters")) {
+    if (extra !== filters) extra.remove();
+  }
   ensureFilterCounts();
   const gunnerBtn = document.querySelector<HTMLButtonElement>("#filters [data-filter='gunner']");
   if (gunnerBtn) paintGunnerFilter(gunnerBtn);
