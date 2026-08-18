@@ -29,7 +29,7 @@ html = html.replace(/<script>[\s\S]*?<\/script>/g, (block) => {
   return "";
 });
 scripts.sort((a, b) => {
-  const rank = (block) => (block.includes("__annexOtaShell") ? 0 : 1);
+  const rank = (block) => (block.includes("__annexBootstrap") ? 0 : 1);
   return rank(a) - rank(b);
 });
 if (scripts.length && html.includes("</body>")) {
