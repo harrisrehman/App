@@ -1,18 +1,17 @@
 import { App } from "@capacitor/app";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
-import { REMOTE_THEME_URL, THEME_URL } from "./config";
+import { CDN_THEME_URL, REMOTE_THEME_URL, THEME_URL } from "./config";
 import { APP_VERSION } from "../version";
 
 const PLAYERS_KEY = "__annexThemePlayers";
+const THEME_ID = "menu-theme";
 
 let audio: HTMLAudioElement | null = null;
-let themeBlobUrl: string | null = null;
-let themeLoading: Promise<string | null> | null = null;
+let sourceIdx = 0;
 let menuOn = true;
 let appActive = true;
 let fade: number | null = null;
 let lifecycleBound = false;
-let unlocked = false;
 
 function players(): HTMLAudioElement[] {
   return (window[PLAYERS_KEY] as HTMLAudioElement[] | undefined) ?? [];
@@ -28,13 +27,17 @@ function track(el: HTMLAudioElement): HTMLAudioElement {
   return el;
 }
 
+function canUseCapacitorHttp(): boolean {
+  return Capacitor.isNativePlatform() && location.protocol !== "blob:";
+}
+
 function themeSources(): string[] {
   const bust = `b=${APP_VERSION.build}&t=${Date.now()}`;
   const out: string[] = [];
   if (location.protocol !== "blob:") {
     out.push(new URL(`${THEME_URL}?${bust}`, location.href).href);
   }
-  out.push(`${REMOTE_THEME_URL}?${bust}`);
+  out.push(`${REMOTE_THEME_URL}?${bust}`, `${CDN_THEME_URL}?${bust}`);
   return out;
 }
 
@@ -42,8 +45,7 @@ function bytesFromHttp(data: unknown): Uint8Array | null {
   if (data instanceof ArrayBuffer) return new Uint8Array(data);
   if (data instanceof Uint8Array) return data;
   if (typeof data === "string") {
-    const raw = data.replace(/\s/g, "");
-    const bin = atob(raw);
+    const bin = atob(data.replace(/\s/g, ""));
     const out = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
@@ -51,43 +53,77 @@ function bytesFromHttp(data: unknown): Uint8Array | null {
   return null;
 }
 
-async function fetchThemeBytes(url: string): Promise<Uint8Array | null> {
+async function downloadThemeBlob(url: string): Promise<string | null> {
   try {
-    if (Capacitor.isNativePlatform()) {
-      const res = await CapacitorHttp.get({
-        url,
-        responseType: "arraybuffer",
-        readTimeout: 120000,
-        connectTimeout: 15000,
-      });
-      if (res.status < 200 || res.status >= 300) return null;
-      return bytesFromHttp(res.data);
-    }
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return new Uint8Array(await res.arrayBuffer());
+    const res = await CapacitorHttp.get({
+      url,
+      responseType: "arraybuffer",
+      readTimeout: 120000,
+      connectTimeout: 15000,
+    });
+    if (res.status < 200 || res.status >= 300) return null;
+    const bytes = bytesFromHttp(res.data);
+    if (!bytes || bytes.length < 10000) return null;
+    return URL.createObjectURL(new Blob([Uint8Array.from(bytes)], { type: "audio/mpeg" }));
   } catch {
     return null;
   }
 }
 
-async function loadThemeBlob(): Promise<string | null> {
-  if (themeBlobUrl) return themeBlobUrl;
-  if (themeLoading) return themeLoading;
-  themeLoading = (async () => {
-    for (const url of themeSources()) {
-      const bytes = await fetchThemeBytes(url);
-      if (!bytes || bytes.length < 10000) continue;
-      themeBlobUrl = URL.createObjectURL(new Blob([Uint8Array.from(bytes)], { type: "audio/mpeg" }));
-      return themeBlobUrl;
-    }
-    return null;
-  })();
-  try {
-    return await themeLoading;
-  } finally {
-    themeLoading = null;
+function mountAudio(el: HTMLAudioElement): HTMLAudioElement {
+  el.id = THEME_ID;
+  el.loop = true;
+  el.preload = "auto";
+  el.volume = 0;
+  el.setAttribute("playsinline", "");
+  el.style.display = "none";
+  const old = document.getElementById(THEME_ID);
+  old?.remove();
+  document.body.appendChild(el);
+  return track(el);
+}
+
+function nextSource(): string | null {
+  const list = themeSources();
+  if (sourceIdx >= list.length) return null;
+  const url = list[sourceIdx] ?? null;
+  sourceIdx += 1;
+  return url;
+}
+
+function armAudio(el: HTMLAudioElement, url: string): void {
+  el.src = url;
+  el.load();
+}
+
+async function blobFallback(): Promise<string | null> {
+  if (!canUseCapacitorHttp()) return null;
+  for (const url of themeSources()) {
+    const blob = await downloadThemeBlob(url);
+    if (blob) return blob;
   }
+  return null;
+}
+
+function createThemeElement(): HTMLAudioElement {
+  const el = mountAudio(new Audio());
+  const url = nextSource();
+  if (url) armAudio(el, url);
+  el.addEventListener("error", () => {
+    void retryNextSource();
+  });
+  return el;
+}
+
+async function retryNextSource(): Promise<void> {
+  const url = nextSource();
+  if (!audio) return;
+  if (url) {
+    armAudio(audio, url);
+    return;
+  }
+  const blob = await blobFallback();
+  if (blob && audio) armAudio(audio, blob);
 }
 
 function clearFade(): void {
@@ -100,6 +136,7 @@ function disposeAudio(el: HTMLAudioElement | null | undefined): void {
   el.pause();
   el.removeAttribute("src");
   el.load();
+  el.remove();
 }
 
 export function stopAllThemeAudio(): void {
@@ -108,24 +145,19 @@ export function stopAllThemeAudio(): void {
   window[PLAYERS_KEY] = [];
   disposeAudio(audio);
   audio = null;
+  sourceIdx = 0;
+  document.getElementById(THEME_ID)?.remove();
   window.__annexStopAllMedia?.();
-  for (const el of document.querySelectorAll("audio")) {
-    disposeAudio(el);
-  }
 }
 
-async function ensureAudio(): Promise<HTMLAudioElement | null> {
-  const src = await loadThemeBlob();
-  if (!src) return null;
-  if (audio && audio.src !== src) {
-    disposeAudio(audio);
-    audio = null;
-  }
+function ensureAudio(): HTMLAudioElement {
   if (!audio) {
-    audio = track(new Audio(src));
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.volume = 0;
+    try {
+      localStorage.removeItem("annex-theme-mute");
+    } catch {
+      /* ignore */
+    }
+    audio = createThemeElement();
   }
   return audio;
 }
@@ -156,20 +188,14 @@ function startFade(): void {
   fade = window.setTimeout(tickFade, 16);
 }
 
-async function playIfNeeded(): Promise<void> {
-  const a = await ensureAudio();
-  if (!a || !menuOn || !appActive) return;
-  if (a.paused) {
-    try {
-      await a.play();
-    } catch {
-      /* wait for a tap */
-    }
-  }
-}
-
-export function stopTheme(): void {
-  stopAllThemeAudio();
+function playNow(): void {
+  const a = ensureAudio();
+  if (!menuOn || !appActive) return;
+  a.volume = 0.72;
+  void a.play().catch(() => {
+    /* needs tap */
+  });
+  startFade();
 }
 
 function onBackground(): void {
@@ -180,8 +206,7 @@ function onBackground(): void {
 
 function onForeground(): void {
   appActive = true;
-  void playIfNeeded();
-  startFade();
+  if (menuOn) playNow();
 }
 
 function bindLifecycle(): void {
@@ -197,67 +222,31 @@ function bindLifecycle(): void {
   });
 }
 
-async function primeTheme(): Promise<void> {
-  try {
-    localStorage.removeItem("annex-theme-mute");
-  } catch {
-    /* ignore */
-  }
-  const a = await ensureAudio();
-  if (!a) return;
-  a.addEventListener(
-    "canplaythrough",
-    () => {
-      void playIfNeeded();
-      startFade();
-    },
-    { once: true },
-  );
-  void playIfNeeded();
-  startFade();
-}
-
 function unlockTheme(): void {
-  unlocked = true;
-  void (async () => {
-    await primeTheme();
-    if (!audio) return;
-    if (audio.paused) {
-      try {
-        await audio.play();
-      } catch {
-        /* ignore */
-      }
-    }
-    if (unlocked && menuOn && appActive) {
-      audio.volume = Math.max(audio.volume, 0.72);
-      startFade();
-    }
-  })();
+  playNow();
 }
 
 export function bindTheme(): void {
-  stopAllThemeAudio();
   window.__annexThemeStop = stopAllThemeAudio;
+  ensureAudio();
   bindLifecycle();
-  const unlock = (): void => {
-    unlockTheme();
-  };
-  document.addEventListener("pointerdown", unlock, true);
-  document.addEventListener("touchstart", unlock, true);
-  document.addEventListener("click", unlock, true);
-  void primeTheme();
+  document.addEventListener("pointerdown", unlockTheme, true);
+  document.addEventListener("touchstart", unlockTheme, { capture: true, passive: true });
+  document.addEventListener("click", unlockTheme, true);
 }
 
 export function themeToMenu(): void {
   menuOn = true;
-  void playIfNeeded();
-  startFade();
+  playNow();
 }
 
 export function themeToMatch(): void {
   menuOn = false;
   startFade();
+}
+
+export function stopTheme(): void {
+  stopAllThemeAudio();
 }
 
 export function toggleThemeMute(): boolean {

@@ -106,6 +106,9 @@ export const THEME_URL = "./menu/theme.mp3";
 export const REMOTE_THEME_URL =
   "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/menu/theme.mp3";
 
+export const CDN_THEME_URL =
+  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/menu/theme.mp3";
+
 export const UPDATE_SOURCES = [
   {
     versionUrl:

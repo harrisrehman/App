@@ -5,7 +5,7 @@ import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { bindTheme, stopAllThemeAudio, themeToMatch, themeToMenu } from "./game/audio";
+import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
 import { applyUpdate, consumeJustUpdated, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
@@ -713,7 +713,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
 function boot(): void {
   try {
-    stopAllThemeAudio();
     dropStalePersist();
     if (restorePersisted()) return;
     ensureHud();

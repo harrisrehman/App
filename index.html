@@ -122,10 +122,6 @@
         if (window.__annexMediaPatched) return;
         window.__annexMediaPatched = true;
         window.__annexThemePlayers = window.__annexThemePlayers || [];
-        try {
-          window.__annexThemeStop && window.__annexThemeStop();
-          window.__annexStopAllMedia && window.__annexStopAllMedia();
-        } catch (e) {}
         var NativeAudio = window.Audio;
         window.Audio = function () {
           var el = new NativeAudio(arguments[0], arguments[1]);
@@ -133,29 +129,10 @@
           return el;
         };
         window.Audio.prototype = NativeAudio.prototype;
-        var play = HTMLMediaElement.prototype.play;
-        HTMLMediaElement.prototype.play = function () {
-          var self = this;
-          var list = window.__annexThemePlayers;
-          for (var i = 0; i < list.length; i++) {
-            var el = list[i];
-            if (el && el !== self) {
-              try {
-                el.pause();
-                el.removeAttribute("src");
-                el.load();
-              } catch (e) {}
-            }
-          }
-          window.__annexThemePlayers = [self];
-          return play.apply(self, arguments);
-        };
         window.__annexStopAllMedia = function () {
-          var seen = new Set();
           for (var i = 0; i < window.__annexThemePlayers.length; i++) {
             var el = window.__annexThemePlayers[i];
-            if (!el || seen.has(el)) continue;
-            seen.add(el);
+            if (!el) continue;
             try {
               el.pause();
               el.removeAttribute("src");
