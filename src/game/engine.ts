@@ -537,6 +537,7 @@ export class Game {
     for (const s of pool) {
       s.toId = null;
       s.state = "return";
+      this.faceToward(s, s.restX, s.restY);
     }
     this.guideWall(wall);
     this.wallMode = false;
@@ -754,6 +755,7 @@ export class Game {
   private sendHome(s: Soldier): void {
     s.toId = null;
     s.state = "return";
+    this.faceToward(s, s.restX, s.restY);
   }
 
   private gunnersAt(homeId: number): Soldier[] {
@@ -1025,6 +1027,7 @@ export class Game {
         s.y = dest.center.y;
         return;
       }
+      if (d > 20) this.faceToward(s, dest.center.x, dest.center.y);
       const step = ARMY_SPEED * dt;
       s.x += ((dest.center.x - s.x) / d) * step;
       s.y += ((dest.center.y - s.y) / d) * step;

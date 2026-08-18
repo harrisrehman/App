@@ -162,6 +162,9 @@ function drawSpriteRect(
 }
 
 function soldierMoveAngle(s: Soldier, game: Game): number {
+  if (s.state === "march" || s.state === "return") {
+    if (Math.abs(s.faceX) + Math.abs(s.faceY) > 0.01) return Math.atan2(s.faceY, s.faceX);
+  }
   if (s.state === "march" && s.toId !== null) {
     const dest = game.territories[s.toId];
     if (dest) return Math.atan2(dest.center.y - s.y, dest.center.x - s.x);
@@ -331,7 +334,7 @@ function drawSoldierSprite(
   game: Game,
   scale = 1,
 ): void {
-  const size = 50 * scale;
+  const size = 37.5 * scale;
   const runSheet = ensureSoldierRunSheet();
   const staticArt = ensureSoldierArt();
 
