@@ -7,8 +7,8 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.5.69",
-  build: 1787032447903,
+  version: "0.5.70",
+  build: 1787033313274,
   apkUrl: "https://github.com/harrisrehman/App/releases/download/latest/annex.apk",
 };
 

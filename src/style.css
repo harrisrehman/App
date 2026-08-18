@@ -94,13 +94,36 @@ body {
 }
 
 #shop button {
-  min-width: 92px;
+  min-width: 110px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  border-radius: 16px;
-  padding: 10px 16px;
+  border-radius: 4px;
+  padding: 10px 18px;
+  background: rgba(26, 18, 12, 0.72);
+  border: 1px solid var(--gold);
+  position: relative;
+}
+
+#shop button::before,
+#shop button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--gold);
+  transform: translateY(-50%) rotate(45deg);
+  opacity: 0.85;
+}
+
+#shop button::before {
+  left: -6px;
+}
+
+#shop button::after {
+  right: -6px;
 }
 
 .side,
@@ -141,7 +164,7 @@ body {
   height: 40px !important;
   flex: 0 0 40px !important;
   box-sizing: border-box;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 0 !important;
   margin: 0;
   display: flex !important;
@@ -150,6 +173,10 @@ body {
   letter-spacing: 0 !important;
   line-height: 1;
   overflow: hidden;
+  background: rgba(26, 18, 12, 0.55) !important;
+  border: 1px solid var(--gold) !important;
+  color: var(--gold-soft) !important;
+  box-shadow: none !important;
 }
 
 #filters .filter-btn[data-filter="all"] {
@@ -165,24 +192,50 @@ body {
 
 .soldier-dot {
   display: block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #4a9eff;
+  width: 14px;
+  height: 14px;
+  position: relative;
   flex: 0 0 auto;
 }
 
-#filters .filter-btn.on {
-  background: var(--player) !important;
-  border-color: #ffffff !important;
-  color: #0e0e10 !important;
-  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.55);
+.soldier-dot::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  box-shadow: 7px 4px 0 -1px var(--gold);
 }
 
-#filters .filter-btn.on .soldier-dot,
-#filters .filter-btn.on .gunner-body,
-#filters .filter-btn.on .gunner-barrel {
-  background: #0e0e10;
+.soldier-dot::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 7px;
+  width: 8px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 1px;
+  transform: rotate(-8deg);
+}
+
+#filters .filter-btn.on {
+  background: rgba(197, 161, 90, 0.22) !important;
+  border-color: var(--gold-soft) !important;
+  color: var(--gold-soft) !important;
+  box-shadow: 0 0 0 1px rgba(232, 212, 138, 0.35) !important;
+}
+
+#filters .filter-btn.on .soldier-dot::before {
+  background: var(--gold-soft);
+  box-shadow: 7px 4px 0 -1px #8a7860;
+}
+
+#filters .filter-btn.on .soldier-dot::after {
+  background: var(--gold-soft);
 }
 
 .gunner-glyph {
@@ -193,24 +246,24 @@ body {
 
 .gunner-body {
   display: block;
-  width: 14px;
-  height: 14px;
-  background: #4a9eff;
-  border-radius: 50%;
+  width: 12px;
+  height: 8px;
+  background: var(--gold-soft);
+  border-radius: 2px;
 }
 
 .gunner-barrel {
   display: block;
   width: 8px;
-  height: 4px;
+  height: 3px;
   margin-left: -1px;
-  background: #4a9eff;
+  background: var(--gold);
   border-radius: 0 2px 2px 0;
 }
 
 #filters .filter-btn.on .gunner-body,
 #filters .filter-btn.on .gunner-barrel {
-  background: #0e0e10;
+  background: var(--gold-soft);
 }
 
 .filter-count {
@@ -274,10 +327,10 @@ body {
 
 button {
   appearance: none;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, #2a1c12, var(--panel));
+  border: 1px solid var(--gold);
+  background: rgba(26, 18, 12, 0.65);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 10px 14px;
   font: inherit;
   font-weight: 700;
@@ -295,6 +348,14 @@ button {
 #wall-btn.on {
   border-color: var(--player);
   color: var(--player);
+  box-shadow: 0 0 0 1px rgba(74, 158, 255, 0.45);
+}
+
+#update-btn,
+#wall-btn {
+  background: rgba(26, 18, 12, 0.55);
+  border-color: var(--gold);
+  color: var(--gold-soft);
 }
 
 #toast {
