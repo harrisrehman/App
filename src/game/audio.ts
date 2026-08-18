@@ -1,5 +1,5 @@
 import { App } from "@capacitor/app";
-import { REMOTE_THEME_URL } from "./config";
+import { REMOTE_THEME_URL, THEME_URL } from "./config";
 import { APP_VERSION } from "../version";
 
 const MUTE_KEY = "annex-theme-mute";
@@ -41,8 +41,10 @@ function track(el: HTMLAudioElement): HTMLAudioElement {
   return el;
 }
 
-function remoteThemeSrc(): string {
-  return `${REMOTE_THEME_URL}?b=${APP_VERSION.build}`;
+function themeSrc(): string {
+  const bust = `?b=${APP_VERSION.build}`;
+  const base = location.protocol === "blob:" ? REMOTE_THEME_URL : THEME_URL;
+  return `${base}${bust}`;
 }
 
 function clearFade(): void {
@@ -70,7 +72,7 @@ export function stopAllThemeAudio(): void {
 }
 
 function ensureAudio(): HTMLAudioElement {
-  const want = remoteThemeSrc();
+  const want = themeSrc();
   const base = want.split("?")[0] ?? want;
   if (audio && !audio.src.includes(base)) {
     disposeAudio(audio);
@@ -149,14 +151,9 @@ function bindLifecycle(): void {
   });
 }
 
-function canPlayTheme(): boolean {
-  return location.protocol === "blob:";
-}
-
 export function bindTheme(): void {
   stopAllThemeAudio();
   window.__annexThemeStop = stopAllThemeAudio;
-  if (!canPlayTheme()) return;
   ensureAudio();
   bindLifecycle();
   const unlock = (): void => {
@@ -170,7 +167,6 @@ export function bindTheme(): void {
 }
 
 export function themeToMenu(): void {
-  if (!canPlayTheme()) return;
   menuOn = true;
   playIfNeeded();
   startFade();
