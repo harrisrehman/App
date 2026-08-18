@@ -155,8 +155,10 @@ function drawSpriteRect(
   rect: SpriteRect,
   size: number,
 ): void {
-  const drawH = size * (rect.h / rect.w);
-  ctx.drawImage(sheet, rect.x, rect.y, rect.w, rect.h, -size / 2, -drawH / 2, size, drawH);
+  const fit = size / Math.max(rect.w, rect.h);
+  const drawW = rect.w * fit;
+  const drawH = rect.h * fit;
+  ctx.drawImage(sheet, rect.x, rect.y, rect.w, rect.h, -drawW / 2, -drawH / 2, drawW, drawH);
 }
 
 function soldierMoveAngle(s: Soldier, game: Game): number {
@@ -171,7 +173,7 @@ function soldierMoveAngle(s: Soldier, game: Game): number {
 }
 
 function soldierRunning(s: Soldier): boolean {
-  return s.state === "march" || s.state === "return" || s.state === "eject";
+  return s.state === "march" || s.state === "return";
 }
 
 function runFrameIndex(): number {
@@ -329,8 +331,7 @@ function drawSoldierSprite(
   game: Game,
   scale = 1,
 ): void {
-  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  const size = 50 * pop * scale;
+  const size = 50 * scale;
   const runSheet = ensureSoldierRunSheet();
   const staticArt = ensureSoldierArt();
 

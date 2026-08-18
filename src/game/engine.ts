@@ -74,10 +74,8 @@ export function applyArrival(dest: Territory, army: Army): void {
 let nextSoldierId = 1;
 let nextWallId = 1;
 
-function easeOutBack(t: number): number {
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3;
 }
 
 function spinPoly(poly: Point[], angle: number): Point[] {
@@ -957,7 +955,7 @@ export class Game {
     }
     if (s.state === "eject") {
       s.ejectT = Math.min(1, s.ejectT + dt / 1.05);
-      const k = easeOutBack(s.ejectT);
+      const k = easeOutCubic(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
       if (s.ejectT >= 1) {
