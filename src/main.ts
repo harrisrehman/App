@@ -5,7 +5,7 @@ import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { bindTheme, syncMuteButton, themeToMatch, themeToMenu, toggleThemeMute } from "./game/audio";
+import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
 import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
@@ -194,10 +194,7 @@ function dressMenu(): void {
     frame = document.createElement("div");
     frame.className = "menu-frame";
     const move = [...menu.children].filter(
-      (el) =>
-        !el.classList.contains("menu-stars") &&
-        !el.classList.contains("menu-veil") &&
-        el.id !== "menu-mute",
+      (el) => !el.classList.contains("menu-stars") && !el.classList.contains("menu-veil"),
     );
     for (const kid of move) frame.appendChild(kid);
     menu.appendChild(frame);
@@ -231,10 +228,6 @@ function dressMenu(): void {
     else if (ver) ver.before(tag);
     else frame.prepend(tag);
   }
-  if (!menu.querySelector("#menu-mute")) {
-    menu.appendChild(makeEl("button", "menu-mute", "Sound on"));
-  }
-  syncMuteButton();
 }
 
 function paintMenuMark(el: Element | null): void {
@@ -312,12 +305,6 @@ function onHudClick(e: Event): void {
     e.preventDefault();
     e.stopImmediatePropagation();
     void runUpdate();
-    return;
-  }
-  if (t.id === "menu-mute") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    toggleThemeMute();
     return;
   }
   if (t.id === "start-btn") {
