@@ -28,6 +28,10 @@ html = html.replace(/<script>[\s\S]*?<\/script>/g, (block) => {
   scripts.push(block);
   return "";
 });
+scripts.sort((a, b) => {
+  const rank = (block) => (block.includes("__annexOtaShell") ? 0 : 1);
+  return rank(a) - rank(b);
+});
 if (scripts.length && html.includes("</body>")) {
   html = html.replace("</body>", `${scripts.join("\n")}\n  </body>`);
 }
