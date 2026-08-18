@@ -1,4 +1,4 @@
-import { BASE_ART_URL, COLORS, GUNNER_BARREL, GUNNER_BARREL_W, RING_SPIN, WORLD_H, WORLD_W, rules } from "./config";
+import { BASE_ART_URL, COLORS, RING_SPIN, SOLDIER_ART_URL, WORLD_H, WORLD_W, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -85,8 +85,13 @@ function drawDesertGround(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-let baseArt: HTMLImageElement | null = null;
-let baseArtLoading = false;
+type ArtCache = { img: HTMLImageElement | null; loading: boolean };
+
+const baseCache: ArtCache = { img: null, loading: false };
+const soldierCache: ArtCache = { img: null, loading: false };
+
+/** PNG art faces down-right in canvas space. */
+const SOLDIER_ART_FACING = Math.PI / 4;
 
 function keyBlackBackground(img: HTMLImageElement, done: (out: HTMLImageElement) => void): void {
   const canvas = document.createElement("canvas");
@@ -110,19 +115,28 @@ function keyBlackBackground(img: HTMLImageElement, done: (out: HTMLImageElement)
   out.src = canvas.toDataURL("image/png");
 }
 
-function ensureBaseArt(): HTMLImageElement | null {
-  if (baseArt?.complete && baseArt.naturalWidth > 0) return baseArt;
-  if (baseArtLoading) return null;
-  baseArtLoading = true;
+function ensureArt(url: string, cache: ArtCache): HTMLImageElement | null {
+  if (cache.img?.complete && cache.img.naturalWidth > 0) return cache.img;
+  if (cache.loading) return null;
+  cache.loading = true;
   const img = new Image();
-  img.onload = () => keyBlackBackground(img, (out) => {
-    baseArt = out;
-  });
+  img.onload = () =>
+    keyBlackBackground(img, (out) => {
+      cache.img = out;
+    });
   img.onerror = () => {
-    baseArtLoading = false;
+    cache.loading = false;
   };
-  img.src = BASE_ART_URL;
+  img.src = url;
   return null;
+}
+
+function ensureBaseArt(): HTMLImageElement | null {
+  return ensureArt(BASE_ART_URL, baseCache);
+}
+
+function ensureSoldierArt(): HTMLImageElement | null {
+  return ensureArt(SOLDIER_ART_URL, soldierCache);
 }
 
 function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
@@ -131,7 +145,7 @@ function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
   const owned = t.owner !== "neutral";
   const trim = accent(t.owner);
   const art = ensureBaseArt();
-  const size = r * 2.2;
+  const size = r * 2.35;
 
   if (art?.complete && art.naturalWidth > 0) {
     ctx.drawImage(art, cx - size / 2, cy - size / 2, size, size);
@@ -211,102 +225,51 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
   }
 }
 
-function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
-  const angle = soldierAngle(s);
-  const trim = accent(s.owner);
+function drawSoldierSprite(
+  ctx: CanvasRenderingContext2D,
+  s: Soldier,
+  selected: boolean,
+  scale = 1,
+): void {
+  const angle = s.kind === "gunner" ? Math.atan2(s.faceY, s.faceX) : soldierAngle(s);
+  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
+  const art = ensureSoldierArt();
+  const size = 50 * pop * scale;
+
   ctx.save();
   ctx.translate(s.x, s.y);
-  ctx.rotate(angle);
+  ctx.rotate(angle - SOLDIER_ART_FACING);
 
   ctx.fillStyle = DESERT.shadow;
   ctx.beginPath();
-  ctx.ellipse(2, 3, 7, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, size * 0.18, size * 0.22, size * 0.1, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = DESERT.spear;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-2, 0);
-  ctx.lineTo(16, 0);
-  ctx.stroke();
-  ctx.fillStyle = "#8a7860";
-  ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(12, -2.5);
-  ctx.lineTo(12, 2.5);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = trim;
-  ctx.strokeStyle = DESERT.stoneDark;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(-5, 0.5, 5.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = DESERT.tunic;
-  ctx.beginPath();
-  ctx.ellipse(0, 1, 5, 4.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.helm;
-  ctx.beginPath();
-  ctx.arc(0, -1, 3.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#c8beb0";
-  ctx.beginPath();
-  ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
-  ctx.fill();
+  if (art) {
+    ctx.drawImage(art, -size / 2, -size / 2, size, size);
+  } else {
+    ctx.fillStyle = DESERT.tunic;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   if (selected) {
     ctx.strokeStyle = DESERT.goldSoft;
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.arc(0, 0, size * 0.42, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();
 }
 
+function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
+  drawSoldierSprite(ctx, s, selected, 1);
+}
+
 function drawGunnerUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
-  const angle = Math.atan2(s.faceY, s.faceX);
-  const trim = accent(s.owner);
-  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  ctx.save();
-  ctx.translate(s.x, s.y);
-  ctx.rotate(angle);
-  ctx.scale(pop, pop);
-
-  ctx.fillStyle = DESERT.shadow;
-  ctx.beginPath();
-  ctx.ellipse(2, 3, 8, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.tunic;
-  ctx.beginPath();
-  ctx.ellipse(0, 1, 6, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.helm;
-  ctx.beginPath();
-  ctx.arc(0, -1, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#5a4838";
-  ctx.fillRect(2, -1.5, GUNNER_BARREL * 0.55, GUNNER_BARREL_W * 0.85);
-  ctx.fillStyle = trim;
-  ctx.fillRect(2, -1, GUNNER_BARREL * 0.38, GUNNER_BARREL_W * 0.55);
-
-  if (selected) {
-    ctx.strokeStyle = DESERT.goldSoft;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, 11, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
+  drawSoldierSprite(ctx, s, selected, 1.08);
 }
 
 function soldierPicked(game: Game, s: Soldier): boolean {

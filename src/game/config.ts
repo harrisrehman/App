@@ -110,9 +110,10 @@ export const CDN_THEME_URL =
   "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/menu/theme.mp3";
 
 export const BASE_ART_URL = "./bases/base.png";
+export const SOLDIER_ART_URL = "./units/soldier.png";
 
 export const APK_DOWNLOAD_URL =
-  "https://github.com/harrisrehman/App/releases/download/v0.5.73/annex.apk";
+  "https://github.com/harrisrehman/App/releases/download/v0.5.74/annex.apk";
 
 export const UPDATE_SOURCES = [
   {
