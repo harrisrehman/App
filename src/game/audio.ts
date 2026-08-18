@@ -27,18 +27,13 @@ function track(el: HTMLAudioElement): HTMLAudioElement {
   return el;
 }
 
-function canUseCapacitorHttp(): boolean {
-  return Capacitor.isNativePlatform() && location.protocol !== "blob:";
-}
-
 function themeSources(): string[] {
   const bust = `b=${APP_VERSION.build}&t=${Date.now()}`;
-  const out: string[] = [];
-  if (location.protocol !== "blob:") {
-    out.push(new URL(`${THEME_URL}?${bust}`, location.href).href);
-  }
-  out.push(`${REMOTE_THEME_URL}?${bust}`, `${CDN_THEME_URL}?${bust}`);
-  return out;
+  return [
+    new URL(`${THEME_URL}?${bust}`, location.href).href,
+    `${REMOTE_THEME_URL}?${bust}`,
+    `${CDN_THEME_URL}?${bust}`,
+  ];
 }
 
 function bytesFromHttp(data: unknown): Uint8Array | null {
@@ -97,7 +92,7 @@ function armAudio(el: HTMLAudioElement, url: string): void {
 }
 
 async function blobFallback(): Promise<string | null> {
-  if (!canUseCapacitorHttp()) return null;
+  if (!Capacitor.isNativePlatform()) return null;
   for (const url of themeSources()) {
     const blob = await downloadThemeBlob(url);
     if (blob) return blob;

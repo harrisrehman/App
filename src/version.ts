@@ -6,8 +6,8 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "Annex",
-  version: "0.5.66",
-  build: 1787031697200,
+  version: "0.5.67",
+  build: 1787031810423,
 };
 
 export const BUNDLED_VERSION: AppVersion = {
@@ -85,6 +85,11 @@ export function dropStalePersist(): void {
     const html = localStorage.getItem(APPLIED_HTML_KEY);
     if (html && (html.includes("theme.ogg") || html.length > 500_000)) {
       localStorage.removeItem(APPLIED_HTML_KEY);
+      localStorage.removeItem(APPLIED_VERSION_KEY);
+      localStorage.removeItem(APPLIED_BUILD_KEY);
+      return;
+    }
+    if (localStorage.getItem(APPLIED_VERSION_KEY) && !html) {
       localStorage.removeItem(APPLIED_VERSION_KEY);
       localStorage.removeItem(APPLIED_BUILD_KEY);
       return;

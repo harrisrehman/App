@@ -16,7 +16,6 @@ const JUST_UPDATED_KEY = "annex-just-updated";
 
 declare global {
   interface Window {
-    __annexOtaShell?: boolean;
     __annexRestored?: boolean;
     __annexThemeStop?: () => void;
   }
@@ -69,8 +68,6 @@ function bust(url: string): string {
   return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
 }
 
-const OTA_TARGET_KEY = "annex-ota-target";
-
 function stopEveryAudio(): void {
   window.__annexThemeStop?.();
   window.__annexStopAllMedia?.();
@@ -81,27 +78,11 @@ function stopEveryAudio(): void {
   }
 }
 
-function hopHtml(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
-(function () {
-  try {
-    var t = sessionStorage.getItem("${OTA_TARGET_KEY}");
-    sessionStorage.removeItem("${OTA_TARGET_KEY}");
-    if (t) location.replace(t);
-  } catch (e) {}
-})();
-<\/script></body></html>`;
-}
-
-export function navigateOtaHtml(html: string): void {
+function activateOtaHtml(html: string): void {
   stopEveryAudio();
-  const target = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-  try {
-    sessionStorage.setItem(OTA_TARGET_KEY, target);
-    window.location.replace(URL.createObjectURL(new Blob([hopHtml()], { type: "text/html" })));
-  } catch {
-    window.location.replace(target);
-  }
+  document.open();
+  document.write(html);
+  document.close();
 }
 
 async function getText(url: string, ms = 8000): Promise<string | null> {
@@ -154,24 +135,24 @@ async function downloadGame(url: string): Promise<string | null> {
   return html;
 }
 
-function current(): AppVersion {
-  return {
-    ...APP_VERSION,
-    build: Math.max(appliedBuild(), APP_VERSION.build),
-  };
+function installed(): AppVersion {
+  const saved = readPersistedUpdate();
+  if (saved) return saved.version;
+  return BUNDLED_VERSION;
 }
 
 function alreadyHave(remote: AppVersion): boolean {
-  return !isNewer(remote, current());
+  const saved = readPersistedUpdate();
+  if (!saved) return false;
+  return !isNewer(remote, saved.version);
 }
 
 export function restorePersisted(): boolean {
-  if (window.__annexOtaShell || window.__annexRestored) return false;
+  if (window.__annexRestored) return false;
   const saved = readPersistedUpdate();
   if (!saved || !isNewer(saved.version, BUNDLED_VERSION)) return false;
   window.__annexRestored = true;
-  rememberApplied(saved.version);
-  navigateOtaHtml(saved.html);
+  activateOtaHtml(saved.html);
   return true;
 }
 
@@ -188,7 +169,7 @@ export async function applyUpdate(): Promise<UpdateState> {
   }
   rememberApplied(remote.version, html);
   localStorage.setItem(APPLIED_KEY, String(remote.version.build));
-  navigateOtaHtml(html);
+  activateOtaHtml(html);
   return "ready";
 }
 
@@ -199,5 +180,5 @@ export async function autoUpdate(): Promise<boolean> {
 export async function peekUpdate(): Promise<boolean> {
   const remote = await fetchRemote();
   if (!remote) return false;
-  return isNewer(remote.version, current());
+  return isNewer(remote.version, installed());
 }
