@@ -1,4 +1,4 @@
-import { COLORS, GUNNER_BARREL, GUNNER_BARREL_W, RING_SPIN, WORLD_H, WORLD_W, rules } from "./config";
+import { BASE_ART_URL, COLORS, GUNNER_BARREL, GUNNER_BARREL_W, RING_SPIN, WORLD_H, WORLD_W, rules } from "./config";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -85,40 +85,77 @@ function drawDesertGround(ctx: CanvasRenderingContext2D): void {
   }
 }
 
+let baseArt: HTMLImageElement | null = null;
+let baseArtLoading = false;
+
+function keyBlackBackground(img: HTMLImageElement, done: (out: HTMLImageElement) => void): void {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const t = canvas.getContext("2d");
+  if (!t) {
+    done(img);
+    return;
+  }
+  t.drawImage(img, 0, 0);
+  const data = t.getImageData(0, 0, canvas.width, canvas.height);
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i] < 28 && px[i + 1] < 28 && px[i + 2] < 28) px[i + 3] = 0;
+  }
+  t.putImageData(data, 0, 0);
+  const out = new Image();
+  out.onload = () => done(out);
+  out.onerror = () => done(img);
+  out.src = canvas.toDataURL("image/png");
+}
+
+function ensureBaseArt(): HTMLImageElement | null {
+  if (baseArt?.complete && baseArt.naturalWidth > 0) return baseArt;
+  if (baseArtLoading) return null;
+  baseArtLoading = true;
+  const img = new Image();
+  img.onload = () => keyBlackBackground(img, (out) => {
+    baseArt = out;
+  });
+  img.onerror = () => {
+    baseArtLoading = false;
+  };
+  img.src = BASE_ART_URL;
+  return null;
+}
+
 function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
   const { x: cx, y: cy } = t.center;
   const r = t.radius;
   const owned = t.owner !== "neutral";
   const trim = accent(t.owner);
-  const innerR = r * 0.72;
+  const art = ensureBaseArt();
+  const size = r * 2.2;
 
-  ctx.fillStyle = DESERT.sand;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.08, 0, Math.PI * 2);
-  ctx.fill();
+  if (art?.complete && art.naturalWidth > 0) {
+    ctx.drawImage(art, cx - size / 2, cy - size / 2, size, size);
+  } else {
+    ctx.fillStyle = DESERT.stone;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  ctx.fillStyle = DESERT.stone;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = owned ? trim : DESERT.stoneDark;
-  ctx.globalAlpha = owned ? 0.9 : 0.65;
-  ctx.lineWidth = owned ? 1.4 : 1;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.fillStyle = DESERT.stoneMid;
-  ctx.beginPath();
-  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = owned ? trim : DESERT.stoneDark;
-  ctx.globalAlpha = owned ? 0.75 : 0.55;
-  ctx.lineWidth = owned ? 1.2 : 1;
-  ctx.beginPath();
-  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+  if (owned) {
+    ctx.strokeStyle = trim;
+    ctx.globalAlpha = 0.88;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.96, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.72;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.56, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawBaseCenter(ctx: CanvasRenderingContext2D, t: Territory): void {
@@ -133,9 +170,12 @@ function drawBaseCenter(ctx: CanvasRenderingContext2D, t: Territory): void {
   ctx.font = '700 17px Cinzel, "Palatino Linotype", Palatino, serif';
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(String(count), cx, cy - 5);
+  ctx.shadowColor = "rgba(0,0,0,0.75)";
+  ctx.shadowBlur = 4;
+  ctx.fillText(String(count), cx, cy - 6);
+  ctx.shadowBlur = 0;
 
-  const barY = cy + 8;
+  const barY = cy + 10;
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
   ctx.fillStyle = "#120c08";
