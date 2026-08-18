@@ -118,6 +118,11 @@ export function runScripts(html: string): boolean {
     const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
     window.__annexStop?.();
     window.__annexThemeStop?.();
+    for (const el of document.querySelectorAll("audio")) {
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
+    }
     for (const code of scripts) {
       if (!code.trim()) continue;
       const fn = new Function(code);
