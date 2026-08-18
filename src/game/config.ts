@@ -109,23 +109,20 @@ export const REMOTE_THEME_URL =
 export const CDN_THEME_URL =
   "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/menu/theme.mp3";
 
+export const APK_DOWNLOAD_URL =
+  "https://github.com/harrisrehman/App/releases/download/latest/annex.apk";
+
 export const UPDATE_SOURCES = [
   {
     versionUrl:
       "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/version.json",
-    gameUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/annex.html",
   },
   {
     versionUrl:
       "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=cursor/annex-android-a9d2",
-    gameUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/annex.html?ref=cursor/annex-android-a9d2",
   },
   {
     versionUrl:
       "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/version.json",
-    gameUrl:
-      "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/annex.html",
   },
 ] as const;

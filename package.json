@@ -1,6 +1,6 @@
 {
   "name": "annex",
-  "version": "0.5.67",
+  "version": "0.5.69",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,6 +19,7 @@
   "dependencies": {
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/splash-screen": "^8.0.2"

@@ -6,14 +6,13 @@ import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
 import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
-import { applyUpdate, consumeJustUpdated, localVersion, peekUpdate, restorePersisted } from "./game/update";
-import { dropStalePersist, loadBundledVersion } from "./version";
+import { applyUpdate, localVersion, openApkDownload, peekUpdate, type UpdateOffer } from "./game/update";
+import { clearLegacyOtaCache, loadBundledVersion } from "./version";
 
 declare global {
   interface Window {
     __annexStop?: () => void;
     __annexJustUpdated?: string;
-    __annexRestored?: boolean;
     __annexHudBound?: boolean;
     __annexOnHudClick?: (e: Event) => void;
     __annexGame?: Game;
@@ -67,7 +66,7 @@ function ensureHud(): void {
     actions.appendChild(makeEl("button", "wall-btn", "Wall")).setAttribute("type", "button");
   }
   if (!actions.querySelector("#update-btn")) {
-    actions.appendChild(makeEl("button", "update-btn", "Update")).setAttribute("type", "button");
+    actions.appendChild(makeEl("button", "update-btn", "Install")).setAttribute("type", "button");
   }
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
@@ -135,7 +134,7 @@ function ensureHud(): void {
     const menu = makeEl("div", "menu");
     menu.append(makeEl("h1", undefined, "ANNEX"), makeEl("p", "menu-ver", "v"));
     const home = makeEl("div", "menu-home");
-    home.append(makeEl("button", "start-btn", "Start"), makeEl("button", "menu-update-btn", "Update"));
+    home.append(makeEl("button", "start-btn", "Start"), makeEl("button", "menu-update-btn", "Install"));
     const bots = makeEl("div", "menu-bots");
     bots.classList.add("hidden");
     bots.appendChild(makeEl("p", undefined, "How many bots?"));
@@ -273,6 +272,66 @@ function showToast(text: string): void {
 
 let updateBusy = false;
 let pendingBots = 1;
+let installPanelUrl = "";
+
+const UPDATE_DISMISS_KEY = "annex-update-dismiss";
+
+function ensureInstallPanel(): HTMLElement {
+  let panel = document.querySelector<HTMLElement>("#update-install");
+  if (panel) return panel;
+  panel = makeEl("div", "update-install");
+  panel.classList.add("hidden");
+  const card = document.createElement("div");
+  card.className = "update-card";
+  card.innerHTML = `
+    <h2>Install update</h2>
+    <p id="update-install-ver"></p>
+    <p class="update-note">Download the APK, open it, and install. Allow unknown sources if Android asks.</p>
+    <button id="update-install-btn" type="button">Download APK</button>
+    <a id="update-install-link" target="_blank" rel="noopener noreferrer"></a>
+    <button id="update-install-close" type="button">Later</button>
+  `;
+  panel.appendChild(card);
+  document.body.appendChild(panel);
+  card.querySelector("#update-install-btn")?.addEventListener("click", () => {
+    if (installPanelUrl) void openApkDownload(installPanelUrl);
+  });
+  card.querySelector("#update-install-close")?.addEventListener("click", () => {
+    panel?.classList.add("hidden");
+    try {
+      const ver = panel.querySelector("#update-install-ver")?.textContent || "";
+      localStorage.setItem(UPDATE_DISMISS_KEY, ver);
+    } catch {
+      /* ignore */
+    }
+  });
+  return panel;
+}
+
+function showInstallPanel(offer: UpdateOffer): void {
+  installPanelUrl = offer.apkUrl;
+  const panel = ensureInstallPanel();
+  const ver = panel.querySelector("#update-install-ver");
+  if (ver) {
+    ver.textContent = `v${offer.version.version} ready — you have v${localVersion().version}`;
+  }
+  const link = panel.querySelector<HTMLAnchorElement>("#update-install-link");
+  if (link) {
+    link.href = offer.apkUrl;
+    link.textContent = offer.apkUrl;
+  }
+  panel.classList.remove("hidden");
+}
+
+function maybePromptInstall(offer: UpdateOffer): void {
+  try {
+    const dismissed = localStorage.getItem(UPDATE_DISMISS_KEY) || "";
+    if (dismissed.includes(offer.version.version)) return;
+  } catch {
+    /* ignore */
+  }
+  showInstallPanel(offer);
+}
 
 async function runUpdate(): Promise<void> {
   if (updateBusy) return;
@@ -283,17 +342,20 @@ async function runUpdate(): Promise<void> {
     btn.textContent = "…";
   }
   try {
-    const state = await applyUpdate();
-    if (state === "offline") showToast("Update failed. Try again.");
-    if (state === "latest") showToast("Already latest.");
-    if (state === "ready") showToast(`Updated to v${localVersion().version}`);
+    const result = await applyUpdate();
+    if (result.state === "offline") showToast("Can't reach update server.");
+    if (result.state === "latest") showToast("Already on latest.");
+    if (result.state === "install") {
+      showInstallPanel(result);
+      showToast(`Install v${result.version.version}`);
+    }
   } catch {
-    showToast("Update failed. Try again.");
+    showToast("Update check failed.");
   } finally {
     updateBusy = false;
     for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
       btn.disabled = false;
-      btn.textContent = "Update";
+      btn.textContent = "Install";
     }
   }
 }
@@ -676,8 +738,8 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     if (!alive) return;
     version.textContent = `v${ver.version}`;
     return peekUpdate();
-  }).then((newer) => {
-    if (alive && newer) update.classList.add("badge");
+  }).then((offer) => {
+    if (alive && offer) update.classList.add("badge");
   });
 
   let last = performance.now();
@@ -713,16 +775,20 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
 function boot(): void {
   try {
-    dropStalePersist();
-    if (restorePersisted()) return;
+    clearLegacyOtaCache();
     ensureHud();
     bindHudClicks();
     bindTheme();
-    const note = consumeJustUpdated();
-    if (note) showToast(`Updated to v${note}`);
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;
     if (!document.body.classList.contains("playing")) showMenu();
+    void peekUpdate().then((offer) => {
+      if (!offer) return;
+      for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
+        btn.classList.add("badge");
+      }
+      maybePromptInstall(offer);
+    });
   } catch {
     showMenu();
   }

@@ -1,42 +1,26 @@
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import { CapacitorHttp } from "@capacitor/core";
-import { UPDATE_SOURCES } from "./config";
-import {
-  APP_VERSION,
-  BUNDLED_VERSION,
-  isNewer,
-  readPersistedUpdate,
-  rememberApplied,
-  type AppVersion,
-} from "../version";
+import { APK_DOWNLOAD_URL, UPDATE_SOURCES } from "./config";
+import { APP_VERSION, BUNDLED_VERSION, isNewer, type AppVersion } from "../version";
 
-export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
+export type UpdateState = "latest" | "offline" | "install";
 
-const APPLIED_KEY = "annex-applied-build";
-const JUST_UPDATED_KEY = "annex-just-updated";
+export type UpdateResult =
+  | { state: "latest" }
+  | { state: "offline" }
+  | { state: "install"; version: AppVersion; apkUrl: string };
+
+export type UpdateOffer = { version: AppVersion; apkUrl: string };
 
 declare global {
   interface Window {
-    __annexRestored?: boolean;
     __annexThemeStop?: () => void;
   }
 }
 
 export function localVersion(): AppVersion {
   return APP_VERSION;
-}
-
-export function appliedBuild(): number {
-  return Number(localStorage.getItem(APPLIED_KEY) || "0");
-}
-
-export function consumeJustUpdated(): string | null {
-  try {
-    const note = localStorage.getItem(JUST_UPDATED_KEY);
-    if (note) localStorage.removeItem(JUST_UPDATED_KEY);
-    return note;
-  } catch {
-    return null;
-  }
 }
 
 function decodeBody(data: unknown): string | null {
@@ -66,23 +50,6 @@ function decodeBody(data: unknown): string | null {
 
 function bust(url: string): string {
   return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-}
-
-function stopEveryAudio(): void {
-  window.__annexThemeStop?.();
-  window.__annexStopAllMedia?.();
-  for (const el of document.querySelectorAll("audio")) {
-    el.pause();
-    el.removeAttribute("src");
-    el.load();
-  }
-}
-
-function activateOtaHtml(html: string): void {
-  stopEveryAudio();
-  document.open();
-  document.write(html);
-  document.close();
 }
 
 async function getText(url: string, ms = 8000): Promise<string | null> {
@@ -116,12 +83,16 @@ async function readVersion(url: string): Promise<AppVersion | null> {
   }
 }
 
-export async function fetchRemote(): Promise<{ version: AppVersion; gameUrl: string } | null> {
-  const found: { version: AppVersion; gameUrl: string }[] = [];
+function apkUrlFor(version: AppVersion): string {
+  return version.apkUrl?.trim() || APK_DOWNLOAD_URL;
+}
+
+export async function fetchRemote(): Promise<UpdateOffer | null> {
+  const found: UpdateOffer[] = [];
   await Promise.all(
     UPDATE_SOURCES.map(async (src) => {
       const version = await readVersion(src.versionUrl);
-      if (version) found.push({ version, gameUrl: src.gameUrl });
+      if (version) found.push({ version, apkUrl: apkUrlFor(version) });
     }),
   );
   if (found.length === 0) return null;
@@ -129,56 +100,26 @@ export async function fetchRemote(): Promise<{ version: AppVersion; gameUrl: str
   return found[0];
 }
 
-async function downloadGame(url: string): Promise<string | null> {
-  const html = await getText(url, 180000);
-  if (!html || !html.includes("ANNEX")) return null;
-  return html;
-}
-
-function installed(): AppVersion {
-  const saved = readPersistedUpdate();
-  if (saved) return saved.version;
-  return BUNDLED_VERSION;
-}
-
-function alreadyHave(remote: AppVersion): boolean {
-  const saved = readPersistedUpdate();
-  if (!saved) return false;
-  return !isNewer(remote, saved.version);
-}
-
-export function restorePersisted(): boolean {
-  if (window.__annexRestored) return false;
-  const saved = readPersistedUpdate();
-  if (!saved || !isNewer(saved.version, BUNDLED_VERSION)) return false;
-  window.__annexRestored = true;
-  activateOtaHtml(saved.html);
-  return true;
-}
-
-export async function applyUpdate(): Promise<UpdateState> {
-  const remote = await fetchRemote();
-  if (!remote) return "offline";
-  if (alreadyHave(remote.version)) return "latest";
-  const html = await downloadGame(remote.gameUrl);
-  if (!html) return "offline";
-  try {
-    localStorage.setItem(JUST_UPDATED_KEY, remote.version.version);
-  } catch {
-    /* ignore */
+export async function openApkDownload(apkUrl: string): Promise<void> {
+  const url = bust(apkUrl);
+  if (Capacitor.isNativePlatform()) {
+    await Browser.open({ url });
+    return;
   }
-  rememberApplied(remote.version, html);
-  localStorage.setItem(APPLIED_KEY, String(remote.version.build));
-  activateOtaHtml(html);
-  return "ready";
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export async function autoUpdate(): Promise<boolean> {
-  return false;
-}
-
-export async function peekUpdate(): Promise<boolean> {
+export async function applyUpdate(): Promise<UpdateResult> {
   const remote = await fetchRemote();
-  if (!remote) return false;
-  return isNewer(remote.version, installed());
+  if (!remote) return { state: "offline" };
+  if (!isNewer(remote.version, BUNDLED_VERSION)) return { state: "latest" };
+  await openApkDownload(remote.apkUrl);
+  return { state: "install", version: remote.version, apkUrl: remote.apkUrl };
+}
+
+export async function peekUpdate(): Promise<UpdateOffer | null> {
+  const remote = await fetchRemote();
+  if (!remote) return null;
+  if (!isNewer(remote.version, BUNDLED_VERSION)) return null;
+  return remote;
 }

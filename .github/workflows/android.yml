@@ -43,4 +43,9 @@ jobs:
           name: Annex APK
           prerelease: true
           files: annex.apk
-          body: Debug APK for phone install. Allow unknown sources.
+          body: |
+            Install this APK on your phone. Allow unknown sources if Android asks.
+
+            **Download:** https://github.com/harrisrehman/App/releases/download/latest/annex.apk
+
+            After install, open Annex — version should match the latest release.

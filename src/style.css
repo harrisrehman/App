@@ -645,3 +645,80 @@ body.playing #filters {
   font-family: "Cinzel Deco", Cinzel, Palatino Linotype, Palatino, serif;
   color: var(--gold-soft);
 }
+
+#update-install {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(18, 12, 8, 0.82);
+}
+
+#update-install.hidden {
+  display: none;
+}
+
+.update-card {
+  width: min(100%, 360px);
+  padding: 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  text-align: center;
+}
+
+.update-card h2 {
+  margin: 0 0 10px;
+  font-family: "Cinzel Deco", Cinzel, Palatino Linotype, Palatino, serif;
+  color: var(--gold-soft);
+}
+
+.update-card p {
+  margin: 0 0 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.update-note {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#update-install-btn,
+#update-install-close {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #2a2018;
+  color: var(--text);
+  font: inherit;
+}
+
+#update-install-btn {
+  background: linear-gradient(180deg, #e8d48a, #c5a15a);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+#update-install-link {
+  display: block;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--gold-soft);
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+#update-btn.badge,
+#menu-update-btn.badge {
+  box-shadow: 0 0 0 2px var(--gold-soft);
+}
