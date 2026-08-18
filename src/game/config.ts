@@ -101,6 +101,10 @@ export const GUNNER_BARREL_W = 5.4;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 
+export const REMOTE_THEME_URL =
+  "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/menu/theme.mp3";
+export const LOCAL_THEME_URL = "./menu/theme.mp3";
+
 export const UPDATE_SOURCES = [
   {
     versionUrl:

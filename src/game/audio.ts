@@ -1,4 +1,6 @@
-import themeUrl from "../assets/theme.mp3?url";
+import { App } from "@capacitor/app";
+import { LOCAL_THEME_URL, REMOTE_THEME_URL } from "./config";
+import { APP_VERSION } from "../version";
 
 const MUTE_KEY = "annex-theme-mute";
 
@@ -20,26 +22,42 @@ function writeMute(on: boolean): void {
 
 let audio: HTMLAudioElement | null = null;
 let menuOn = true;
+let appActive = true;
 let fade: number | null = null;
 let bound = false;
 
-function el(): HTMLAudioElement {
+function remoteThemeSrc(): string {
+  return `${REMOTE_THEME_URL}?b=${APP_VERSION.build}`;
+}
+
+function ensureAudio(): HTMLAudioElement {
   if (!audio) {
-    audio = new Audio(themeUrl);
+    audio = new Audio(remoteThemeSrc());
     audio.loop = true;
     audio.preload = "auto";
     audio.volume = 0;
+    audio.addEventListener(
+      "error",
+      () => {
+        if (!audio) return;
+        if (!audio.src.includes("menu/theme.mp3")) {
+          audio.src = LOCAL_THEME_URL;
+          void audio.load();
+        }
+      },
+      { once: false },
+    );
   }
   return audio;
 }
 
 function goal(): number {
-  if (muted() || !menuOn) return 0;
+  if (muted() || !menuOn || !appActive) return 0;
   return 0.72;
 }
 
 function tickFade(): void {
-  const a = el();
+  const a = ensureAudio();
   const want = goal();
   const step = want > a.volume ? 0.07 : 0.09;
   const next = a.volume + (want > a.volume ? step : -step);
@@ -59,8 +77,8 @@ function startFade(): void {
 }
 
 function playIfNeeded(): void {
-  const a = el();
-  if (muted() || !menuOn) return;
+  const a = ensureAudio();
+  if (muted() || !menuOn || !appActive) return;
   if (a.paused) {
     void a.play().catch(() => {
       /* wait for a tap */
@@ -68,10 +86,46 @@ function playIfNeeded(): void {
   }
 }
 
+export function stopTheme(): void {
+  if (fade != null) window.clearTimeout(fade);
+  fade = null;
+  if (audio) {
+    audio.pause();
+    audio = null;
+  }
+  bound = false;
+}
+
+function onBackground(): void {
+  appActive = false;
+  if (fade != null) window.clearTimeout(fade);
+  fade = null;
+  audio?.pause();
+}
+
+function onForeground(): void {
+  appActive = true;
+  playIfNeeded();
+  startFade();
+}
+
+function bindLifecycle(): void {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) onBackground();
+    else onForeground();
+  });
+  void App.addListener("appStateChange", ({ isActive }) => {
+    if (isActive) onForeground();
+    else onBackground();
+  });
+}
+
 export function bindTheme(): void {
   if (bound) return;
   bound = true;
-  el();
+  window.__annexThemeStop = stopTheme;
+  ensureAudio();
+  bindLifecycle();
   const unlock = (): void => {
     playIfNeeded();
   };
@@ -113,4 +167,10 @@ export function syncMuteButton(): void {
   btn.setAttribute("aria-pressed", off ? "true" : "false");
   btn.setAttribute("aria-label", off ? "Unmute theme" : "Mute theme");
   btn.textContent = off ? "Sound off" : "Sound on";
+}
+
+declare global {
+  interface Window {
+    __annexThemeStop?: () => void;
+  }
 }

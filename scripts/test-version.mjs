@@ -37,10 +37,11 @@ assert(!shouldRestore(savedOlder, bundled), "never restore older");
 assert(!isNewer(savedOlder, bundled), "older is not newer");
 assert(isNewer(bundled, savedOlder), "bundled beats 0.3.1");
 
-const theme = statSync("src/assets/theme.mp3");
+const theme = statSync("public/menu/theme.mp3");
 assert(theme.size > 10000, "theme audio missing");
-const magic = readFileSync("src/assets/theme.mp3").subarray(0, 3).toString("ascii");
-assert(magic === "ID3" || readFileSync("src/assets/theme.mp3")[0] === 0xff, "theme is not mp3");
+const head = readFileSync("public/menu/theme.mp3");
+const magic = head.subarray(0, 3).toString("ascii");
+assert(magic === "ID3" || head[0] === 0xff, "theme is not mp3");
 const city = statSync("public/menu/city.jpg");
 assert(city.size > 10000, "menu city missing");
 const css = readFileSync("src/style.css", "utf8");

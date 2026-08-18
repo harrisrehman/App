@@ -106,7 +106,7 @@ export async function fetchRemote(): Promise<{ version: AppVersion; gameUrl: str
 }
 
 async function downloadGame(url: string): Promise<string | null> {
-  const html = await getText(url, 12000);
+  const html = await getText(url, 180000);
   if (!html || !html.includes("ANNEX")) return null;
   return html;
 }
@@ -117,6 +117,7 @@ export function runScripts(html: string): boolean {
     adoptShell(doc);
     const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
     window.__annexStop?.();
+    window.__annexThemeStop?.();
     for (const code of scripts) {
       if (!code.trim()) continue;
       const fn = new Function(code);

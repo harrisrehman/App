@@ -11,7 +11,7 @@ export default defineConfig({
     sourcemap: true,
     cssCodeSplit: false,
     modulePreload: false,
-    assetsInlineLimit: 100000000,
+    assetsInlineLimit: 4096,
     rollupOptions: {
       output: {
         format: "iife",
