@@ -3,7 +3,7 @@ import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
 import { mulberry32 } from "./rng";
-import type { Owner, Point, Pop, Shot, Soldier, Territory } from "./types";
+import type { Owner, Pop, Shot, Soldier, Territory } from "./types";
 
 const DESERT = {
   ground: "#2a1e14",
@@ -12,18 +12,13 @@ const DESERT = {
   stone: "#b89868",
   stoneMid: "#9a8058",
   stoneDark: "#6a5438",
-  dome: "#d4bc8a",
-  domeHi: "#e8d4a8",
-  door: "#2a1e14",
-  scrub: "#4a5038",
-  palm: "#3d4a32",
-  palmFrond: "#5a6848",
   shadow: "rgba(0,0,0,0.38)",
   tunic: "#e8e0d0",
   helm: "#a89888",
   spear: "#6a5840",
   gold: "#c5a15a",
   goldSoft: "#e8d48a",
+  text: "#f4ead4",
 } as const;
 
 let groundPattern: CanvasPattern | null = null;
@@ -62,15 +57,6 @@ function ensureGroundPattern(ctx: CanvasRenderingContext2D): CanvasPattern {
   return groundPattern;
 }
 
-function toRoman(level: number): string {
-  const map = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
-  return map[Math.max(0, Math.min(map.length - 1, level - 1))] ?? "I";
-}
-
-function baseLevel(t: Territory): number {
-  return Math.max(1, Math.min(4, Math.floor(t.troops / 4) + 1));
-}
-
 function soldierAngle(s: Soldier): number {
   if (Math.abs(s.faceX) + Math.abs(s.faceY) > 0.01) return Math.atan2(s.faceY, s.faceX);
   return Math.atan2(s.restY - s.y, s.restX - s.x);
@@ -99,122 +85,68 @@ function drawDesertGround(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-function drawPalm(ctx: CanvasRenderingContext2D, x: number, y: number, flip = 1): void {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = DESERT.shadow;
-  ctx.beginPath();
-  ctx.ellipse(2, 4, 10, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = DESERT.palm;
-  ctx.lineWidth = 3.2;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(0, 8);
-  ctx.lineTo(0, -10);
-  ctx.stroke();
-  ctx.strokeStyle = DESERT.palmFrond;
-  ctx.lineWidth = 2;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(0, -8);
-    ctx.quadraticCurveTo(i * 10 * flip, -18 - Math.abs(i) * 2, i * 14 * flip, -24 - Math.abs(i));
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
 function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
   const { x: cx, y: cy } = t.center;
   const r = t.radius;
+  const owned = t.owner !== "neutral";
   const trim = accent(t.owner);
-
-  ctx.fillStyle = DESERT.shadow;
-  ctx.beginPath();
-  ctx.ellipse(cx + 5, cy + 6, r * 1.08, r * 0.82, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const innerR = r * 0.72;
 
   ctx.fillStyle = DESERT.sand;
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r * 1.08, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = DESERT.stone;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = owned ? trim : DESERT.stoneDark;
+  ctx.globalAlpha = owned ? 0.9 : 0.65;
+  ctx.lineWidth = owned ? 1.4 : 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.fillStyle = DESERT.stoneMid;
   ctx.beginPath();
-  ctx.arc(cx + 2, cy + 2, r * 0.9, 0, Math.PI * 2);
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.strokeStyle = DESERT.stoneDark;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * r * 0.55, cy + Math.sin(a) * r * 0.55);
-    ctx.lineTo(cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95);
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = DESERT.dome;
+  ctx.strokeStyle = owned ? trim : DESERT.stoneDark;
+  ctx.globalAlpha = owned ? 0.75 : 0.55;
+  ctx.lineWidth = owned ? 1.2 : 1;
   ctx.beginPath();
-  ctx.arc(cx, cy - r * 0.12, r * 0.68, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.domeHi;
-  ctx.beginPath();
-  ctx.arc(cx - r * 0.14, cy - r * 0.2, r * 0.28, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.door;
-  ctx.beginPath();
-  ctx.arc(cx, cy + r * 0.52, r * 0.14, 0, Math.PI, false);
-  ctx.fill();
-  ctx.fillRect(cx - r * 0.14, cy + r * 0.52, r * 0.28, r * 0.22);
-
-  ctx.fillStyle = "#4a3828";
-  for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + ((i - 2) / 4) * 1.1;
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * r * 0.48, cy - r * 0.12 + Math.sin(a) * r * 0.3, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  if (t.owner !== "neutral") {
-    ctx.fillStyle = trim;
-    ctx.beginPath();
-    ctx.arc(cx, cy - r * 0.05, r * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = DESERT.goldSoft;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
-function drawBaseProps(ctx: CanvasRenderingContext2D, t: Territory): void {
-  const rng = mulberry32(t.id * 92821 + 17);
+function drawBaseCenter(ctx: CanvasRenderingContext2D, t: Territory): void {
   const { x: cx, y: cy } = t.center;
-  const r = t.radius;
-  const a1 = rng() * Math.PI * 2;
-  const a2 = a1 + 1.4 + rng() * 0.8;
-  drawPalm(ctx, cx + Math.cos(a1) * (r + 24), cy + Math.sin(a1) * (r + 24), rng() < 0.5 ? 1 : -1);
-  drawPalm(ctx, cx + Math.cos(a2) * (r + 22), cy + Math.sin(a2) * (r + 22), rng() < 0.5 ? 1 : -1);
-  for (let i = 0; i < 3; i++) {
-    const a = rng() * Math.PI * 2;
-    const d = r + 10 + rng() * 16;
-    ctx.fillStyle = rng() < 0.5 ? "#4a4030" : "#3a3028";
-    ctx.beginPath();
-    ctx.ellipse(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2 + rng() * 3, 1.5 + rng() * 2, rng() * Math.PI, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  const count = Math.floor(t.troops);
+  const barW = 34;
+  const barH = 4;
+  const barX = cx - barW / 2;
+  const ratio = Math.max(0, Math.min(1, t.health / rules.baseHealth));
+
+  ctx.fillStyle = DESERT.text;
+  ctx.font = '700 17px Cinzel, "Palatino Linotype", Palatino, serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(count), cx, cy - 5);
+
+  const barY = cy + 8;
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+  ctx.fillStyle = "#120c08";
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = t.owner === "neutral" ? DESERT.stoneDark : accent(t.owner);
+  ctx.fillRect(barX, barY, barW * ratio, barH);
 }
 
 function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean): void {
-  drawBaseProps(ctx, t);
   drawFort(ctx, t);
+  drawBaseCenter(ctx, t);
 
   const spin = (performance.now() / 1000) * RING_SPIN;
   const dir = t.id % 2 === 0 ? 1 : -1;
@@ -231,32 +163,11 @@ function drawBase(ctx: CanvasRenderingContext2D, t: Territory, selected: boolean
 
   if (selected) {
     ctx.strokeStyle = DESERT.goldSoft;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.8;
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.arc(t.center.x, t.center.y, t.radius * 1.14, 0, Math.PI * 2);
     ctx.stroke();
-  }
-
-  const barW = 42;
-  const barH = 5;
-  const barX = t.center.x - barW / 2;
-  const barY = t.center.y + t.radius + 10;
-  const ratio = Math.max(0, Math.min(1, t.health / rules.baseHealth));
-
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-  ctx.fillStyle = "#120c08";
-  ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = accent(t.owner);
-  ctx.fillRect(barX, barY, barW * ratio, barH);
-
-  if (t.owner !== "neutral") {
-    ctx.fillStyle = DESERT.goldSoft;
-    ctx.font = '700 15px "Cinzel Deco", Cinzel, Palatino Linotype, serif';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillText(toRoman(baseLevel(t)), t.center.x, barY + barH + 3);
   }
 }
 

@@ -6,8 +6,8 @@ import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
 import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
-import { applyUpdate, localVersion, openApkDownload, peekUpdate, type UpdateOffer } from "./game/update";
-import { clearLegacyOtaCache, loadBundledVersion } from "./version";
+import { localVersion } from "./game/update";
+import { clearLegacyOtaCache } from "./version";
 
 declare global {
   interface Window {
@@ -65,9 +65,7 @@ function ensureHud(): void {
   if (!actions.querySelector("#wall-btn")) {
     actions.appendChild(makeEl("button", "wall-btn", "Wall")).setAttribute("type", "button");
   }
-  if (!actions.querySelector("#update-btn")) {
-    actions.appendChild(makeEl("button", "update-btn", "Install")).setAttribute("type", "button");
-  }
+  document.querySelector("#update-btn")?.remove();
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   document.querySelector("#hint")?.remove();
@@ -134,7 +132,7 @@ function ensureHud(): void {
     const menu = makeEl("div", "menu");
     menu.append(makeEl("h1", undefined, "ANNEX"), makeEl("p", "menu-ver", "v"));
     const home = makeEl("div", "menu-home");
-    home.append(makeEl("button", "start-btn", "Start"), makeEl("button", "menu-update-btn", "Install"));
+    home.append(makeEl("button", "start-btn", "Start"));
     const bots = makeEl("div", "menu-bots");
     bots.classList.add("hidden");
     bots.appendChild(makeEl("p", undefined, "How many bots?"));
@@ -150,6 +148,7 @@ function ensureHud(): void {
     document.body.appendChild(menu);
   }
   const menu = document.querySelector("#menu");
+  document.querySelector("#menu-update-btn")?.remove();
   document.querySelector("#menu-dev-btn")?.remove();
   document.querySelector("#menu-dev")?.remove();
   if (menu && !menu.querySelector("#menu-diff")) {
@@ -242,11 +241,9 @@ function paintMenuMark(el: Element | null): void {
 function stripPlayDev(): void {
   document.querySelector("#dev-btn")?.remove();
   document.querySelector("#dev-panel")?.remove();
+  document.querySelector("#update-btn")?.remove();
   const stack = document.querySelector(".action-stack");
   if (!stack) return;
-  const parent = stack.parentElement;
-  const update = stack.querySelector("#update-btn");
-  if (parent && update) parent.appendChild(update);
   stack.remove();
 }
 
@@ -270,105 +267,11 @@ function showToast(text: string): void {
   window.setTimeout(() => box.classList.remove("show"), 2200);
 }
 
-let updateBusy = false;
 let pendingBots = 1;
-let installPanelUrl = "";
-
-const UPDATE_DISMISS_KEY = "annex-update-dismiss";
-
-function ensureInstallPanel(): HTMLElement {
-  let panel = document.querySelector<HTMLElement>("#update-install");
-  if (panel) return panel;
-  panel = makeEl("div", "update-install");
-  panel.classList.add("hidden");
-  const card = document.createElement("div");
-  card.className = "update-card";
-  card.innerHTML = `
-    <h2>Install update</h2>
-    <p id="update-install-ver"></p>
-    <p class="update-note">Tap Download APK, open the file, and install. If version stays the same, uninstall Annex first then install again.</p>
-    <button id="update-install-btn" type="button">Download APK</button>
-    <a id="update-install-link" target="_blank" rel="noopener noreferrer"></a>
-    <button id="update-install-close" type="button">Later</button>
-  `;
-  panel.appendChild(card);
-  document.body.appendChild(panel);
-  card.querySelector("#update-install-btn")?.addEventListener("click", () => {
-    if (installPanelUrl) void openApkDownload(installPanelUrl);
-  });
-  card.querySelector("#update-install-close")?.addEventListener("click", () => {
-    panel?.classList.add("hidden");
-    try {
-      const ver = panel.querySelector("#update-install-ver")?.textContent || "";
-      localStorage.setItem(UPDATE_DISMISS_KEY, ver);
-    } catch {
-      /* ignore */
-    }
-  });
-  return panel;
-}
-
-function showInstallPanel(offer: UpdateOffer): void {
-  installPanelUrl = offer.apkUrl;
-  const panel = ensureInstallPanel();
-  const ver = panel.querySelector("#update-install-ver");
-  if (ver) {
-    ver.textContent = `v${offer.version.version} ready — you have v${localVersion().version}`;
-  }
-  const link = panel.querySelector<HTMLAnchorElement>("#update-install-link");
-  if (link) {
-    link.href = offer.apkUrl;
-    link.textContent = offer.apkUrl;
-  }
-  panel.classList.remove("hidden");
-}
-
-function maybePromptInstall(offer: UpdateOffer): void {
-  try {
-    const dismissed = localStorage.getItem(UPDATE_DISMISS_KEY) || "";
-    if (dismissed.includes(offer.version.version)) return;
-  } catch {
-    /* ignore */
-  }
-  showInstallPanel(offer);
-}
-
-async function runUpdate(): Promise<void> {
-  if (updateBusy) return;
-  updateBusy = true;
-  const buttons = [...document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")];
-  for (const btn of buttons) {
-    btn.disabled = true;
-    btn.textContent = "…";
-  }
-  try {
-    const result = await applyUpdate();
-    if (result.state === "offline") showToast("Can't reach update server.");
-    if (result.state === "latest") showToast("Already on latest.");
-    if (result.state === "install") {
-      showInstallPanel(result);
-      showToast(`Install v${result.version.version}`);
-    }
-  } catch {
-    showToast("Update check failed.");
-  } finally {
-    updateBusy = false;
-    for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
-      btn.disabled = false;
-      btn.textContent = "Install";
-    }
-  }
-}
 
 function onHudClick(e: Event): void {
   const t = (e.target as HTMLElement | null)?.closest("button");
   if (!t) return;
-  if (t.id === "update-btn" || t.id === "menu-update-btn") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    void runUpdate();
-    return;
-  }
   if (t.id === "start-btn") {
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -603,7 +506,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
-  const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
   const wallEl = document.querySelector<HTMLButtonElement>("#wall-btn");
   const defenseEl = document.querySelector<HTMLButtonElement>("#defense-btn");
   const toastEl = document.querySelector("#toast");
@@ -612,7 +514,7 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   const restartEl = document.querySelector<HTMLButtonElement>("#restart-btn");
   const versionEl = document.querySelector("#version");
 
-  if (!boardEl || !drawEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+  if (!boardEl || !drawEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     showMenu();
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
@@ -626,7 +528,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
   const board = boardEl;
   const draw = drawEl;
-  const update = updateEl;
   const wall = wallEl;
   const defense = defenseEl;
   const endScreen = overlayEl;
@@ -734,13 +635,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     showToast(`Updated to v${window.__annexJustUpdated}`);
     window.__annexJustUpdated = undefined;
   }
-  void loadBundledVersion().then((ver) => {
-    if (!alive) return;
-    version.textContent = `v${ver.version}`;
-    return peekUpdate();
-  }).then((offer) => {
-    if (alive && offer) update.classList.add("badge");
-  });
 
   let last = performance.now();
   function loop(now: number): void {
@@ -782,13 +676,6 @@ function boot(): void {
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;
     if (!document.body.classList.contains("playing")) showMenu();
-    void peekUpdate().then((offer) => {
-      if (!offer) return;
-      for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
-        btn.classList.add("badge");
-      }
-      maybePromptInstall(offer);
-    });
   } catch {
     showMenu();
   }
