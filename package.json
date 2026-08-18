@@ -1,6 +1,6 @@
 {
   "name": "annex",
-  "version": "0.5.74",
+  "version": "0.5.76",
   "private": true,
   "type": "module",
   "scripts": {

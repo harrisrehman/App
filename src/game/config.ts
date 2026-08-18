@@ -111,9 +111,14 @@ export const CDN_THEME_URL =
 
 export const BASE_ART_URL = "./bases/base.png";
 export const SOLDIER_ART_URL = "./units/soldier.png";
+export const SOLDIER_RUN_SHEET_URL = "./units/soldier-run.png";
+
+export const SOLDIER_RUN_COLS = 8;
+export const SOLDIER_RUN_ROWS = 9;
+export const SOLDIER_RUN_FPS = 12;
 
 export const APK_DOWNLOAD_URL =
-  "https://github.com/harrisrehman/App/releases/download/v0.5.74/annex.apk";
+  "https://github.com/harrisrehman/App/releases/download/v0.5.76/annex.apk";
 
 export const UPDATE_SOURCES = [
   {

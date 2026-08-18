@@ -1,4 +1,21 @@
-import { BASE_ART_URL, COLORS, RING_SPIN, SOLDIER_ART_URL, WORLD_H, WORLD_W, rules } from "./config";
+import {
+  BASE_ART_URL,
+  COLORS,
+  RING_SPIN,
+  SOLDIER_ART_URL,
+  SOLDIER_RUN_FPS,
+  SOLDIER_RUN_SHEET_URL,
+  WORLD_H,
+  WORLD_W,
+  rules,
+} from "./config";
+import {
+  SOLDIER_IDLE_RECT,
+  SOLDIER_RUN_FRAME_COUNT,
+  SOLDIER_RUN_RECTS,
+  SOLDIER_RUN_START_ROW,
+  type SpriteRect,
+} from "./soldierRunRects";
 import type { Camera } from "./camera";
 import { perimeterRadius, type Game } from "./engine";
 import { isClosedLasso } from "./geo";
@@ -89,9 +106,85 @@ type ArtCache = { img: HTMLImageElement | null; loading: boolean };
 
 const baseCache: ArtCache = { img: null, loading: false };
 const soldierCache: ArtCache = { img: null, loading: false };
+const soldierRunCache: ArtCache = { img: null, loading: false };
 
-/** PNG art faces down-right in canvas space. */
+/** Static PNG art faces down-right in canvas space. */
 const SOLDIER_ART_FACING = Math.PI / 4;
+
+/** Sprite-sheet columns: SW, S, SE, E, NE, N, NW, W. */
+const DIR_COLS: readonly { col: number; angle: number }[] = [
+  { col: 0, angle: (3 * Math.PI) / 4 },
+  { col: 1, angle: Math.PI / 2 },
+  { col: 2, angle: Math.PI / 4 },
+  { col: 3, angle: 0 },
+  { col: 4, angle: -Math.PI / 4 },
+  { col: 5, angle: -Math.PI / 2 },
+  { col: 6, angle: (-3 * Math.PI) / 4 },
+  { col: 7, angle: Math.PI },
+];
+
+function dirColForAngle(angle: number): number {
+  let best = DIR_COLS[0];
+  let bestD = Infinity;
+  for (const entry of DIR_COLS) {
+    let d = angle - entry.angle;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    d = Math.abs(d);
+    if (d < bestD) {
+      bestD = d;
+      best = entry;
+    }
+  }
+  return best.col;
+}
+
+function soldierSpriteRect(col: number, row: number): SpriteRect {
+  const rect = SOLDIER_RUN_RECTS[row]?.[col];
+  if (rect) return rect;
+  for (let r = row - 1; r >= SOLDIER_RUN_START_ROW; r--) {
+    const fallback = SOLDIER_RUN_RECTS[r]?.[col];
+    if (fallback) return fallback;
+  }
+  return SOLDIER_IDLE_RECT;
+}
+
+function drawSpriteRect(
+  ctx: CanvasRenderingContext2D,
+  sheet: HTMLImageElement,
+  rect: SpriteRect,
+  size: number,
+): void {
+  const drawH = size * (rect.h / rect.w);
+  ctx.drawImage(sheet, rect.x, rect.y, rect.w, rect.h, -size / 2, -drawH / 2, size, drawH);
+}
+
+function soldierMoveAngle(s: Soldier, game: Game): number {
+  if (s.state === "march" && s.toId !== null) {
+    const dest = game.territories[s.toId];
+    if (dest) return Math.atan2(dest.center.y - s.y, dest.center.x - s.x);
+  }
+  if (s.state === "return") return Math.atan2(s.restY - s.y, s.restX - s.x);
+  if (s.state === "eject") return Math.atan2(s.toY - s.fromY, s.toX - s.fromX);
+  if (Math.abs(s.faceX) + Math.abs(s.faceY) > 0.01) return Math.atan2(s.faceY, s.faceX);
+  return Math.atan2(s.restY - s.y, s.restX - s.x);
+}
+
+function soldierRunning(s: Soldier): boolean {
+  return s.state === "march" || s.state === "return" || s.state === "eject";
+}
+
+function runFrameIndex(): number {
+  return Math.floor((performance.now() / 1000) * SOLDIER_RUN_FPS) % SOLDIER_RUN_FRAME_COUNT;
+}
+
+function soldierSheetRect(s: Soldier, game: Game): SpriteRect {
+  const col = dirColForAngle(soldierMoveAngle(s, game));
+  if (!soldierRunning(s)) {
+    return col === 7 ? SOLDIER_IDLE_RECT : soldierSpriteRect(col, 0);
+  }
+  return soldierSpriteRect(col, SOLDIER_RUN_START_ROW + runFrameIndex());
+}
 
 function keyBlackBackground(img: HTMLImageElement, done: (out: HTMLImageElement) => void): void {
   const canvas = document.createElement("canvas");
@@ -137,6 +230,10 @@ function ensureBaseArt(): HTMLImageElement | null {
 
 function ensureSoldierArt(): HTMLImageElement | null {
   return ensureArt(SOLDIER_ART_URL, soldierCache);
+}
+
+function ensureSoldierRunSheet(): HTMLImageElement | null {
+  return ensureArt(SOLDIER_RUN_SHEET_URL, soldierRunCache);
 }
 
 function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
@@ -229,24 +326,29 @@ function drawSoldierSprite(
   ctx: CanvasRenderingContext2D,
   s: Soldier,
   selected: boolean,
+  game: Game,
   scale = 1,
 ): void {
-  const angle = s.kind === "gunner" ? Math.atan2(s.faceY, s.faceX) : soldierAngle(s);
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
-  const art = ensureSoldierArt();
   const size = 50 * pop * scale;
+  const runSheet = ensureSoldierRunSheet();
+  const staticArt = ensureSoldierArt();
 
   ctx.save();
   ctx.translate(s.x, s.y);
-  ctx.rotate(angle - SOLDIER_ART_FACING);
 
   ctx.fillStyle = DESERT.shadow;
   ctx.beginPath();
   ctx.ellipse(0, size * 0.18, size * 0.22, size * 0.1, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  if (art) {
-    ctx.drawImage(art, -size / 2, -size / 2, size, size);
+  if (runSheet) {
+    const rect = soldierSheetRect(s, game);
+    drawSpriteRect(ctx, runSheet, rect, size);
+  } else if (staticArt) {
+    const angle = s.kind === "gunner" ? Math.atan2(s.faceY, s.faceX) : soldierAngle(s);
+    ctx.rotate(angle - SOLDIER_ART_FACING);
+    ctx.drawImage(staticArt, -size / 2, -size / 2, size, size);
   } else {
     ctx.fillStyle = DESERT.tunic;
     ctx.beginPath();
@@ -264,12 +366,12 @@ function drawSoldierSprite(
   ctx.restore();
 }
 
-function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
-  drawSoldierSprite(ctx, s, selected, 1);
+function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
+  drawSoldierSprite(ctx, s, selected, game, 1);
 }
 
-function drawGunnerUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean): void {
-  drawSoldierSprite(ctx, s, selected, 1.08);
+function drawGunnerUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
+  drawSoldierSprite(ctx, s, selected, game, 1.08);
 }
 
 function soldierPicked(game: Game, s: Soldier): boolean {
@@ -297,14 +399,14 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
   for (const s of game.soldiers) {
     if (s.state !== "march") {
-      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s));
-      else drawSpearman(ctx, s, soldierPicked(game, s));
+      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s), game);
+      else drawSpearman(ctx, s, soldierPicked(game, s), game);
     }
   }
   for (const s of game.soldiers) {
     if (s.state === "march") {
-      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s));
-      else drawSpearman(ctx, s, soldierPicked(game, s));
+      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s), game);
+      else drawSpearman(ctx, s, soldierPicked(game, s), game);
     }
   }
 
