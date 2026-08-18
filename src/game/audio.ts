@@ -1,4 +1,4 @@
-import themeUrl from "../assets/theme.ogg?url";
+import themeUrl from "../assets/theme.mp3?url";
 
 const MUTE_KEY = "annex-theme-mute";
 
