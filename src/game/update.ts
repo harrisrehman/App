@@ -12,6 +12,15 @@ import {
 export type UpdateState = "idle" | "checking" | "ready" | "latest" | "offline";
 
 const APPLIED_KEY = "annex-applied-build";
+const JUST_UPDATED_KEY = "annex-just-updated";
+
+declare global {
+  interface Window {
+    __annexOtaShell?: boolean;
+    __annexRestored?: boolean;
+    __annexThemeStop?: () => void;
+  }
+}
 
 export function localVersion(): AppVersion {
   return APP_VERSION;
@@ -19,6 +28,16 @@ export function localVersion(): AppVersion {
 
 export function appliedBuild(): number {
   return Number(localStorage.getItem(APPLIED_KEY) || "0");
+}
+
+export function consumeJustUpdated(): string | null {
+  try {
+    const note = localStorage.getItem(JUST_UPDATED_KEY);
+    if (note) localStorage.removeItem(JUST_UPDATED_KEY);
+    return note;
+  } catch {
+    return null;
+  }
 }
 
 function decodeBody(data: unknown): string | null {
@@ -50,15 +69,19 @@ function bust(url: string): string {
   return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
 }
 
-function adoptShell(doc: Document): void {
-  for (const id of ["hud", "overlay", "menu"]) {
-    const next = doc.getElementById(id);
-    const prev = document.getElementById(id);
-    if (!next) continue;
-    const copy = document.importNode(next, true);
-    if (prev) prev.replaceWith(copy);
-    else document.body.appendChild(copy);
+function stopEveryAudio(): void {
+  window.__annexThemeStop?.();
+  window.__annexStopAllMedia?.();
+  for (const el of document.querySelectorAll("audio")) {
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
   }
+}
+
+export function navigateOtaHtml(html: string): void {
+  stopEveryAudio();
+  window.location.replace(URL.createObjectURL(new Blob([html], { type: "text/html" })));
 }
 
 async function getText(url: string, ms = 8000): Promise<string | null> {
@@ -111,29 +134,6 @@ async function downloadGame(url: string): Promise<string | null> {
   return html;
 }
 
-export function runScripts(html: string): boolean {
-  try {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    adoptShell(doc);
-    const scripts = [...doc.querySelectorAll("script")].map((s) => s.textContent ?? "");
-    window.__annexStop?.();
-    window.__annexThemeStop?.();
-    for (const el of document.querySelectorAll("audio")) {
-      el.pause();
-      el.removeAttribute("src");
-      el.load();
-    }
-    for (const code of scripts) {
-      if (!code.trim()) continue;
-      const fn = new Function(code);
-      fn();
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function current(): AppVersion {
   return {
     ...APP_VERSION,
@@ -146,12 +146,13 @@ function alreadyHave(remote: AppVersion): boolean {
 }
 
 export function restorePersisted(): boolean {
-  if (window.__annexRestored) return false;
+  if (window.__annexOtaShell || window.__annexRestored) return false;
   const saved = readPersistedUpdate();
   if (!saved || !isNewer(saved.version, BUNDLED_VERSION)) return false;
   window.__annexRestored = true;
   rememberApplied(saved.version);
-  return runScripts(saved.html);
+  navigateOtaHtml(saved.html);
+  return true;
 }
 
 export async function applyUpdate(): Promise<UpdateState> {
@@ -160,11 +161,14 @@ export async function applyUpdate(): Promise<UpdateState> {
   if (alreadyHave(remote.version)) return "latest";
   const html = await downloadGame(remote.gameUrl);
   if (!html) return "offline";
-  window.__annexJustUpdated = remote.version.version;
-  window.__annexRestored = true;
-  if (!runScripts(html)) return "offline";
+  try {
+    localStorage.setItem(JUST_UPDATED_KEY, remote.version.version);
+  } catch {
+    /* ignore */
+  }
   rememberApplied(remote.version, html);
   localStorage.setItem(APPLIED_KEY, String(remote.version.build));
+  navigateOtaHtml(html);
   return "ready";
 }
 

@@ -3,7 +3,7 @@ import { REMOTE_THEME_URL } from "./config";
 import { APP_VERSION } from "../version";
 
 const MUTE_KEY = "annex-theme-mute";
-const THEME_AUDIO_KEY = "__annexThemeAudio";
+const PLAYERS_KEY = "__annexThemePlayers";
 
 function muted(): boolean {
   try {
@@ -25,8 +25,21 @@ let audio: HTMLAudioElement | null = null;
 let menuOn = true;
 let appActive = true;
 let fade: number | null = null;
-let bound = false;
 let lifecycleBound = false;
+
+function players(): HTMLAudioElement[] {
+  return (window[PLAYERS_KEY] as HTMLAudioElement[] | undefined) ?? [];
+}
+
+function track(el: HTMLAudioElement): HTMLAudioElement {
+  const list = window[PLAYERS_KEY] as HTMLAudioElement[] | undefined;
+  if (list) {
+    if (!list.includes(el)) list.push(el);
+  } else {
+    window[PLAYERS_KEY] = [el];
+  }
+  return el;
+}
 
 function remoteThemeSrc(): string {
   return `${REMOTE_THEME_URL}?b=${APP_VERSION.build}`;
@@ -46,11 +59,11 @@ function disposeAudio(el: HTMLAudioElement | null | undefined): void {
 
 export function stopAllThemeAudio(): void {
   clearFade();
-  bound = false;
+  for (const el of players()) disposeAudio(el);
+  window[PLAYERS_KEY] = [];
   disposeAudio(audio);
-  disposeAudio(window[THEME_AUDIO_KEY] as HTMLAudioElement | undefined);
   audio = null;
-  window[THEME_AUDIO_KEY] = undefined;
+  window.__annexStopAllMedia?.();
   for (const el of document.querySelectorAll("audio")) {
     disposeAudio(el);
   }
@@ -58,7 +71,7 @@ export function stopAllThemeAudio(): void {
 
 function ensureAudio(): HTMLAudioElement {
   const want = remoteThemeSrc();
-  let el = window[THEME_AUDIO_KEY] as HTMLAudioElement | undefined;
+  let el = audio ?? players()[0];
   if (el) {
     const base = want.split("?")[0] ?? want;
     if (!el.src.includes(base)) {
@@ -67,13 +80,13 @@ function ensureAudio(): HTMLAudioElement {
       void el.load();
     }
     audio = el;
+    track(el);
     return el;
   }
-  el = new Audio(want);
+  el = track(new Audio(want));
   el.loop = true;
   el.preload = "auto";
   el.volume = 0;
-  window[THEME_AUDIO_KEY] = el;
   audio = el;
   return el;
 }
@@ -120,9 +133,7 @@ export function stopTheme(): void {
 function onBackground(): void {
   appActive = false;
   clearFade();
-  audio?.pause();
-  const shared = window[THEME_AUDIO_KEY] as HTMLAudioElement | undefined;
-  if (shared && shared !== audio) shared.pause();
+  for (const el of players()) el.pause();
 }
 
 function onForeground(): void {
@@ -146,7 +157,6 @@ function bindLifecycle(): void {
 
 export function bindTheme(): void {
   stopAllThemeAudio();
-  bound = true;
   window.__annexThemeStop = stopAllThemeAudio;
   ensureAudio();
   bindLifecycle();
@@ -196,6 +206,7 @@ export function syncMuteButton(): void {
 declare global {
   interface Window {
     __annexThemeStop?: () => void;
-    __annexThemeAudio?: HTMLAudioElement;
+    __annexThemePlayers?: HTMLAudioElement[];
+    __annexStopAllMedia?: () => void;
   }
 }

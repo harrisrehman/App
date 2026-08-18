@@ -5,8 +5,8 @@ import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
-import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
+import { bindTheme, stopAllThemeAudio, themeToMatch, themeToMenu } from "./game/audio";
+import { applyUpdate, consumeJustUpdated, localVersion, peekUpdate, restorePersisted } from "./game/update";
 import { dropStalePersist, loadBundledVersion } from "./version";
 
 declare global {
@@ -713,13 +713,16 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
 function boot(): void {
   try {
+    stopAllThemeAudio();
     ensureHud();
     bindHudClicks();
-    bindTheme();
     dropStalePersist();
+    if (restorePersisted()) return;
+    bindTheme();
+    const note = consumeJustUpdated();
+    if (note) showToast(`Updated to v${note}`);
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;
-    restorePersisted();
     if (!document.body.classList.contains("playing")) showMenu();
   } catch {
     showMenu();

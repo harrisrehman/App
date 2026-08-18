@@ -115,6 +115,40 @@
         <button id="menu-btn" type="button">Menu</button>
       </div>
     </div>
+    <script>
+      window.__annexOtaShell = 1;
+      (function () {
+        if (window.__annexMediaPatched) return;
+        window.__annexMediaPatched = true;
+        window.__annexThemePlayers = window.__annexThemePlayers || [];
+        var NativeAudio = window.Audio;
+        window.Audio = function () {
+          var el = new NativeAudio(arguments[0], arguments[1]);
+          window.__annexThemePlayers.push(el);
+          return el;
+        };
+        window.Audio.prototype = NativeAudio.prototype;
+        var play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+          window.__annexThemePlayers.push(this);
+          return play.apply(this, arguments);
+        };
+        window.__annexStopAllMedia = function () {
+          var seen = new Set();
+          for (var i = 0; i < window.__annexThemePlayers.length; i++) {
+            var el = window.__annexThemePlayers[i];
+            if (!el || seen.has(el)) continue;
+            seen.add(el);
+            try {
+              el.pause();
+              el.removeAttribute("src");
+              el.load();
+            } catch (e) {}
+          }
+          window.__annexThemePlayers = [];
+        };
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
