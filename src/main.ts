@@ -714,10 +714,10 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 function boot(): void {
   try {
     stopAllThemeAudio();
-    ensureHud();
-    bindHudClicks();
     dropStalePersist();
     if (restorePersisted()) return;
+    ensureHud();
+    bindHudClicks();
     bindTheme();
     const note = consumeJustUpdated();
     if (note) showToast(`Updated to v${note}`);

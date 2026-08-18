@@ -71,24 +71,18 @@ export function stopAllThemeAudio(): void {
 
 function ensureAudio(): HTMLAudioElement {
   const want = remoteThemeSrc();
-  let el = audio ?? players()[0];
-  if (el) {
-    const base = want.split("?")[0] ?? want;
-    if (!el.src.includes(base)) {
-      el.pause();
-      el.src = want;
-      void el.load();
-    }
-    audio = el;
-    track(el);
-    return el;
+  const base = want.split("?")[0] ?? want;
+  if (audio && !audio.src.includes(base)) {
+    disposeAudio(audio);
+    audio = null;
   }
-  el = track(new Audio(want));
-  el.loop = true;
-  el.preload = "auto";
-  el.volume = 0;
-  audio = el;
-  return el;
+  if (!audio) {
+    audio = track(new Audio(want));
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.volume = 0;
+  }
+  return audio;
 }
 
 function goal(): number {

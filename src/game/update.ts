@@ -69,6 +69,8 @@ function bust(url: string): string {
   return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
 }
 
+const OTA_TARGET_KEY = "annex-ota-target";
+
 function stopEveryAudio(): void {
   window.__annexThemeStop?.();
   window.__annexStopAllMedia?.();
@@ -79,9 +81,27 @@ function stopEveryAudio(): void {
   }
 }
 
+function hopHtml(): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
+(function () {
+  try {
+    var t = sessionStorage.getItem("${OTA_TARGET_KEY}");
+    sessionStorage.removeItem("${OTA_TARGET_KEY}");
+    if (t) location.replace(t);
+  } catch (e) {}
+})();
+<\/script></body></html>`;
+}
+
 export function navigateOtaHtml(html: string): void {
   stopEveryAudio();
-  window.location.replace(URL.createObjectURL(new Blob([html], { type: "text/html" })));
+  const target = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  try {
+    sessionStorage.setItem(OTA_TARGET_KEY, target);
+    window.location.replace(URL.createObjectURL(new Blob([hopHtml()], { type: "text/html" })));
+  } catch {
+    window.location.replace(target);
+  }
 }
 
 async function getText(url: string, ms = 8000): Promise<string | null> {
