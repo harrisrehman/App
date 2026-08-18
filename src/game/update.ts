@@ -64,8 +64,20 @@ async function getText(url: string, ms = 8000): Promise<string | null> {
         "Cache-Control": "no-cache",
       },
     });
-    if (res.status < 200 || res.status >= 300) return null;
-    return decodeBody(res.data);
+    if (res.status >= 200 && res.status < 300) {
+      const body = decodeBody(res.data);
+      if (body) return body;
+    }
+  } catch {
+    /* try fetch fallback */
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), ms);
+    const res = await fetch(bust(url), { cache: "no-store", signal: ctrl.signal });
+    window.clearTimeout(timer);
+    if (!res.ok) return null;
+    return await res.text();
   } catch {
     return null;
   }

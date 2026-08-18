@@ -286,7 +286,7 @@ function ensureInstallPanel(): HTMLElement {
   card.innerHTML = `
     <h2>Install update</h2>
     <p id="update-install-ver"></p>
-    <p class="update-note">Download the APK, open it, and install. Allow unknown sources if Android asks.</p>
+    <p class="update-note">Tap Download APK, open the file, and install. If version stays the same, uninstall Annex first then install again.</p>
     <button id="update-install-btn" type="button">Download APK</button>
     <a id="update-install-link" target="_blank" rel="noopener noreferrer"></a>
     <button id="update-install-close" type="button">Later</button>

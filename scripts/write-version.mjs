@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-const apkUrl =
-  "https://github.com/harrisrehman/App/releases/download/latest/annex.apk";
+const tag = `v${pkg.version}`;
+const apkUrl = `https://github.com/harrisrehman/App/releases/download/${tag}/annex.apk`;
 const version = {
   name: "Annex",
   version: pkg.version,

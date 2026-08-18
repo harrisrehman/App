@@ -24,7 +24,9 @@ jobs:
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - run: npm run build
+      - run: node scripts/sync-android-version.mjs
       - run: npx cap sync android
+      - run: node scripts/verify-build-version.mjs
       - name: Build debug APK
         working-directory: android
         run: |
@@ -36,16 +38,23 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
       - name: Name APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk annex.apk
-      - name: Publish downloadable APK
+      - name: Read version
+        id: meta
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "tag=v$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      - name: Publish versioned APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Annex APK
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Annex ${{ steps.meta.outputs.version }}
           prerelease: true
+          make_latest: true
           files: annex.apk
           body: |
-            Install this APK on your phone. Allow unknown sources if Android asks.
+            **Version:** ${{ steps.meta.outputs.version }}
 
-            **Download:** https://github.com/harrisrehman/App/releases/download/latest/annex.apk
+            **Download:** https://github.com/harrisrehman/App/releases/download/${{ steps.meta.outputs.tag }}/annex.apk
 
-            After install, open Annex — version should match the latest release.
+            Install this APK. Allow unknown sources if Android asks.
+            Menu should show v${{ steps.meta.outputs.version }} after install.

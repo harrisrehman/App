@@ -1,6 +1,6 @@
 {
   "name": "annex",
-  "version": "0.5.70",
+  "version": "0.5.71",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node scripts/test-engine.mjs && node scripts/test-version.mjs && node scripts/test-map.mjs && node scripts/test-ai.mjs",
-    "cap:sync": "npm run build && npx cap sync android"
+    "cap:sync": "npm run build && node scripts/sync-android-version.mjs && npx cap sync android"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
