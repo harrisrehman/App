@@ -149,9 +149,14 @@ function bindLifecycle(): void {
   });
 }
 
+function canPlayTheme(): boolean {
+  return location.protocol === "blob:";
+}
+
 export function bindTheme(): void {
   stopAllThemeAudio();
   window.__annexThemeStop = stopAllThemeAudio;
+  if (!canPlayTheme()) return;
   ensureAudio();
   bindLifecycle();
   const unlock = (): void => {
@@ -165,6 +170,7 @@ export function bindTheme(): void {
 }
 
 export function themeToMenu(): void {
+  if (!canPlayTheme()) return;
   menuOn = true;
   playIfNeeded();
   startFade();

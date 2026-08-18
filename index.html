@@ -122,6 +122,7 @@
         if (window.__annexMediaPatched) return;
         window.__annexMediaPatched = true;
         window.__annexThemePlayers = window.__annexThemePlayers || [];
+        var allowTheme = location.protocol === "blob:";
         try {
           window.__annexThemeStop && window.__annexThemeStop();
           window.__annexStopAllMedia && window.__annexStopAllMedia();
@@ -135,6 +136,7 @@
         window.Audio.prototype = NativeAudio.prototype;
         var play = HTMLMediaElement.prototype.play;
         HTMLMediaElement.prototype.play = function () {
+          if (!allowTheme) return Promise.resolve();
           var self = this;
           var list = window.__annexThemePlayers;
           for (var i = 0; i < list.length; i++) {
