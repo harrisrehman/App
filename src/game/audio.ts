@@ -67,9 +67,23 @@ async function downloadThemeBlob(url: string): Promise<string | null> {
 }
 
 function seekStart(el: HTMLAudioElement): void {
-  if (el.readyState >= 1 && el.currentTime < THEME_START) {
-    el.currentTime = THEME_START;
+  if (el.readyState < 1) return;
+  if (el.currentTime < THEME_START - 0.05) {
+    try {
+      el.currentTime = THEME_START;
+    } catch {
+      /* wait for more data */
+    }
   }
+}
+
+function bindSeek(el: HTMLAudioElement): void {
+  const seek = (): void => seekStart(el);
+  el.addEventListener("loadedmetadata", seek);
+  el.addEventListener("loadeddata", seek);
+  el.addEventListener("canplay", seek);
+  el.addEventListener("playing", seek);
+  el.addEventListener("timeupdate", seek);
 }
 
 function mountAudio(el: HTMLAudioElement): HTMLAudioElement {
@@ -79,8 +93,7 @@ function mountAudio(el: HTMLAudioElement): HTMLAudioElement {
   el.volume = 0;
   el.setAttribute("playsinline", "");
   el.style.display = "none";
-  el.addEventListener("loadedmetadata", () => seekStart(el));
-  el.addEventListener("timeupdate", () => seekStart(el));
+  bindSeek(el);
   const old = document.getElementById(THEME_ID);
   old?.remove();
   document.body.appendChild(el);
@@ -197,9 +210,14 @@ function playNow(): void {
   if (!menuOn || !appActive) return;
   seekStart(a);
   a.volume = 0.72;
-  void a.play().catch(() => {
-    /* needs tap */
-  });
+  void a
+    .play()
+    .then(() => {
+      seekStart(a);
+    })
+    .catch(() => {
+      /* needs tap */
+    });
   startFade();
 }
 

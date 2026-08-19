@@ -118,7 +118,7 @@ export const SOLDIER_RUN_ROWS = 9;
 export const SOLDIER_RUN_FPS = 12;
 
 export const APK_DOWNLOAD_URL =
-  "https://github.com/harrisrehman/App/releases/download/v0.5.79/annex.apk";
+  "https://github.com/harrisrehman/App/releases/download/v0.5.80/annex.apk";
 
 export const UPDATE_SOURCES = [
   {
