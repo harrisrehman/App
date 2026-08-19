@@ -6,7 +6,7 @@ State.io-style mobile conquest game. One map. One AI. Touch only.
 
 Direct APK:
 
-https://github.com/harrisrehman/App/raw/cursor/annex-android-a9d2/downloads/annex.apk
+https://github.com/harrisrehman/App/releases/download/v0.5.78/annex.apk
 
 Or open the install page, then tap **Install app**:
 

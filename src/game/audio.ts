@@ -5,6 +5,7 @@ import { APP_VERSION } from "../version";
 
 const PLAYERS_KEY = "__annexThemePlayers";
 const THEME_ID = "menu-theme";
+const THEME_START = 14;
 
 let audio: HTMLAudioElement | null = null;
 let sourceIdx = 0;
@@ -65,6 +66,12 @@ async function downloadThemeBlob(url: string): Promise<string | null> {
   }
 }
 
+function seekStart(el: HTMLAudioElement): void {
+  if (el.readyState >= 1 && el.currentTime < THEME_START) {
+    el.currentTime = THEME_START;
+  }
+}
+
 function mountAudio(el: HTMLAudioElement): HTMLAudioElement {
   el.id = THEME_ID;
   el.loop = true;
@@ -72,6 +79,8 @@ function mountAudio(el: HTMLAudioElement): HTMLAudioElement {
   el.volume = 0;
   el.setAttribute("playsinline", "");
   el.style.display = "none";
+  el.addEventListener("loadedmetadata", () => seekStart(el));
+  el.addEventListener("timeupdate", () => seekStart(el));
   const old = document.getElementById(THEME_ID);
   old?.remove();
   document.body.appendChild(el);
@@ -186,6 +195,7 @@ function startFade(): void {
 function playNow(): void {
   const a = ensureAudio();
   if (!menuOn || !appActive) return;
+  seekStart(a);
   a.volume = 0.72;
   void a.play().catch(() => {
     /* needs tap */
