@@ -1,0 +1,62 @@
+---
+description: Annex mobile game — repo layout, build, and ship workflow for any Cursor chat or agent
+alwaysApply: true
+---
+
+# Annex (harrisrehman/App)
+
+State.io-style mobile conquest game. TypeScript + Vite + Capacitor Android.
+
+## Source of truth
+
+- **Default branch:** `main` — all edits land here unless user asks otherwise
+- **Repo:** https://github.com/harrisrehman/App
+- Pull before editing; push when done so other chats and the owner stay in sync
+
+## Key paths
+
+| Path | Role |
+|------|------|
+| `src/game/engine.ts` | Core simulation |
+| `src/game/ai.ts` | Bot AI (easy/medium/hard) |
+| `src/game/map.ts` | Base placement |
+| `src/game/camera.ts` | Zoom/pan |
+| `src/main.ts` | UI, menu, filters, game boot |
+| `src/style.css` | In-game + menu styling |
+| `index.html` | Shell markup |
+| `dist/` | Built bundle — **commit after `npm run build`** (phone Update reads this) |
+| `downloads/annex.apk` | Installable APK (refresh after CI or local Gradle build) |
+| `android/` | Capacitor native shell |
+
+## Ship workflow (required after gameplay/UI changes)
+
+1. Bump `version` in `package.json` (e.g. `0.5.54` → `0.5.55`)
+2. Bump `versionCode` + `versionName` in `android/app/build.gradle`
+3. Bump version strings in `index.html` and `downloads/install.html`
+4. `npm test && npm run build`
+5. Commit **source + `dist/`**; push `main`
+6. Phone: tap **Update** in installed app (no reinstall unless native/Android changes)
+
+`UPDATE_SOURCES` in `src/game/config.ts` must point at **`main`**, not old feature branches.
+
+## Do not regress
+
+- Spawn interval 5s; gunner cost 6
+- Filter bar: 40×40 All/Gunner/Soldier, bottom-left
+- Golden Age menu theme + startup audio
+- Easy mode: fewer bases, slower/dumber AI
+- Min zoom shows full map (contain fit)
+
+## Local dev
+
+```bash
+npm install
+npm run dev          # browser, --host for phone on Wi‑Fi
+npm run cap:sync     # sync to Android project
+npx cap run android -l --forwardPorts   # live reload on device via USB
+```
+
+## CI
+
+- **Android APK** workflow on push to `main` — succeeds
+- **Pages** workflow often fails — APK + raw GitHub URLs are the install path

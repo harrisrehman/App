@@ -104,20 +104,20 @@ export const POP_CAP = 48;
 export const UPDATE_SOURCES = [
   {
     versionUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/version.json",
+      "https://raw.githubusercontent.com/harrisrehman/App/main/dist/version.json",
     gameUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/annex.html",
+      "https://raw.githubusercontent.com/harrisrehman/App/main/dist/annex.html",
   },
   {
     versionUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=cursor/annex-android-a9d2",
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=main",
     gameUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/annex.html?ref=cursor/annex-android-a9d2",
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/annex.html?ref=main",
   },
   {
     versionUrl:
-      "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/version.json",
+      "https://cdn.jsdelivr.net/gh/harrisrehman/App@main/dist/version.json",
     gameUrl:
-      "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor%2Fannex-android-a9d2/dist/annex.html",
+      "https://cdn.jsdelivr.net/gh/harrisrehman/App@main/dist/annex.html",
   },
 ] as const;
