@@ -197,6 +197,13 @@ function dressMenu(): void {
     for (const kid of move) frame.appendChild(kid);
     menu.appendChild(frame);
   }
+  if (!frame.querySelector(".menu-border")) {
+    const border = document.createElement("div");
+    border.className = "menu-border";
+    border.setAttribute("aria-hidden", "true");
+    frame.prepend(border);
+  }
+  paintMenuBorder(frame.querySelector(".menu-border"));
   if (!frame.querySelector(".menu-mark")) {
     const mark = document.createElement("div");
     mark.className = "menu-mark";
@@ -226,6 +233,58 @@ function dressMenu(): void {
     else if (ver) ver.before(tag);
     else frame.prepend(tag);
   }
+}
+
+function paintMenuBorder(el: Element | null): void {
+  if (!el) return;
+  el.innerHTML = `<svg viewBox="0 0 340 420" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="menu-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f3e2b3"/>
+        <stop offset="45%" stop-color="#c5a15a"/>
+        <stop offset="100%" stop-color="#8a6a2f"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="10" width="320" height="400" rx="2" fill="none" stroke="url(#menu-gold)" stroke-width="2.2"/>
+    <rect x="16" y="16" width="308" height="388" rx="1" fill="none" stroke="#8a6a2f" stroke-width="0.9" opacity="0.75"/>
+    <path d="M22 78 C22 42 42 22 78 22 H262 C298 22 318 42 318 78 V342 C318 378 298 398 262 398 H78 C42 398 22 378 22 342 Z" fill="none" stroke="#c5a15a" stroke-width="0.8" opacity="0.45"/>
+    <g fill="none" stroke="#c5a15a" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke-width="1.6" d="M16 88 C16 52 52 16 88 16"/>
+      <path stroke-width="1.1" d="M16 72 C30 34 58 16 96 16"/>
+      <path stroke-width="1.1" d="M32 16 C18 30 16 48 16 66"/>
+      <path stroke-width="1.2" d="M52 24 C44 20 36 24 36 34 C36 44 48 46 54 38 C60 30 50 28 46 32"/>
+      <path stroke-width="1.6" d="M324 88 C324 52 288 16 252 16"/>
+      <path stroke-width="1.1" d="M324 72 C310 34 282 16 244 16"/>
+      <path stroke-width="1.1" d="M308 16 C322 30 324 48 324 66"/>
+      <path stroke-width="1.2" d="M288 24 C296 20 304 24 304 34 C304 44 292 46 286 38 C280 30 290 28 294 32"/>
+      <path stroke-width="1.6" d="M16 332 C16 368 52 404 88 404"/>
+      <path stroke-width="1.1" d="M16 348 C30 386 58 404 96 404"/>
+      <path stroke-width="1.1" d="M32 404 C18 390 16 372 16 354"/>
+      <path stroke-width="1.2" d="M52 396 C44 400 36 396 36 386 C36 376 48 374 54 382 C60 390 50 392 46 388"/>
+      <path stroke-width="1.6" d="M324 332 C324 368 288 404 252 404"/>
+      <path stroke-width="1.1" d="M324 348 C310 386 282 404 244 404"/>
+      <path stroke-width="1.1" d="M308 404 C322 390 324 372 324 354"/>
+      <path stroke-width="1.2" d="M288 396 C296 400 304 396 304 386 C304 376 292 374 286 382 C280 390 290 392 294 388"/>
+    </g>
+    <g fill="#c5a15a" stroke="#8a6a2f" stroke-width="0.6">
+      <path d="M170 8 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5z"/>
+      <path d="M170 412 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5z" opacity="0.85"/>
+      <path d="M8 210 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5z" opacity="0.85"/>
+      <path d="M332 210 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5z" opacity="0.85"/>
+    </g>
+    <g fill="none" stroke="#b68a22" stroke-width="1">
+      <path d="M58 14 C92 14 118 12 142 16 C166 20 188 12 212 16 C236 20 258 12 282 16"/>
+      <path d="M58 406 C92 406 118 408 142 404 C166 400 188 408 212 404 C236 400 258 408 282 404"/>
+      <path d="M14 58 C14 92 12 118 16 142 C20 166 12 188 16 212 C20 236 12 258 16 282"/>
+      <path d="M326 58 C326 92 328 118 324 142 C320 166 328 188 324 212 C320 236 328 258 324 282"/>
+    </g>
+    <g fill="none" stroke="#c5a15a" stroke-width="0.9" opacity="0.9">
+      <path d="M74 14 C86 18 98 10 110 14 C122 18 134 10 146 14"/>
+      <path d="M194 14 C206 18 218 10 230 14 C242 18 254 10 266 14"/>
+      <path d="M74 406 C86 402 98 410 110 406 C122 402 134 410 146 406"/>
+      <path d="M194 406 C206 402 218 410 230 406 C242 402 254 410 266 406"/>
+    </g>
+  </svg>`;
 }
 
 function paintMenuMark(el: Element | null): void {
