@@ -37,6 +37,7 @@ jobs:
       - name: Name APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk annex.apk
       - name: Publish downloadable APK
+        if: github.ref == 'refs/heads/cursor/annex-android-a9d2'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
