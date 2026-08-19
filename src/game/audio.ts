@@ -1,6 +1,7 @@
 import themeUrl from "../assets/theme.ogg?url";
 
 const MUTE_KEY = "annex-theme-mute";
+const THEME_START = 14;
 
 function muted(): boolean {
   try {
@@ -23,12 +24,24 @@ let menuOn = true;
 let fade: number | null = null;
 let bound = false;
 
+function seekStart(a: HTMLAudioElement): void {
+  if (a.readyState >= 1 && a.currentTime < THEME_START) {
+    a.currentTime = THEME_START;
+  }
+}
+
 function el(): HTMLAudioElement {
   if (!audio) {
     audio = new Audio(themeUrl);
     audio.loop = true;
     audio.preload = "auto";
     audio.volume = 0;
+    audio.addEventListener("loadedmetadata", () => {
+      if (audio) seekStart(audio);
+    });
+    audio.addEventListener("timeupdate", () => {
+      if (audio) seekStart(audio);
+    });
   }
   return audio;
 }
@@ -62,6 +75,7 @@ function playIfNeeded(): void {
   const a = el();
   if (muted() || !menuOn) return;
   if (a.paused) {
+    seekStart(a);
     void a.play().catch(() => {
       /* wait for a tap */
     });
