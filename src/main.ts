@@ -1,4 +1,5 @@
 import { clampCamera, fitCamera, type Camera } from "./game/camera";
+import { GAME_NAME } from "./game/config";
 import type { Difficulty, SendFilter } from "./game/types";
 import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
@@ -49,7 +50,7 @@ function ensureHud(): void {
   if (!top.querySelector("#title")) {
     const brand = document.createElement("div");
     brand.className = "brand";
-    brand.append(makeEl("span", "title", "ANNEX"), makeEl("span", "version", "v"));
+    brand.append(makeEl("span", "title", GAME_NAME), makeEl("span", "version", "v"));
     top.prepend(brand);
   }
   if (!top.querySelector("#version")) {
@@ -130,7 +131,7 @@ function ensureHud(): void {
   }
   if (!document.querySelector("#menu")) {
     const menu = makeEl("div", "menu");
-    menu.append(makeEl("h1", undefined, "ANNEX"), makeEl("p", "menu-ver", "v"));
+    menu.append(makeEl("h1", undefined, GAME_NAME), makeEl("p", "menu-ver", "v"));
     const home = makeEl("div", "menu-home");
     home.append(makeEl("button", "start-btn", "Start"));
     const bots = makeEl("div", "menu-bots");
@@ -226,6 +227,11 @@ function dressMenu(): void {
     else if (ver) ver.before(tag);
     else frame.prepend(tag);
   }
+  const menuTitle = frame.querySelector("h1");
+  if (menuTitle) menuTitle.textContent = GAME_NAME;
+  const hudTitle = document.querySelector("#title");
+  if (hudTitle) hudTitle.textContent = GAME_NAME;
+  document.title = GAME_NAME;
 }
 
 function paintMenuMark(el: Element | null): void {

@@ -1,6 +1,9 @@
 export const WORLD_W = 1000;
 export const WORLD_H = 1600;
 
+/** Display name shown in menu and HUD. */
+export const GAME_NAME = "FATH";
+
 export const COLORS = {
   bg: "#1a120c",
   panel: "#1c140e",

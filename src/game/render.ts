@@ -265,11 +265,6 @@ function drawFort(ctx: CanvasRenderingContext2D, t: Territory): void {
     ctx.beginPath();
     ctx.arc(cx, cy, r * 0.96, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.globalAlpha = 0.72;
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.56, 0, Math.PI * 2);
-    ctx.stroke();
     ctx.globalAlpha = 1;
   }
 }
@@ -371,7 +366,65 @@ function drawSoldierSprite(
 }
 
 function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
-  drawSoldierSprite(ctx, s, selected, game, 1);
+  const angle = soldierRunning(s) ? soldierMoveAngle(s, game) : soldierAngle(s);
+  const trim = accent(s.owner);
+  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
+  const sc = pop;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(angle);
+  ctx.scale(sc, sc);
+
+  ctx.fillStyle = DESERT.shadow;
+  ctx.beginPath();
+  ctx.ellipse(2, 3, 7, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = DESERT.spear;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-2, 0);
+  ctx.lineTo(16, 0);
+  ctx.stroke();
+  ctx.fillStyle = "#8a7860";
+  ctx.beginPath();
+  ctx.moveTo(16, 0);
+  ctx.lineTo(12, -2.5);
+  ctx.lineTo(12, 2.5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = trim;
+  ctx.strokeStyle = DESERT.stoneDark;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(-5, 0.5, 5.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = DESERT.tunic;
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 5, 4.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = DESERT.helm;
+  ctx.beginPath();
+  ctx.arc(0, -1, 3.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#c8beb0";
+  ctx.beginPath();
+  ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (selected) {
+    ctx.strokeStyle = DESERT.goldSoft;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawGunnerUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
