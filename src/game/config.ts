@@ -120,16 +120,18 @@ export const SOLDIER_RUN_COLS = 8;
 export const SOLDIER_RUN_ROWS = 9;
 export const SOLDIER_RUN_FPS = 12;
 
-export const APK_DOWNLOAD_URL =
-  "https://github.com/harrisrehman/App/releases/download/v0.5.78/annex.apk";
+export const LATEST_APK_URL =
+  "https://github.com/harrisrehman/App/releases/download/latest/annex.apk";
+
+export const APK_DOWNLOAD_URL = LATEST_APK_URL;
 
 export const UPDATE_SOURCES = [
   {
     versionUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/version.json",
+      "https://raw.githubusercontent.com/harrisrehman/App/main/dist/version.json",
   },
   {
     versionUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=cursor/annex-android-a9d2",
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=main",
   },
 ] as const;
