@@ -441,7 +441,7 @@ function soldierPicked(game: Game, s: Soldier): boolean {
 export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): void {
   const { width, height } = cam;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = DESERT.groundDark;
+  ctx.fillStyle = DESERT.ground;
   ctx.fillRect(0, 0, width, height);
 
   ctx.save();

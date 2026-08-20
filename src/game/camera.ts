@@ -17,10 +17,12 @@ export function minScale(width: number, height: number): number {
 
 export function fitCamera(width: number, height: number): Camera {
   const scale = minScale(width, height);
+  const worldW = WORLD_W * scale;
+  const worldH = WORLD_H * scale;
   return {
     scale,
-    ox: (width - WORLD_W * scale) / 2,
-    oy: (height - WORLD_H * scale) / 2,
+    ox: (width - worldW) / 2,
+    oy: worldH < height ? 0 : (height - worldH) / 2,
     width,
     height,
   };
