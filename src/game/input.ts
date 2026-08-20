@@ -201,7 +201,7 @@ export function bindInput(canvas: HTMLCanvasElement, game: Game, cam: Camera): (
       game.selectFromStroke(game.stroke);
     } else if (dragged && game.sendFilter !== "all") {
       game.notice =
-        game.sendFilter === "gunner" ? "No gunners in that group." : "No soldiers in that group.";
+        game.sendFilter === "gunner" ? "No bowmen in that group." : "No soldiers in that group.";
     } else {
       const id = hitTerritory(game, p.x, p.y);
       if (id !== null) game.tapTarget(id);

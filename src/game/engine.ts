@@ -272,9 +272,9 @@ export class Game {
       if (filter === "all" || this.matchingFree(s, filter)) n += 1;
     }
     if (repeat) return n;
-    if (filter === "gunner" && n === 0) this.notice = "No gunners yet.";
+    if (filter === "gunner" && n === 0) this.notice = "No bowmen yet.";
     else if (filter === "troop" && n === 0) this.notice = "No soldiers yet.";
-    else if (filter === "gunner") this.notice = "Gunner tool on. Circle a group.";
+    else if (filter === "gunner") this.notice = "Bowman tool on. Circle a group.";
     else if (filter === "troop") this.notice = "Soldier tool on. Circle a group.";
     else this.notice = "All tool on. Circle a group.";
     return n;
@@ -322,7 +322,7 @@ export class Game {
       if (this.sendSelected(id)) return true;
       this.notice =
         this.sendFilter === "gunner"
-          ? "No gunners to send."
+          ? "No bowmen to send."
           : this.sendFilter === "troop"
             ? "No soldiers to send."
             : "Nothing to send.";

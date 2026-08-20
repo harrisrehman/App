@@ -91,7 +91,7 @@ function ensureHud(): void {
     const btn = makeEl("button", "defense-btn");
     const name = document.createElement("span");
     name.className = "shop-name";
-    name.textContent = "Gunner";
+    name.textContent = "Bowman";
     const cost = document.createElement("span");
     cost.className = "shop-cost";
     cost.textContent = "6";
@@ -404,10 +404,10 @@ function rebuildFilters(filters: HTMLElement): void {
 function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
   btn.classList.add("filter-btn");
   if (kind === "gunner") {
-    paintGunnerFilter(btn);
+    paintBowmanFilter(btn);
     return;
   }
-  btn.classList.remove("filter-gunner");
+  btn.classList.remove("filter-bowman", "filter-gunner");
   if (kind === "all") {
     btn.setAttribute("aria-label", "All");
     btn.textContent = "All";
@@ -421,19 +421,15 @@ function paintFilterIcon(btn: HTMLButtonElement, kind: SendFilter): void {
   btn.append(dot);
 }
 
-function paintGunnerFilter(btn: HTMLButtonElement): void {
-  btn.classList.add("filter-gunner");
-  btn.setAttribute("aria-label", "Gunners");
+function paintBowmanFilter(btn: HTMLButtonElement): void {
+  btn.classList.add("filter-bowman");
+  btn.classList.remove("filter-gunner");
+  btn.setAttribute("aria-label", "Bowmen");
   btn.replaceChildren();
-  const glyph = document.createElement("span");
-  glyph.className = "gunner-glyph";
-  glyph.setAttribute("aria-hidden", "true");
-  const body = document.createElement("span");
-  body.className = "gunner-body";
-  const barrel = document.createElement("span");
-  barrel.className = "gunner-barrel";
-  glyph.append(body, barrel);
-  btn.append(glyph);
+  const dot = document.createElement("span");
+  dot.className = "bowman-dot";
+  dot.setAttribute("aria-hidden", "true");
+  btn.append(dot);
 }
 
 function syncFilterHud(game: Game): void {
@@ -621,7 +617,7 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     if (game.winner) return;
     const made = game.buyDefense();
     if (made > 0) {
-      showToast(made === 1 ? "Gunner ready." : `${made} gunners ready.`);
+      showToast(made === 1 ? "Bowman ready." : `${made} bowmen ready.`);
     } else {
       showToast("Select a base with 6 soldiers.");
     }

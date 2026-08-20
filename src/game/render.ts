@@ -355,13 +355,36 @@ function drawSoldierSprite(
     ctx.fill();
   }
 
-  if (selected) {
-    ctx.strokeStyle = DESERT.goldSoft;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.42, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  if (selected) drawSelectionMark(ctx);
+  ctx.restore();
+}
+
+function drawSelectionMark(ctx: CanvasRenderingContext2D): void {
+  ctx.save();
+  ctx.strokeStyle = DESERT.goldSoft;
+  ctx.fillStyle = DESERT.goldSoft;
+  ctx.lineWidth = 1.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(-6, 9);
+  ctx.lineTo(-6, 12);
+  ctx.lineTo(6, 12);
+  ctx.lineTo(6, 9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-8, 11);
+  ctx.lineTo(-6, 9);
+  ctx.moveTo(8, 11);
+  ctx.lineTo(6, 9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -9);
+  ctx.lineTo(0, -6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 12, 1.2, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -417,18 +440,66 @@ function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boole
   ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
-  if (selected) {
-    ctx.strokeStyle = DESERT.goldSoft;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  if (selected) drawSelectionMark(ctx);
   ctx.restore();
 }
 
-function drawGunnerUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
-  drawSoldierSprite(ctx, s, selected, game, 1.08);
+function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
+  const angle = soldierRunning(s) ? soldierMoveAngle(s, game) : soldierAngle(s);
+  const trim = accent(s.owner);
+  const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
+  const sc = pop;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(angle);
+  ctx.scale(sc, sc);
+
+  ctx.fillStyle = DESERT.shadow;
+  ctx.beginPath();
+  ctx.ellipse(2, 3, 7, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = DESERT.spear;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-13, 1);
+  ctx.quadraticCurveTo(0, -7, 13, 1);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-13, 1);
+  ctx.lineTo(13, 1);
+  ctx.stroke();
+
+  ctx.fillStyle = trim;
+  ctx.strokeStyle = DESERT.stoneDark;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(-5, 0.5, 5.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = DESERT.tunic;
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 5, 4.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = DESERT.helm;
+  ctx.beginPath();
+  ctx.arc(0, -1, 3.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#c8beb0";
+  ctx.beginPath();
+  ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (selected) drawSelectionMark(ctx);
+  ctx.restore();
+}
+
+function drawBowmanUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
+  drawBowman(ctx, s, selected, game);
 }
 
 function soldierPicked(game: Game, s: Soldier): boolean {
@@ -456,13 +527,13 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 
   for (const s of game.soldiers) {
     if (s.state !== "march") {
-      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s), game);
+      if (s.kind === "gunner") drawBowmanUnit(ctx, s, soldierPicked(game, s), game);
       else drawSpearman(ctx, s, soldierPicked(game, s), game);
     }
   }
   for (const s of game.soldiers) {
     if (s.state === "march") {
-      if (s.kind === "gunner") drawGunnerUnit(ctx, s, soldierPicked(game, s), game);
+      if (s.kind === "gunner") drawBowmanUnit(ctx, s, soldierPicked(game, s), game);
       else drawSpearman(ctx, s, soldierPicked(game, s), game);
     }
   }
