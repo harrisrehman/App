@@ -1,8 +1,11 @@
 export const WORLD_W = 1000;
 export const WORLD_H = 1600;
 
+/** Display name shown in menu and HUD. */
+export const GAME_NAME = "FATH";
+
 export const COLORS = {
-  bg: "#120c08",
+  bg: "#1a120c",
   panel: "#1c140e",
   text: "#f4ead4",
   muted: "#b5a27a",
@@ -12,8 +15,8 @@ export const COLORS = {
   ai2: "#5ae07a",
   ai3: "#f5c542",
   ai4: "#c46bff",
-  neutral: "#7a7a80",
-  line: "#ffffff",
+  neutral: "#8a8078",
+  line: "#c5a15a",
 } as const;
 
 export const ARMY_SPEED = 47;
@@ -101,23 +104,32 @@ export const GUNNER_BARREL_W = 5.4;
 export const POP_LIFE = 0.2;
 export const POP_CAP = 48;
 
+export const THEME_URL = "./menu/theme.mp3";
+
+export const REMOTE_THEME_URL =
+  "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/menu/theme.mp3";
+
+export const CDN_THEME_URL =
+  "https://cdn.jsdelivr.net/gh/harrisrehman/App@cursor/annex-android-a9d2/dist/menu/theme.mp3";
+
+export const BASE_ART_URL = "./bases/base.png";
+export const SOLDIER_ART_URL = "./units/soldier.png";
+export const SOLDIER_RUN_SHEET_URL = "./units/soldier-run.png";
+
+export const SOLDIER_RUN_COLS = 8;
+export const SOLDIER_RUN_ROWS = 9;
+export const SOLDIER_RUN_FPS = 12;
+
+export const APK_DOWNLOAD_URL =
+  "https://github.com/harrisrehman/App/releases/download/v0.5.78/annex.apk";
+
 export const UPDATE_SOURCES = [
   {
     versionUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/main/dist/version.json",
-    gameUrl:
-      "https://raw.githubusercontent.com/harrisrehman/App/main/dist/annex.html",
+      "https://raw.githubusercontent.com/harrisrehman/App/cursor/annex-android-a9d2/dist/version.json",
   },
   {
     versionUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=main",
-    gameUrl:
-      "https://api.github.com/repos/harrisrehman/App/contents/dist/annex.html?ref=main",
-  },
-  {
-    versionUrl:
-      "https://cdn.jsdelivr.net/gh/harrisrehman/App@main/dist/version.json",
-    gameUrl:
-      "https://cdn.jsdelivr.net/gh/harrisrehman/App@main/dist/annex.html",
+      "https://api.github.com/repos/harrisrehman/App/contents/dist/version.json?ref=cursor/annex-android-a9d2",
   },
 ] as const;

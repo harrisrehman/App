@@ -1,5 +1,6 @@
 {
-  "name": "Annex",
-  "version": "0.5.54",
-  "build": 1787123133206
+  "name": "FATH",
+  "version": "0.5.82",
+  "build": 1787248497740,
+  "apkUrl": "https://github.com/harrisrehman/App/releases/download/v0.5.82/annex.apk"
 }

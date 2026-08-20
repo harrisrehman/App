@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#c9a56a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>Annex</title>
+    <title>FATH</title>
     <link rel="stylesheet" href="/src/style.css" />
     <style>
       html, body { margin: 0; background: #c9a56a; color: #3b2416; font-family: Palatino Linotype, Palatino, serif; }
@@ -37,12 +37,11 @@
       <div class="menu-frame">
         <div class="menu-mark" aria-hidden="true"></div>
         <p class="menu-kicker">Swords · Horses · Kingdoms</p>
-        <h1>ANNEX</h1>
+        <h1>FATH</h1>
         <p class="menu-tag">Rise. Build. Conquer.</p>
-        <p id="menu-ver">v0.5.54</p>
+        <p id="menu-ver">v0.5.53</p>
         <div id="menu-home">
           <button id="start-btn" type="button">Start</button>
-          <button id="menu-update-btn" type="button">Update</button>
         </div>
         <div id="menu-bots" class="hidden">
           <p>How many bots?</p>
@@ -64,17 +63,15 @@
           <button id="menu-diff-back" type="button">Back</button>
         </div>
       </div>
-      <button id="menu-mute" type="button">Sound on</button>
     </div>
     <div id="hud">
       <div class="top">
         <div class="brand">
-          <span id="title">ANNEX</span>
-          <span id="version">v0.5.54</span>
+          <span id="title">FATH</span>
+          <span id="version">v0.5.53</span>
         </div>
         <div class="actions">
           <button id="wall-btn" type="button">Wall</button>
-          <button id="update-btn" type="button">Update</button>
         </div>
       </div>
       <div id="toast"></div>
@@ -116,6 +113,33 @@
         <button id="menu-btn" type="button">Menu</button>
       </div>
     </div>
+    <script>
+      window.__annexBootstrap = 1;
+      (function () {
+        if (window.__annexMediaPatched) return;
+        window.__annexMediaPatched = true;
+        window.__annexThemePlayers = window.__annexThemePlayers || [];
+        var NativeAudio = window.Audio;
+        window.Audio = function () {
+          var el = new NativeAudio(arguments[0], arguments[1]);
+          window.__annexThemePlayers.push(el);
+          return el;
+        };
+        window.Audio.prototype = NativeAudio.prototype;
+        window.__annexStopAllMedia = function () {
+          for (var i = 0; i < window.__annexThemePlayers.length; i++) {
+            var el = window.__annexThemePlayers[i];
+            if (!el) continue;
+            try {
+              el.pause();
+              el.removeAttribute("src");
+              el.load();
+            } catch (e) {}
+          }
+          window.__annexThemePlayers = [];
+        };
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

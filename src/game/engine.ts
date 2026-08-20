@@ -74,10 +74,8 @@ export function applyArrival(dest: Territory, army: Army): void {
 let nextSoldierId = 1;
 let nextWallId = 1;
 
-function easeOutBack(t: number): number {
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+function easeOutCubic(t: number): number {
+  return 1 - (1 - t) ** 3;
 }
 
 function spinPoly(poly: Point[], angle: number): Point[] {
@@ -539,6 +537,7 @@ export class Game {
     for (const s of pool) {
       s.toId = null;
       s.state = "return";
+      this.faceToward(s, s.restX, s.restY);
     }
     this.guideWall(wall);
     this.wallMode = false;
@@ -756,6 +755,7 @@ export class Game {
   private sendHome(s: Soldier): void {
     s.toId = null;
     s.state = "return";
+    this.faceToward(s, s.restX, s.restY);
   }
 
   private gunnersAt(homeId: number): Soldier[] {
@@ -957,7 +957,7 @@ export class Game {
     }
     if (s.state === "eject") {
       s.ejectT = Math.min(1, s.ejectT + dt / 1.05);
-      const k = easeOutBack(s.ejectT);
+      const k = easeOutCubic(s.ejectT);
       s.x = s.fromX + (s.toX - s.fromX) * k;
       s.y = s.fromY + (s.toY - s.fromY) * k;
       if (s.ejectT >= 1) {
@@ -1027,6 +1027,7 @@ export class Game {
         s.y = dest.center.y;
         return;
       }
+      if (d > 20) this.faceToward(s, dest.center.x, dest.center.y);
       const step = ARMY_SPEED * dt;
       s.x += ((dest.center.x - s.x) / d) * step;
       s.y += ((dest.center.y - s.y) / d) * step;

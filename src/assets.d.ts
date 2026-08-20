@@ -1,9 +1,9 @@
-declare module "*.ogg" {
+declare module "*.mp3" {
   const src: string;
   export default src;
 }
 
-declare module "*.ogg?url" {
+declare module "*.mp3?url" {
   const src: string;
   export default src;
 }

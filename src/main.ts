@@ -1,19 +1,19 @@
 import { clampCamera, fitCamera, type Camera } from "./game/camera";
+import { GAME_NAME } from "./game/config";
 import type { Difficulty, SendFilter } from "./game/types";
 import { Commander } from "./game/ai";
 import { Game } from "./game/engine";
 import { BOTS } from "./game/types";
 import { bindInput } from "./game/input";
 import { render } from "./game/render";
-import { bindTheme, syncMuteButton, themeToMatch, themeToMenu, toggleThemeMute } from "./game/audio";
-import { applyUpdate, localVersion, peekUpdate, restorePersisted } from "./game/update";
-import { dropStalePersist, loadBundledVersion } from "./version";
+import { bindTheme, themeToMatch, themeToMenu } from "./game/audio";
+import { localVersion } from "./game/update";
+import { clearLegacyOtaCache } from "./version";
 
 declare global {
   interface Window {
     __annexStop?: () => void;
     __annexJustUpdated?: string;
-    __annexRestored?: boolean;
     __annexHudBound?: boolean;
     __annexOnHudClick?: (e: Event) => void;
     __annexGame?: Game;
@@ -50,7 +50,7 @@ function ensureHud(): void {
   if (!top.querySelector("#title")) {
     const brand = document.createElement("div");
     brand.className = "brand";
-    brand.append(makeEl("span", "title", "ANNEX"), makeEl("span", "version", "v"));
+    brand.append(makeEl("span", "title", GAME_NAME), makeEl("span", "version", "v"));
     top.prepend(brand);
   }
   if (!top.querySelector("#version")) {
@@ -66,9 +66,7 @@ function ensureHud(): void {
   if (!actions.querySelector("#wall-btn")) {
     actions.appendChild(makeEl("button", "wall-btn", "Wall")).setAttribute("type", "button");
   }
-  if (!actions.querySelector("#update-btn")) {
-    actions.appendChild(makeEl("button", "update-btn", "Update")).setAttribute("type", "button");
-  }
+  document.querySelector("#update-btn")?.remove();
   stripPlayDev();
   if (!hud.querySelector("#toast")) hud.appendChild(makeEl("div", "toast"));
   document.querySelector("#hint")?.remove();
@@ -133,9 +131,9 @@ function ensureHud(): void {
   }
   if (!document.querySelector("#menu")) {
     const menu = makeEl("div", "menu");
-    menu.append(makeEl("h1", undefined, "ANNEX"), makeEl("p", "menu-ver", "v"));
+    menu.append(makeEl("h1", undefined, GAME_NAME), makeEl("p", "menu-ver", "v"));
     const home = makeEl("div", "menu-home");
-    home.append(makeEl("button", "start-btn", "Start"), makeEl("button", "menu-update-btn", "Update"));
+    home.append(makeEl("button", "start-btn", "Start"));
     const bots = makeEl("div", "menu-bots");
     bots.classList.add("hidden");
     bots.appendChild(makeEl("p", undefined, "How many bots?"));
@@ -151,6 +149,7 @@ function ensureHud(): void {
     document.body.appendChild(menu);
   }
   const menu = document.querySelector("#menu");
+  document.querySelector("#menu-update-btn")?.remove();
   document.querySelector("#menu-dev-btn")?.remove();
   document.querySelector("#menu-dev")?.remove();
   if (menu && !menu.querySelector("#menu-diff")) {
@@ -194,10 +193,7 @@ function dressMenu(): void {
     frame = document.createElement("div");
     frame.className = "menu-frame";
     const move = [...menu.children].filter(
-      (el) =>
-        !el.classList.contains("menu-stars") &&
-        !el.classList.contains("menu-veil") &&
-        el.id !== "menu-mute",
+      (el) => !el.classList.contains("menu-stars") && !el.classList.contains("menu-veil"),
     );
     for (const kid of move) frame.appendChild(kid);
     menu.appendChild(frame);
@@ -231,10 +227,11 @@ function dressMenu(): void {
     else if (ver) ver.before(tag);
     else frame.prepend(tag);
   }
-  if (!menu.querySelector("#menu-mute")) {
-    menu.appendChild(makeEl("button", "menu-mute", "Sound on"));
-  }
-  syncMuteButton();
+  const menuTitle = frame.querySelector("h1");
+  if (menuTitle) menuTitle.textContent = GAME_NAME;
+  const hudTitle = document.querySelector("#title");
+  if (hudTitle) hudTitle.textContent = GAME_NAME;
+  document.title = GAME_NAME;
 }
 
 function paintMenuMark(el: Element | null): void {
@@ -250,11 +247,9 @@ function paintMenuMark(el: Element | null): void {
 function stripPlayDev(): void {
   document.querySelector("#dev-btn")?.remove();
   document.querySelector("#dev-panel")?.remove();
+  document.querySelector("#update-btn")?.remove();
   const stack = document.querySelector(".action-stack");
   if (!stack) return;
-  const parent = stack.parentElement;
-  const update = stack.querySelector("#update-btn");
-  if (parent && update) parent.appendChild(update);
   stack.remove();
 }
 
@@ -278,48 +273,11 @@ function showToast(text: string): void {
   window.setTimeout(() => box.classList.remove("show"), 2200);
 }
 
-let updateBusy = false;
 let pendingBots = 1;
-
-async function runUpdate(): Promise<void> {
-  if (updateBusy) return;
-  updateBusy = true;
-  const buttons = [...document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")];
-  for (const btn of buttons) {
-    btn.disabled = true;
-    btn.textContent = "…";
-  }
-  try {
-    const state = await applyUpdate();
-    if (state === "offline") showToast("Update failed. Try again.");
-    if (state === "latest") showToast("Already latest.");
-    if (state === "ready") showToast(`Updated to v${localVersion().version}`);
-  } catch {
-    showToast("Update failed. Try again.");
-  } finally {
-    updateBusy = false;
-    for (const btn of document.querySelectorAll<HTMLButtonElement>("#update-btn, #menu-update-btn")) {
-      btn.disabled = false;
-      btn.textContent = "Update";
-    }
-  }
-}
 
 function onHudClick(e: Event): void {
   const t = (e.target as HTMLElement | null)?.closest("button");
   if (!t) return;
-  if (t.id === "update-btn" || t.id === "menu-update-btn") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    void runUpdate();
-    return;
-  }
-  if (t.id === "menu-mute") {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    toggleThemeMute();
-    return;
-  }
   if (t.id === "start-btn") {
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -554,7 +512,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
   const boardEl = document.querySelector<HTMLCanvasElement>("#game");
   const drawEl = boardEl?.getContext("2d");
-  const updateEl = document.querySelector<HTMLButtonElement>("#update-btn");
   const wallEl = document.querySelector<HTMLButtonElement>("#wall-btn");
   const defenseEl = document.querySelector<HTMLButtonElement>("#defense-btn");
   const toastEl = document.querySelector("#toast");
@@ -563,7 +520,7 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
   const restartEl = document.querySelector<HTMLButtonElement>("#restart-btn");
   const versionEl = document.querySelector("#version");
 
-  if (!boardEl || !drawEl || !updateEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
+  if (!boardEl || !drawEl || !wallEl || !defenseEl || !toastEl || !overlayEl || !resultEl || !restartEl || !versionEl) {
     showMenu();
     document.body.insertAdjacentHTML("beforeend", "<p style='color:#fff;padding:16px'>Game failed to start.</p>");
     return;
@@ -577,7 +534,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
   const board = boardEl;
   const draw = drawEl;
-  const update = updateEl;
   const wall = wallEl;
   const defense = defenseEl;
   const endScreen = overlayEl;
@@ -685,13 +641,6 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
     showToast(`Updated to v${window.__annexJustUpdated}`);
     window.__annexJustUpdated = undefined;
   }
-  void loadBundledVersion().then((ver) => {
-    if (!alive) return;
-    version.textContent = `v${ver.version}`;
-    return peekUpdate();
-  }).then((newer) => {
-    if (alive && newer) update.classList.add("badge");
-  });
 
   let last = performance.now();
   function loop(now: number): void {
@@ -726,13 +675,12 @@ function startGame(bots = 1, difficulty: Difficulty = "medium"): void {
 
 function boot(): void {
   try {
+    clearLegacyOtaCache();
     ensureHud();
     bindHudClicks();
     bindTheme();
-    dropStalePersist();
     const ver = document.querySelector("#menu-ver");
     if (ver) ver.textContent = `v${localVersion().version}`;
-    restorePersisted();
     if (!document.body.classList.contains("playing")) showMenu();
   } catch {
     showMenu();
