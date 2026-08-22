@@ -7,9 +7,9 @@ export type AppVersion = {
 
 export const APP_VERSION: AppVersion = {
   name: "FATH",
-  version: "0.5.88",
-  build: 1787379772614,
-  apkUrl: "https://github.com/harrisrehman/App/releases/download/v0.5.88/annex.apk",
+  version: "0.5.89",
+  build: 1787380197542,
+  apkUrl: "https://github.com/harrisrehman/App/releases/download/v0.5.89/annex.apk",
 };
 
 export const BUNDLED_VERSION: AppVersion = {

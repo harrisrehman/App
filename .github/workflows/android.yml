@@ -24,8 +24,8 @@ jobs:
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - run: npm run build
-      - run: node scripts/sync-android-version.mjs
       - run: npx cap sync android
+      - run: node scripts/sync-android-version.mjs
       - run: node scripts/verify-build-version.mjs
       - name: Build debug APK
         working-directory: android

@@ -8,20 +8,13 @@ const appLabel = `Annex ${displayVersion}`;
 
 const gradlePath = "android/app/build.gradle";
 let gradle = readFileSync(gradlePath, "utf8");
+gradle = gradle.replace(/def annexVersionName = "[^"]+"/, `def annexVersionName = "${pkg.version}"`);
 gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
-gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${pkg.version}"`);
 writeFileSync(gradlePath, gradle);
 
-const stringsPath = "android/app/src/main/res/values/strings.xml";
-let strings = readFileSync(stringsPath, "utf8");
-strings = strings.replace(
-  /<string name="app_name">[^<]*<\/string>/,
-  `<string name="app_name">${appLabel}</string>`,
-);
-strings = strings.replace(
-  /<string name="title_activity_main">[^<]*<\/string>/,
-  `<string name="title_activity_main">${appLabel}</string>`,
-);
-writeFileSync(stringsPath, strings);
+const capPath = "capacitor.config.json";
+const cap = JSON.parse(readFileSync(capPath, "utf8"));
+cap.appName = appLabel;
+writeFileSync(capPath, `${JSON.stringify(cap, null, 2)}\n`);
 
 console.log(`synced android versionCode ${versionCode} versionName ${pkg.version} label "${appLabel}"`);

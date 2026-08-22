@@ -1,7 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Annex 5.88</string>
-    <string name="title_activity_main">Annex 5.88</string>
     <string name="package_name">com.harrisrehman.annex</string>
     <string name="custom_url_scheme">com.harrisrehman.annex</string>
 </resources>

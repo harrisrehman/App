@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+def annexVersionName = "0.5.89"
+
 android {
     namespace = "com.harrisrehman.annex"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +9,11 @@ android {
         applicationId "com.harrisrehman.annex"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 50088
-        versionName "0.5.88"
+        versionCode 50089
+        versionName annexVersionName
+        def annexDisplayVersion = annexVersionName.replaceFirst(/^0\./, "")
+        resValue "string", "app_name", "Annex ${annexDisplayVersion}"
+        resValue "string", "title_activity_main", "Annex ${annexDisplayVersion}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
