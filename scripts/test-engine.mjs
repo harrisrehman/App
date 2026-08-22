@@ -302,6 +302,13 @@ const squad = [
   { homeId: 1, state: "march", wallId: null },
 ];
 assert(sendPool(squad, 1).length === 1, "send should skip wall soldiers");
+
+function shouldSendSoldier(s, toId) {
+  return s.homeId !== toId;
+}
+assert(!shouldSendSoldier({ homeId: 2, state: "idle" }, 2), "skip garrison already at destination");
+assert(shouldSendSoldier({ homeId: 1, state: "idle" }, 2), "reinforce from other base still sends");
+
 for (let i = 0; i < wall.length; i++) {
   for (let j = i + 1; j < wall.length; j++) {
     assert(Math.hypot(wall[i].x - wall[j].x, wall[i].y - wall[j].y) >= 17.9, "wall soldiers overlap");

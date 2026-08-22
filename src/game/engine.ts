@@ -550,6 +550,7 @@ export class Game {
     let sent = false;
     if (units.length > 0) {
       for (const s of units) {
+        if (s.homeId === toId) continue;
         if (this.sendSoldier(s.id, toId)) sent = true;
       }
     } else {
@@ -1041,6 +1042,12 @@ export class Game {
 
   private arrive(s: Soldier, dest: Territory, dead: Set<number>): boolean {
     if (dest.owner === s.owner) {
+      if (s.homeId === dest.id) {
+        s.toId = null;
+        s.state = "return";
+        this.faceToward(s, s.restX, s.restY);
+        return true;
+      }
       this.startEject(s, dest);
       return true;
     }
@@ -1234,6 +1241,7 @@ export class Game {
     const to = this.territories[toId];
     if (!s || !to || s.state === "march" || !this.matchesFilter(s)) return false;
     if (s.owner !== "player") return false;
+    if (s.homeId === toId) return false;
     s.wallId = null;
     s.state = "march";
     s.toId = toId;
