@@ -1,6 +1,7 @@
 import {
   BASE_ART_URL,
   COLORS,
+  DEFENSE_FIRE,
   RING_SPIN,
   SOLDIER_ART_URL,
   SOLDIER_RUN_FPS,
@@ -444,11 +445,26 @@ function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boole
   ctx.restore();
 }
 
+function bowDrawPhase(s: Soldier): number {
+  if (s.state !== "defend" || s.aimId == null) return 0;
+  const windup = 0.5;
+  const t = (s.shootAcc - (DEFENSE_FIRE - windup)) / windup;
+  return Math.max(0, Math.min(1, t));
+}
+
 function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
-  const angle = soldierRunning(s) ? soldierMoveAngle(s, game) : soldierAngle(s);
+  const facing = Math.abs(s.faceX) + Math.abs(s.faceY) > 0.01;
+  const angle = facing
+    ? Math.atan2(s.faceY, s.faceX)
+    : soldierRunning(s)
+      ? soldierMoveAngle(s, game)
+      : soldierAngle(s);
   const trim = accent(s.owner);
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const sc = pop;
+  const pull = bowDrawPhase(s);
+  const bowFront = 15;
+  const nockX = 5 - pull * 7;
 
   ctx.save();
   ctx.translate(s.x, s.y);
@@ -463,13 +479,8 @@ function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean
   ctx.strokeStyle = DESERT.spear;
   ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(-13, 1);
-  ctx.quadraticCurveTo(0, -7, 13, 1);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(-13, 1);
-  ctx.lineTo(13, 1);
+  ctx.moveTo(4, -5);
+  ctx.quadraticCurveTo(bowFront, 0, 4, 5);
   ctx.stroke();
 
   ctx.fillStyle = trim;
@@ -493,6 +504,29 @@ function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean
   ctx.beginPath();
   ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.strokeStyle = DESERT.goldSoft;
+  ctx.lineWidth = pull > 0.05 ? 1.1 : 0.9;
+  ctx.beginPath();
+  ctx.moveTo(nockX, 0);
+  ctx.lineTo(bowFront - 0.5, 0);
+  ctx.stroke();
+
+  if (pull > 0.05) {
+    ctx.strokeStyle = DESERT.spear;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(nockX, 0);
+    ctx.lineTo(bowFront - 1, 0);
+    ctx.stroke();
+    ctx.fillStyle = "#8a7860";
+    ctx.beginPath();
+    ctx.moveTo(bowFront - 1, 0);
+    ctx.lineTo(bowFront - 4.5, -1.6);
+    ctx.lineTo(bowFront - 4.5, 1.6);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   if (selected) drawSelectionMark(ctx);
   ctx.restore();
@@ -546,14 +580,32 @@ export function render(ctx: CanvasRenderingContext2D, game: Game, cam: Camera): 
 }
 
 function drawShot(ctx: CanvasRenderingContext2D, shot: Shot): void {
+  const ang = Math.atan2(shot.vy, shot.vx);
+  ctx.save();
+  ctx.translate(shot.x, shot.y);
+  ctx.rotate(ang);
+  ctx.strokeStyle = DESERT.spear;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-7, 0);
+  ctx.lineTo(5, 0);
+  ctx.stroke();
   ctx.fillStyle = accent(shot.owner);
   ctx.beginPath();
-  ctx.arc(shot.x, shot.y, 2.8, 0, Math.PI * 2);
+  ctx.moveTo(6, 0);
+  ctx.lineTo(2.5, -1.8);
+  ctx.lineTo(2.5, 1.8);
+  ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = DESERT.goldSoft;
+  ctx.strokeStyle = DESERT.goldSoft;
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(shot.x, shot.y, 1.1, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(-7, 0);
+  ctx.lineTo(-5, -2);
+  ctx.moveTo(-7, 0);
+  ctx.lineTo(-5, 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawStroke(ctx: CanvasRenderingContext2D, game: Game): void {

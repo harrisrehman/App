@@ -895,11 +895,13 @@ export class Game {
     if (foe) {
       const aim = this.aimPoint(s, foe);
       this.faceToward(s, aim.x, aim.y);
-    }
-    s.shootAcc += dt;
-    if (foe && s.shootAcc >= DEFENSE_FIRE && this.inPerimeter(home, s)) {
+      s.shootAcc += dt;
+      if (s.shootAcc >= DEFENSE_FIRE && this.inPerimeter(home, s)) {
+        s.shootAcc = 0;
+        this.fireShot(s, foe);
+      }
+    } else {
       s.shootAcc = 0;
-      this.fireShot(s, foe);
     }
   }
 
