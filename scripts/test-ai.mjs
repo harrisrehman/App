@@ -28,4 +28,10 @@ assert(closeEmpty > closeFull, "lower count should win");
 assert(closeEmpty > farEmpty, "closer enemy should win");
 assert(closeFull > scoreAttack(700, 10, 10), "close full still beats far full");
 
+const DEFENSE_COST = 6;
+const hardKeep = 8;
+const hardMinSpare = 16;
+assert(DEFENSE_COST + hardKeep === 14, "hard arm needs 14 free troops at a base");
+assert(hardMinSpare > DEFENSE_COST + hardKeep, "hard arm waits for empire spare before buying bowmen");
+
 console.log("ai tests passed");
