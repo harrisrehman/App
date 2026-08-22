@@ -47,7 +47,24 @@
     <main>
       <h1>FATH</h1>
       <p>Uninstall old app first. This link always installs the newest build.</p>
-      <a href="https://github.com/harrisrehman/App/releases/download/latest/annex.apk">Install app</a>
+      <a id="install" href="#">Install app</a>
     </main>
+    <script>
+      fetch("https://raw.githubusercontent.com/harrisrehman/App/main/public/version.json")
+        .then(function (r) { return r.json(); })
+        .then(function (v) {
+          var display = String(v.version || "").replace(/^0\./, "");
+          var file = v.apkFile || ("annex-" + display + ".apk");
+          var url =
+            "https://github.com/harrisrehman/App/releases/download/latest/" + file;
+          var link = document.getElementById("install");
+          link.href = url;
+          link.textContent = "Install " + file;
+        })
+        .catch(function () {
+          document.getElementById("install").href =
+            "https://github.com/harrisrehman/App/releases/download/latest/annex.apk";
+        });
+    </script>
   </body>
 </html>

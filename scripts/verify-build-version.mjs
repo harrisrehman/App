@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
+import { apkDownloadUrl, apkFileName, readPkgVersion } from "./apk-artifact.mjs";
 
-const pkg = JSON.parse(readFileSync("package.json", "utf8")).version;
+const pkg = readPkgVersion();
 const dist = JSON.parse(readFileSync("dist/version.json", "utf8")).version;
 if (pkg !== dist) {
   console.error(`dist/version.json is ${dist}, expected ${pkg}`);
@@ -27,4 +28,22 @@ if (cap.appName !== appLabel) {
   process.exit(1);
 }
 
-console.log(`verified build ${pkg} (${appLabel})`);
+const apkFile = apkFileName(pkg);
+const distJson = JSON.parse(readFileSync("dist/version.json", "utf8"));
+if (distJson.apkFile !== apkFile) {
+  console.error(`dist/version.json apkFile should be "${apkFile}"`);
+  process.exit(1);
+}
+if (!distJson.apkUrl.includes(apkFile)) {
+  console.error(`dist/version.json apkUrl should include ${apkFile}`);
+  process.exit(1);
+}
+
+const latestUrl = apkDownloadUrl(pkg, "latest");
+const config = readFileSync("src/game/config.ts", "utf8");
+if (!config.includes(latestUrl)) {
+  console.error(`config.ts missing LATEST_APK_URL ${latestUrl}`);
+  process.exit(1);
+}
+
+console.log(`verified build ${pkg} (${appLabel}, ${apkFile})`);

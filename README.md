@@ -27,17 +27,17 @@ Project rules for agents live in `.cursor/rules/annex.mdc`.
 
 ## Install on phone
 
-**Always-latest APK** (bookmark this — updates every push):
+**Always-latest APK** (filename includes version, e.g. `annex-5.90.apk`):
 
-https://github.com/harrisrehman/App/releases/download/latest/annex.apk
+https://github.com/harrisrehman/App/releases/download/latest/annex-5.90.apk
 
-Install page:
+Install page (auto-resolves current filename):
 
 https://raw.githack.com/harrisrehman/App/main/downloads/install.html
 
-Backup raw link:
+Backup raw link on main:
 
-https://github.com/harrisrehman/App/raw/main/downloads/annex.apk
+https://github.com/harrisrehman/App/raw/main/downloads/annex-5.90.apk
 
 ## Dev on computer
 

@@ -121,7 +121,7 @@ export const SOLDIER_RUN_ROWS = 9;
 export const SOLDIER_RUN_FPS = 12;
 
 export const LATEST_APK_URL =
-  "https://github.com/harrisrehman/App/releases/download/latest/annex.apk";
+  "https://github.com/harrisrehman/App/releases/download/latest/annex-5.90.apk";
 
 export const APK_DOWNLOAD_URL = LATEST_APK_URL;
 

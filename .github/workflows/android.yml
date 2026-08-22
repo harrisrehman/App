@@ -27,6 +27,12 @@ jobs:
       - run: npx cap sync android
       - run: node scripts/sync-android-version.mjs
       - run: node scripts/verify-build-version.mjs
+      - name: Read version
+        id: meta
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "tag=v$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "apk=$(node --input-type=module -e "import { apkFileName } from './scripts/apk-artifact.mjs'; console.log(apkFileName())")" >> $GITHUB_OUTPUT
       - name: Build debug APK
         working-directory: android
         run: |
@@ -37,12 +43,7 @@ jobs:
           name: annex-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
       - name: Name APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk annex.apk
-      - name: Read version
-        id: meta
-        run: |
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-          echo "tag=v$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "${{ steps.meta.outputs.apk }}"
       - name: Publish versioned APK
         uses: softprops/action-gh-release@v2
         with:
@@ -50,16 +51,16 @@ jobs:
           name: Annex ${{ steps.meta.outputs.version }}
           prerelease: true
           make_latest: true
-          files: annex.apk
+          files: ${{ steps.meta.outputs.apk }}
           body: |
             **Version:** ${{ steps.meta.outputs.version }}
 
-            **Download:** https://github.com/harrisrehman/App/releases/download/${{ steps.meta.outputs.tag }}/annex.apk
+            **Download:** https://github.com/harrisrehman/App/releases/download/${{ steps.meta.outputs.tag }}/${{ steps.meta.outputs.apk }}
 
             Install this APK. Allow unknown sources if Android asks.
             Menu should show v${{ steps.meta.outputs.version }} after install.
 
-            **Always-latest link:** https://github.com/harrisrehman/App/releases/download/latest/annex.apk
+            **Always-latest link:** https://github.com/harrisrehman/App/releases/download/latest/${{ steps.meta.outputs.apk }}
       - name: Publish always-latest APK
         uses: softprops/action-gh-release@v2
         with:
@@ -67,17 +68,17 @@ jobs:
           name: FATH Latest
           prerelease: true
           make_latest: true
-          files: annex.apk
+          files: ${{ steps.meta.outputs.apk }}
           body: |
             This tag always points at the newest build.
 
-            **Download:** https://github.com/harrisrehman/App/releases/download/latest/annex.apk
-      - name: Update downloads/annex.apk on main
+            **Download:** https://github.com/harrisrehman/App/releases/download/latest/${{ steps.meta.outputs.apk }}
+      - name: Update downloads APK on main
         if: github.ref == 'refs/heads/main'
         run: |
-          cp annex.apk downloads/annex.apk
+          cp "${{ steps.meta.outputs.apk }}" "downloads/${{ steps.meta.outputs.apk }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add downloads/annex.apk
-          git diff --staged --quiet || git commit -m "Ship v${{ steps.meta.outputs.version }} APK to downloads."
+          git add "downloads/${{ steps.meta.outputs.apk }}"
+          git diff --staged --quiet || git commit -m "Ship v${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.apk }}) to downloads."
           git push

@@ -1,6 +1,6 @@
 {
   "appId": "com.harrisrehman.annex",
-  "appName": "Annex 5.89",
+  "appName": "Annex 5.90",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
