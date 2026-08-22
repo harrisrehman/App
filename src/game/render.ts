@@ -356,13 +356,14 @@ function drawSoldierSprite(
     ctx.fill();
   }
 
-  if (selected) drawSelectionMark(ctx);
   ctx.restore();
+  if (selected) drawSelectionMark(ctx, s.x, s.y, scale);
 }
 
-function drawSelectionMark(ctx: CanvasRenderingContext2D): void {
+function drawSelectionMark(ctx: CanvasRenderingContext2D, x: number, y: number, scale = 1): void {
   ctx.save();
-  ctx.scale(0.6, 0.6);
+  ctx.translate(x, y);
+  ctx.scale(0.6 * scale, 0.6 * scale);
   ctx.strokeStyle = DESERT.goldSoft;
   ctx.fillStyle = DESERT.goldSoft;
   ctx.lineWidth = 1.5;
@@ -442,8 +443,8 @@ function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boole
   ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
-  if (selected) drawSelectionMark(ctx);
   ctx.restore();
+  if (selected) drawSelectionMark(ctx, s.x, s.y, sc);
 }
 
 function bowDrawPhase(s: Soldier): number {
@@ -529,8 +530,8 @@ function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean
     ctx.fill();
   }
 
-  if (selected) drawSelectionMark(ctx);
   ctx.restore();
+  if (selected) drawSelectionMark(ctx, s.x, s.y, sc);
 }
 
 function drawBowmanUnit(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean, game: Game): void {
