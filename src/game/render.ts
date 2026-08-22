@@ -360,6 +360,43 @@ function drawSoldierSprite(
   ctx.restore();
 }
 
+function drawBackShield(ctx: CanvasRenderingContext2D, trim: string): void {
+  const bodyX = -2.1;
+  const outerX = -9.2;
+  const halfH = 4.5;
+  ctx.fillStyle = trim;
+  ctx.strokeStyle = DESERT.stoneDark;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(bodyX, -halfH);
+  ctx.lineTo(outerX, -halfH);
+  ctx.quadraticCurveTo(outerX - 2.2, 0, outerX, halfH);
+  ctx.lineTo(bodyX, halfH);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.24)";
+  ctx.beginPath();
+  ctx.moveTo(bodyX, -halfH + 0.8);
+  ctx.lineTo(bodyX, halfH - 0.8);
+  ctx.stroke();
+}
+
+function drawUnitBody(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = DESERT.tunic;
+  ctx.beginPath();
+  ctx.ellipse(-0.4, 0, 4.8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = DESERT.helm;
+  ctx.beginPath();
+  ctx.arc(3.6, 0, 3.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#c8beb0";
+  ctx.beginPath();
+  ctx.arc(4.5, -0.55, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawSelectionMark(ctx: CanvasRenderingContext2D): void {
   ctx.save();
   ctx.strokeStyle = DESERT.goldSoft;
@@ -368,23 +405,29 @@ function drawSelectionMark(ctx: CanvasRenderingContext2D): void {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.moveTo(-6, 9);
-  ctx.lineTo(-6, 12);
-  ctx.lineTo(6, 12);
-  ctx.lineTo(6, 9);
+  ctx.moveTo(-7, -5);
+  ctx.lineTo(-10, -5);
+  ctx.lineTo(-10, 5);
+  ctx.lineTo(-7, 5);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(-8, 11);
-  ctx.lineTo(-6, 9);
-  ctx.moveTo(8, 11);
-  ctx.lineTo(6, 9);
+  ctx.moveTo(-9, -6.5);
+  ctx.lineTo(-7, -5);
+  ctx.moveTo(-9, 6.5);
+  ctx.lineTo(-7, 5);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(0, -9);
-  ctx.lineTo(0, -6);
+  ctx.moveTo(10, 0);
+  ctx.lineTo(7, 0);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(0, 12, 1.2, 0, Math.PI * 2);
+  ctx.moveTo(8.2, -1.8);
+  ctx.lineTo(10, 0);
+  ctx.moveTo(8.2, 1.8);
+  ctx.lineTo(10, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(10, 0, 1.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -402,43 +445,24 @@ function drawSpearman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boole
 
   ctx.fillStyle = DESERT.shadow;
   ctx.beginPath();
-  ctx.ellipse(2, 3, 7, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(1, 2.8, 7, 4.2, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  drawBackShield(ctx, trim);
+  drawUnitBody(ctx);
 
   ctx.strokeStyle = DESERT.spear;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-2, 0);
-  ctx.lineTo(16, 0);
+  ctx.moveTo(5.5, 0);
+  ctx.lineTo(17, 0);
   ctx.stroke();
   ctx.fillStyle = "#8a7860";
   ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(12, -2.5);
-  ctx.lineTo(12, 2.5);
+  ctx.moveTo(17, 0);
+  ctx.lineTo(13.5, -2.2);
+  ctx.lineTo(13.5, 2.2);
   ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = trim;
-  ctx.strokeStyle = DESERT.stoneDark;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(-5, 0.5, 5.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = DESERT.tunic;
-  ctx.beginPath();
-  ctx.ellipse(0, 1, 5, 4.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.helm;
-  ctx.beginPath();
-  ctx.arc(0, -1, 3.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#c8beb0";
-  ctx.beginPath();
-  ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
   if (selected) drawSelectionMark(ctx);
@@ -463,8 +487,8 @@ function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean
   const pop = s.state === "eject" ? 0.55 + s.ejectT * 0.45 : 1;
   const sc = pop;
   const pull = bowDrawPhase(s);
-  const bowFront = 15;
-  const nockX = 5 - pull * 7;
+  const bowFront = 14;
+  const nockX = 6 - pull * 6.5;
 
   ctx.save();
   ctx.translate(s.x, s.y);
@@ -473,37 +497,18 @@ function drawBowman(ctx: CanvasRenderingContext2D, s: Soldier, selected: boolean
 
   ctx.fillStyle = DESERT.shadow;
   ctx.beginPath();
-  ctx.ellipse(2, 3, 7, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(1, 2.8, 7, 4.2, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  drawBackShield(ctx, trim);
+  drawUnitBody(ctx);
 
   ctx.strokeStyle = DESERT.spear;
   ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(4, -5);
-  ctx.quadraticCurveTo(bowFront, 0, 4, 5);
+  ctx.moveTo(5, -5);
+  ctx.quadraticCurveTo(bowFront, 0, 5, 5);
   ctx.stroke();
-
-  ctx.fillStyle = trim;
-  ctx.strokeStyle = DESERT.stoneDark;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(-5, 0.5, 5.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = DESERT.tunic;
-  ctx.beginPath();
-  ctx.ellipse(0, 1, 5, 4.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = DESERT.helm;
-  ctx.beginPath();
-  ctx.arc(0, -1, 3.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#c8beb0";
-  ctx.beginPath();
-  ctx.arc(-0.8, -1.5, 1.2, 0, Math.PI * 2);
-  ctx.fill();
 
   ctx.strokeStyle = DESERT.goldSoft;
   ctx.lineWidth = pull > 0.05 ? 1.1 : 0.9;

@@ -63,8 +63,14 @@ export class Commander {
       this.easyPlan(game);
       return;
     }
-    this.arm(game);
-    this.plan(game);
+    const sent = this.plan(game);
+    if (!sent) this.arm(game);
+  }
+
+  private totalSpare(game: Game): number {
+    let n = 0;
+    for (const t of this.lands(game)) n += this.spare(game, t);
+    return n;
   }
 
   private have(game: Game, t: Territory): number {
@@ -184,9 +190,11 @@ export class Commander {
   }
 
   private arm(game: Game): void {
-    const keep = game.difficulty === "easy" ? 12 : game.difficulty === "hard" ? 2 : 5;
-    const cap = game.difficulty === "easy" ? 0 : game.difficulty === "hard" ? 2 : 1;
-    const maxGuns = game.difficulty === "easy" ? 0 : game.difficulty === "hard" ? 8 : 3;
+    const keep = game.difficulty === "easy" ? 12 : game.difficulty === "hard" ? 8 : 5;
+    const cap = game.difficulty === "easy" ? 0 : 1;
+    const maxGuns = game.difficulty === "easy" ? 0 : game.difficulty === "hard" ? 4 : 3;
+    const minSpare = game.difficulty === "hard" ? 16 : game.difficulty === "medium" ? 10 : 0;
+    if (game.difficulty !== "easy" && this.totalSpare(game) < minSpare) return;
     let made = 0;
     const lands = this.lands(game)
       .filter((t) => !this.threatened(game, t))
@@ -223,25 +231,22 @@ export class Commander {
     }
   }
 
-  private plan(game: Game): void {
-    if (this.snatch(game)) return;
+  private plan(game: Game): boolean {
+    if (this.snatch(game)) return true;
     const grey = this.bestGrey(game);
     if (grey) {
       const home = this.closest(this.lands(game), grey);
       if (home) {
         const froms = this.fund(game, grey, this.need(game, grey, home));
-        if (froms) {
-          this.commit(game, grey, froms);
-          return;
-        }
+        if (froms && this.commit(game, grey, froms)) return true;
       }
     }
-    if (this.contest(game)) return;
+    if (this.contest(game)) return true;
     if (grey) {
       this.wait = randRange(game.rng, 2.4, 3.4);
-      return;
+      return false;
     }
-    this.attack(game);
+    return this.attack(game);
   }
 
   private defend(game: Game): boolean {
