@@ -19,4 +19,12 @@ if (!gradle.includes(`versionName "${pkg}"`)) {
   process.exit(1);
 }
 
-console.log(`verified build ${pkg}`);
+const displayVersion = pkg.replace(/^0\./, "");
+const appLabel = `Annex ${displayVersion}`;
+const strings = readFileSync("android/app/src/main/res/values/strings.xml", "utf8");
+if (!strings.includes(`<string name="app_name">${appLabel}</string>`)) {
+  console.error(`strings.xml app_name should be "${appLabel}"`);
+  process.exit(1);
+}
+
+console.log(`verified build ${pkg} (${appLabel})`);
