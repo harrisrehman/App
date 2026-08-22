@@ -362,9 +362,10 @@ function drawSoldierSprite(
 
 function drawSelectionMark(ctx: CanvasRenderingContext2D): void {
   ctx.save();
+  ctx.scale(0.6, 0.6);
   ctx.strokeStyle = DESERT.goldSoft;
   ctx.fillStyle = DESERT.goldSoft;
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.5;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.beginPath();
