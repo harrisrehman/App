@@ -198,6 +198,25 @@ function dressMenu(): void {
     for (const kid of move) frame.appendChild(kid);
     menu.appendChild(frame);
   }
+  if (!frame.querySelector(".menu-border")) {
+    const border = document.createElement("div");
+    border.className = "menu-border";
+    border.setAttribute("aria-hidden", "true");
+    border.innerHTML =
+      '<span class="menu-corner menu-corner-tl"></span>' +
+      '<span class="menu-corner menu-corner-tr"></span>' +
+      '<span class="menu-corner menu-corner-bl"></span>' +
+      '<span class="menu-corner menu-corner-br"></span>' +
+      '<span class="menu-edge menu-edge-top"></span>' +
+      '<span class="menu-edge menu-edge-bottom"></span>' +
+      '<span class="menu-edge menu-edge-left"></span>' +
+      '<span class="menu-edge menu-edge-right"></span>' +
+      '<span class="menu-star menu-star-n"></span>' +
+      '<span class="menu-star menu-star-s"></span>' +
+      '<span class="menu-star menu-star-w"></span>' +
+      '<span class="menu-star menu-star-e"></span>';
+    frame.prepend(border);
+  }
   if (!frame.querySelector(".menu-mark")) {
     const mark = document.createElement("div");
     mark.className = "menu-mark";
